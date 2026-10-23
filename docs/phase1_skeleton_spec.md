@@ -52548,7 +52548,7 @@ Unit entity-slot finished 07:0x (`.cache/entity_slot.{txt,json}`; 3 seeds, 6000 
 - Bar: role pronouns ≥ 0.90, other cells held.
 - A port rule written RELATIVE to EXACT, cell by cell.
 
-### 2026-10-23 (13:31) — WORD GIVEN ("word given -- Salute!"); REGISTERED: THE GSM8K COUNTERFACTUAL FIXTURE (zero-GPU; Bryce's 12-point parser brainstorm, point 11 reframed)
+### 2026-10-23 (13:24) — WORD GIVEN ("word given -- Salute!"); REGISTERED: THE GSM8K COUNTERFACTUAL FIXTURE (zero-GPU; Bryce's 12-point parser brainstorm, point 11 reframed)
 **Context.** Bryce's brainstorm (relayed with a Gemini write-up) proposed training and testing on the same GSM8K set, with a model "too small to memorize". Critique accepted in the session: GSM8K-train's intermediate answers are ~40 KB of content (memorizable by ~150k params at ~2 bits/param), and a literal entity database is itself a storage channel. So size cannot be the memorization guard. **The reframe:** overfit the TEXT and score on COUNTERFACTUAL copies whose gold is recomputed. A memorizer returns the old intermediates; a binder recomputes them.
 **What gets built (scripts/gsm8k_counterfactual.py; .cache/gsm8k_cf_*.jsonl + census):**
 - **The trace.** Each GSM8K-train answer's `<<expr=result>>` steps are parsed into an executable graph. Every operand is sourced by value: a QUESTION literal (unique value), a PRIOR result, or a CONSTANT (implicit: 'twice', '100' for percent, 'a dozen', 7 days). Ambiguous sourcing is rejected and counted. Every step must re-evaluate to its stated result, and '####' must equal a trace result.
