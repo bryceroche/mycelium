@@ -1,0 +1,13 @@
+OUT-record owner decode (seed 0, 6000 eval episodes): n / right / lands-on-recipient
+  all                    n  6000  right 0.887  recipient 0.033
+  both  desc/GIVES       n   716  right 0.656  recipient 0.194
+  both  desc/LOSES       n   694  right 0.680  recipient 0.000
+  both  name/GIVES       n  1480  right 0.964  recipient 0.003
+  both  name/LOSES       n  1586  right 0.999  recipient 0.000
+  both  pronoun/GIVES    n   760  right 0.855  recipient 0.070
+  both  pronoun/LOSES    n   764  right 0.940  recipient 0.000
+  form  desc             n  1410  right 0.668  recipient 0.099
+  form  name             n  3066  right 0.982  recipient 0.002
+  form  pronoun          n  1524  right 0.898  recipient 0.035
+  verb  GIVES            n  2956  right 0.861  recipient 0.067
+  verb  LOSES            n  3044  right 0.912  recipient 0.000

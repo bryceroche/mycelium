@@ -1,0 +1,9 @@
+mode full steps 4000 seeds [0, 1, 2]
+SUP_BOTH | BLIND 0.838 (seeds 0.871 / 0.810 / 0.834) | EXPLICIT 0.998  [378s]
+HOP2_L   | BLIND 0.858 (seeds 0.855 / 0.861 / 0.859) | EXPLICIT 0.998  [829s]
+HOP2_I   | BLIND 0.852 (seeds 0.850 / 0.851 / 0.854) | EXPLICIT 0.996 | factors: OUT pick 1.000 x owner decode 0.836 x HAS pick 0.998 = 0.834  [1283s]
+VERDICTS (3-seed means, blind queries)
+(H1) THE IMPOSED HOP DOES NOT REACH 0.95  (HOP2_I 0.852 [bar >= 0.95])
+(H2) THE IMPOSED HOP BEATS THE ONE-HOP READER BY < 0.10  (HOP2_I − SUP_BOTH = +0.013)
+(H3, Opus's separator) A LEARNED SECOND HOP DOES AS WELL -> 'GIVE THE QUERY A SECOND STEP'; IMPOSITION OPTIONAL  (HOP2_I 0.852 − HOP2_L 0.858 = -0.007 [bar >= +0.03])
+DONE in 1283s

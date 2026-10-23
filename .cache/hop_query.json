@@ -1,0 +1,137 @@
+[
+ {
+  "arm": "SUP_BOTH",
+  "seeds": [
+   {
+    "acc_blind": 0.8708609342575073,
+    "has_blind": 0.8708609342575073,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9973154067993164,
+    "has_explicit": 0.9973154067993164,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.41688746213912964
+   },
+   {
+    "acc_blind": 0.8096784949302673,
+    "has_blind": 0.8096784949302673,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9986305832862854,
+    "has_explicit": 0.9986305832862854,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.41512399911880493
+   },
+   {
+    "acc_blind": 0.8341059684753418,
+    "has_blind": 0.8341059684753418,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9969798922538757,
+    "has_explicit": 0.9969798922538757,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.4163355231285095
+   }
+  ],
+  "agg": {
+   "acc_blind": 0.8382151325543722,
+   "has_blind": 0.8382151325543722,
+   "out_blind": 1.0,
+   "acc_explicit": 0.9976419607798258,
+   "has_explicit": 0.9976419607798258,
+   "out_explicit": 1.0,
+   "chance_has_blind": 0.416115661462148
+  }
+ },
+ {
+  "arm": "HOP2_L",
+  "seeds": [
+   {
+    "acc_blind": 0.8552980422973633,
+    "has_blind": 0.8552980422973633,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9983221292495728,
+    "has_explicit": 0.9983221292495728,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.41688746213912964
+   },
+   {
+    "acc_blind": 0.8609938025474548,
+    "has_blind": 0.8609938025474548,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9996576309204102,
+    "has_explicit": 0.9996576309204102,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.41512399911880493
+   },
+   {
+    "acc_blind": 0.8589404225349426,
+    "has_blind": 0.8589404225349426,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9956375956535339,
+    "has_explicit": 0.9956375956535339,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.4163355231285095
+   }
+  ],
+  "agg": {
+   "acc_blind": 0.8584107557932535,
+   "has_blind": 0.8584107557932535,
+   "out_blind": 1.0,
+   "acc_explicit": 0.9978724519411722,
+   "has_explicit": 0.9978724519411722,
+   "out_explicit": 1.0,
+   "chance_has_blind": 0.416115661462148
+  }
+ },
+ {
+  "arm": "HOP2_I",
+  "seeds": [
+   {
+    "acc_blind": 0.8500000238418579,
+    "has_blind": 0.8500000238418579,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9959731698036194,
+    "has_explicit": 0.9959731698036194,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.41688746213912964,
+    "f_pick_out": 1.0,
+    "f_decode_given": 0.8334437012672424,
+    "f_has_given": 0.9984108209609985
+   },
+   {
+    "acc_blind": 0.850925624370575,
+    "has_blind": 0.850925624370575,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9982882738113403,
+    "has_explicit": 0.9982882738113403,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.41512399911880493,
+    "f_pick_out": 1.0,
+    "f_decode_given": 0.8340370059013367,
+    "f_has_given": 0.9968847632408142
+   },
+   {
+    "acc_blind": 0.8536424040794373,
+    "has_blind": 0.8536424040794373,
+    "out_blind": 1.0,
+    "acc_explicit": 0.9936241507530212,
+    "has_explicit": 0.9936241507530212,
+    "out_explicit": 1.0,
+    "chance_has_blind": 0.4163355231285095,
+    "f_pick_out": 1.0,
+    "f_decode_given": 0.8397350907325745,
+    "f_has_given": 0.9992113709449768
+   }
+  ],
+  "agg": {
+   "acc_blind": 0.85152268409729,
+   "has_blind": 0.85152268409729,
+   "out_blind": 1.0,
+   "acc_explicit": 0.995961864789327,
+   "has_explicit": 0.995961864789327,
+   "out_explicit": 1.0,
+   "chance_has_blind": 0.416115661462148,
+   "f_pick_out": 1.0,
+   "f_decode_given": 0.8357385993003845,
+   "f_has_given": 0.9981689850489298
+  }
+ }
+]
