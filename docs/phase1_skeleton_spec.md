@@ -52512,3 +52512,38 @@ Unit entity-slot finished 07:0x (`.cache/entity_slot.{txt,json}`; 3 seeds, 6000 
   - Blind/explicit query accuracy reported.
 - **PORT RULE (pinned):** the resolver the port carries is LEARNED if it passes J1–J4; else HYBRID if it does; else EXACT plus a flag on the failing cell.
 - **PREDICTIONS (coordinator):** EXACT J2 cell ~0.4. LEARNED passes J1 and J2, FAILS J3 (unseen names; the 12-name read). HYBRID passes all four, so the port carries HYBRID.
+
+### 2026-10-23 (09:12) — T2j VERDICTS: J1 / J3 / J4 PASS for LEARNED and HYBRID; J2 (role pronouns) FAILS for both (0.636 / 0.699 vs the 0.90 bar, +0.40 / +0.46 over EXACT's 0.235). By the pinned port rule, the port carries EXACT plus a flag on role pronouns. HYBRID beats EXACT on every cell.
+(.cache/learned_resolver.{txt,json}; 3 seeds × 4000 steps; 1650 s.) **Per cell, in-dist (EXACT / LEARNED / HYBRID):**
+- Aliases: 1.000 / 1.000 / 1.000. Full names: 1.000 for all three. Families (title separates): 1.000 for all three.
+- Descriptions: 1.000 / 0.993 / 1.000.
+- Pronouns where gender decides: 0.954 / 0.949 / 0.955.
+- **Role pronouns (same-pronoun subject + recipient): 0.235 / 0.636 / 0.699** (seeds HYBRID 0.712 / 0.734 / 0.652).
+- they / it: 1.000 for all three.
+- Blind queries: 0.988 / 0.985 / 0.987.
+
+**HELD-OUT names (all cells):** 0.904 / 0.912 / 0.942.
+- Pronouns where gender decides: 0.736 / 0.879 / 0.887. The gender read of unseen names is again EXACT's weak point; contextual resolution recovers most of it.
+- LEARNED's alias cell drops to 0.957 (first name only, 0.907). An unseen frozen name partly defeats the learned match; HYBRID keeps 0.998 there.
+- Blind: 0.945 / 0.915 / 0.956.
+
+**Recipient drift (GIVES owners resolved to the recipient):** 0.008 / 0.010 / 0.008 in-dist; 0.034 / 0.047 / 0.024 held-out. J4 is pinned in-dist and passes. The held-out drift rides on the pronoun errors.
+
+**Predictions vs results (coordinator):**
+- EXACT role cell ~0.4 → 0.235 (worse: the recency rank learned to point at the recipient).
+- LEARNED J3 FAIL → PASS (wrong: contextual matching transfers to unseen frozen names better than the 12-name gender read).
+- J2 PASS for both → FAIL (wrong).
+- HYBRID passes all four → FAIL on J2.
+
+**READING:**
+- (1) Opus's alias and possessive cells are solved by token overlap with a gender cue. A learned resolver holds parity but has nothing to add there.
+- (2) Context earns its keep where overlap carries no signal: unseen names' gender (+0.15 on that cell) and role (+0.46). Neither is closed.
+- (3) The role cell is the open wall. "Subject of the previous sentence" is a two-step relation (find the previous sentence, find its subject), and a 2-layer contextual match learns it only partly at this budget. That is the same pattern as T2g → T2h: a learned single pass does not do joins.
+- (4) The structural-entry law names the remedy: the parse already gives grammatical role (spaCy marks subjects), so role can enter as STRUCTURE — a previous-sentence-subject feature on each candidate slot — rather than be learned.
+
+**THE PORT RULE'S OUTCOME, AS WRITTEN:** EXACT plus a flag on role pronouns. The rule was badly drafted, because it lets an arm that beats EXACT on every cell lose to EXACT on an absolute bar. It is not bent here. The port resolver is RE-DECIDED by the next registration, not by this one.
+
+**PROPOSED NEXT (needs the word):** T2k, role as structure vs depth, on T2j's generator unchanged.
+- Arms: HYBRID + a previous-sentence-subject/recipient role feature per slot (from the gold parse, as spaCy would give it); HYBRID with NL=4; HYBRID as the control.
+- Bar: role pronouns ≥ 0.90, other cells held.
+- A port rule written RELATIVE to EXACT, cell by cell.
