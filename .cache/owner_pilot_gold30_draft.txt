@@ -1,0 +1,123 @@
+HAND-CHECK (Bryce): for each [[numeral]] write its TRUE OWNER -- the entity the quantity belongs to; resolve a pronoun to the name; NONE if the quantity belongs to no entity (a unit, a generic price/rate, an ordinal). Machine labels hidden.
+DRAFT by Claude (Opus), written WITHOUT seeing the Haiku/Sonnet/spaCy labels. Bryce: correct any OWNER line you disagree with; AMBIG lines need your ruling -- they set the convention.
+
+#4
+Daisy's Flower Shop sold [[45]] daisies on its first day. On their second day, they sold 20 more flowers than they did on their first day. On the third day, they sold 10 less than twice the flowers that were sold than on the second day. If the flower shop sold a total of 350 daisies for 4 days, how many daisies were sold on the 4th day?
+OWNER: Daisy's Flower Shop
+
+#60
+A married couple opened a savings account. The wife committed to saving $[[100]] every week while the husband committed to saving $225 every month. After 4 months of savings, they decided to invest half of their money in buying stocks. Each share of stocks costs $50. How many shares of stocks can they buy?
+OWNER: the wife
+
+#26
+A jar contains 9 blue pens, 21 black pens, and 6 red pens. Four blue pens are removed and then [[seven]] black pens are removed. How many pens are left in the jar?
+OWNER: the jar    [AMBIG: passive removal, no agent; NONE is defensible]
+
+#85
+Lorenzo put three full cans of thumbtacks into his pocket and went off to work at the corkboard factory. It was Lorenzo's job, as head of quality control, to test every cork board for its ability to hold thumbtacks.  He placed one thumbtack from each of the three cans of thumbtacks into every board tested.  At the end of the day, he had tested 120 boards and had 30 tacks remaining in each of the [[three]] cans.  What was the total combined number of thumbtacks from the three full cans?
+OWNER: Lorenzo    [AMBIG: 'the three cans' (his cans) vs the cans themselves]
+
+#75
+The pet store can buy a goldfish for $.25 and sell it for $.75. The owner plans to use the profits from goldfish sales to buy a new tank, which costs $[[100]]. After one week, he is 45% short of the price. How many goldfish did he sell that week?
+OWNER: the new tank    [AMBIG: a specific item's price; NONE if prices count as generic]
+
+#57
+Kylie makes 10 beaded necklaces on Monday and 2 beaded necklaces on Tuesday. Then Kylie makes 5 beaded bracelets and 7 beaded earrings on Wednesday. 20 beads are needed to make one beaded necklace. 10 beads are needed to make one beaded bracelet. [[5]] beads are needed to make one beaded earring. How many beads does Kylie use in total to make her jewelry?
+OWNER: NONE    [recipe rate (beads per earring)]
+
+#23
+Richard can clean his room in 22 minutes. Cory takes 3 minutes more than Richard to clean her room while Blake can clean his room 4 minutes more quickly than Cory. If they have to clean their rooms twice a week, how many minutes do all [[three]] spend cleaning their rooms each week?
+OWNER: Richard, Cory and Blake    [plural 'all three']
+
+#36
+There is a massive rainstorm lasting 4 days.  There is an area that collects water to prevent flooding in the area.  It ends up overflowing on the 4th day.  The area can hold the equivalent of 6 feet of rain.  It can also drain out the equivalent of 3 inches of rain per day to the nearby river without causing problems.  The first day it rained 10 inches.  The second day it rained twice that much.  On the third day, it rained [[50]]% more than the second day.  It flooded the fourth day before getting a chance to do any of the draining.  What is the minimum amount it rained on the fourth day?
+OWNER: NONE    [AMBIG: a percentage; 'the third day' is defensible]
+
+#72
+Three years from now, Tully will be twice as old as Kate. How old was Tully a year ago if Kate is now [[29]] years old?
+OWNER: Kate
+
+#65
+Jesse and Mia are competing in a week long race. They have [[one]] week to run 30 miles. On the first three days Jesse averages (2/3) of a mile. On day four she runs 10 miles. Mia averages 3 miles a day over the first 4 days. What is the average of their average that they have to run over the final three days?
+OWNER: Jesse and Mia    [AMBIG: a duration; NONE is defensible]
+
+#48
+Lizzy has to ship 540 pounds of fish that are packed into [[30]]-pound crates. If the shipping cost of each crate is $1.5, how much will Lizzy pay for the shipment?
+OWNER: NONE    [unit: crate size]
+
+#10
+Maria's birthday is in 22 days. Her friend Lilly wants to buy her flowers so she saves $[[2]] each day until Maria's birthday. If a flower costs $4, how many flowers can she buy?
+OWNER: Lilly    [pronoun: she = Lilly, not Maria]
+
+#66
+Jesse and Mia are competing in a week long race. They have one week to run [[30]] miles. On the first three days Jesse averages (2/3) of a mile. On day four she runs 10 miles. Mia averages 3 miles a day over the first 4 days. What is the average of their average that they have to run over the final three days?
+OWNER: Jesse and Mia
+
+#71
+The school band is going to a competition. Five members play the flute. There are three times as many members who play the trumpet. There are [[eight]] fewer trombone players than trumpeters, and eleven more drummers than trombone players. There are twice as many members that play the clarinet as members that play the flute. Three more members play the French horn than play the trombone. How many seats are needed on the bus?
+OWNER: the trombone players    [AMBIG: a comparative difference; 'the school band' is defensible]
+
+#34
+Christina has [[3]] snakes. 1 snake is 2 feet long. Another snake is 16 inches long. The last snake is 10 inches long. How many inches are all of her snakes combined?
+OWNER: Christina
+
+#88
+Ali has a store that sells fruits and vegetables. He puts [[23]] kg of kidney apples, 37 kg of golden apples and 14 kg of Canada apples on the shelves. By noon, 36 kg of apples were sold. What is the mass of apples that he has left?
+OWNER: Ali    [pronoun]
+
+#35
+Jenny is working on a school project. She spends 10 hours doing research for the project and [[2]] hours writing a proposal. If she has 20 hours total to work on the project, how many hours does she have left to write her report?
+OWNER: Jenny    [pronoun]
+
+#81
+Mary is paying her monthly garbage bill for a month with exactly four weeks. The garbage company charges Mary $10 per trash bin and $5 per recycling bin every week, and Mary has 2 trash bins and [[1]] recycling bin. They're giving her an 18% discount on the whole bill before fines for being elderly, but also charging her a $20 fine for putting inappropriate items in a recycling bin. How much is Mary's garbage bill?
+OWNER: Mary
+
+#16
+Lena is making a collage with pictures of all her closest friends and newspaper clippings that are about their interests. She has found three clippings for each friend’s pictures. It takes her six drops of glue to stick down each clipping. Lena has already glued her [[seven]] closest friends’ pictures. How many drops of glue will she need for the newspaper clippings for her collage?
+OWNER: Lena    [possessive pronoun 'her']
+
+#31
+Jeannie hikes the [[12]] miles to Mount Overlook at a pace of 4 miles per hour, and then returns at a pace of 6 miles per hour. How long did her hike take, in hours?
+OWNER: Jeannie    [AMBIG: a route length; 'Mount Overlook' is defensible]
+
+#30
+Latia wants to buy a Samsung TV worth $1700. She works for a delivery service company for a month earning $10 per hour for a [[30]]-hour workweek. How many more hours does she have to work to buy the TV?
+OWNER: Latia    [AMBIG: a rate unit (hours per workweek); NONE is defensible]
+
+#32
+Lauryn owns a computer company that employs men and women in different positions in the company. How many men does he employ if there are 20 fewer men than women and [[180]] people working for Lauryn?
+OWNER: Lauryn    ['working for Lauryn'; 'the company' is defensible]
+
+#49
+A farmer has [[46]] chickens. Each chicken gives him 6 eggs a week. If he sells a dozen eggs for $3, how much money would he make in 8 weeks?
+OWNER: A farmer
+
+#70
+Venus is at the deli to get subs for a party. She needs 81 inches of sub. The shop sells 5 and 8 inch subs. If she buys [[two]] 8 inch subs, how many 5 inch subs does she need to buy?
+OWNER: Venus    [pronoun]
+
+#83
+Monica is a teacher. She has 6 classes per day. The first class has [[20]] students. The second and third classes have 25 students. Her fourth class has half as many as her first class. Her fifth and sixth classes have 28 students. How many students does Monica see each day?
+OWNER: the first class    [Monica's class; 'Monica' is defensible]
+
+#73
+Mario's salary increased by 40% to $[[4000]] this year. Bob's salary from last year was equal to three times Mario's salary this year. If Bob's current salary is 20% more than his salary last year, what is his current salary?
+OWNER: Mario
+
+#38
+Christian and Sue wanted to get a $50.00 bottle of perfume for their mom for her birthday.  Christian had $5.00 saved up and Sue had $7.00.  Christian then mowed [[4]] of his neighbors' yards, charging $5.00 each, while Sue walked 6 dogs for her neighbors, charging $2.00 per dog.  How much more money will Christian and Sue need to make in order to buy the bottle of perfume for their mom?
+OWNER: Christian    [AMBIG: he mowed them; the yards belong to the neighbors]
+
+#87
+In a store, there are three types of cheese: white, swiss, and blue cheese. Each cheese is packaged, and there are 200 grams of cheese in each package. The package prices are $5 for white cheese, $6 for swiss cheese, and $8 for blue cheese. Miley needed to get some for her party, and she decided to buy [[5]] packs of swiss cheese, 600 grams of blue cheese, and one-third less white cheese. How much did she need to pay for all the cheese?
+OWNER: Miley    [pronoun]
+
+#95
+Janet is considering two options to retile her bathroom. The turquoise tiles cost $13/tile and the purple tiles cost $11/tile. If Janet needs to tile two walls that measure 5 feet by 8 feet and 7 feet by [[8]] feet, and each square foot of wall takes 4 tiles, how much will Janet save by buying the purple tiles instead of the turquoise ones?
+OWNER: NONE    [AMBIG: a wall dimension; 'the wall' is defensible]
+
+#18
+Bill is trying to decide whether to make blueberry muffins or raspberry muffins. Blueberries cost $5.00 per 6 ounce carton and raspberries cost $3.00 per [[8]] ounce carton. If Bill is going to make 4 batches of muffins, and each batch takes 12 ounces of fruit, how much money would he save by using raspberries instead of blueberries?
+OWNER: NONE    [unit: carton size]
+
