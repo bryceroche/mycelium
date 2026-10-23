@@ -52705,3 +52705,30 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - K2 FAIL (NL4 role ~0.75);
 - K3 PASS (~0.86);
 - port = HYBRID_ROLE.
+
+### 2026-10-23 (14:57) — T2k VERDICTS: K1 PASS (role 0.997), K2 FAIL (depth 0.735), K3 PASS (15 % parse noise 0.866) → PORT = HYBRID_ROLE. Every coordinator prediction landed. A new wall shows: the role cell on HELD-OUT names (0.703).
+(.cache/role_structure.{txt,json}; unit rk-chain, 2,445 s, exit 0. 3 seeds × 4000 steps.)
+**CONTROL:** HYBRID reproduces T2j's banked read EXACTLY (role 0.699; seeds 0.712 / 0.734 / 0.652). The episodes were verified byte-identical before firing.
+**In-dist role cell:**
+- HYBRID 0.699
+- NL4 0.735 (seeds 0.746 / 0.727 / 0.733)
+- ROLE 0.997 (0.997 / 0.998 / 0.995)
+- ROLE_N15 0.866 (0.878 / 0.851 / 0.868)
+**ROLE, other cells:** every cell ≥ HYBRID; pron_gender 0.955 → 0.990; resolution all 0.975 → 0.998; recipient drift 0.008 → 0.001. Held-out all 0.942 → 0.964.
+**THE BARS:**
+- **K1 PASS** (role 0.997; worst other-cell delta +0.000; held-out 0.964 vs 0.942; recipient 0.001).
+- **K2 FAIL** (0.735: doubling depth buys +0.036).
+- **K3 PASS** (0.866 ≥ 0.80 and +0.167 over HYBRID). 0.866 sits just above the 0.85 that pure flag-following would score under 15 % flips, so the model follows the flag and recovers a little from context.
+- **PORT RULE, relative to EXACT cell by cell:** HYBRID_ROLE has no cell below EXACT − 0.01, and its held-out all is 0.964 vs EXACT 0.904 → **the port carries HYBRID_ROLE.**
+**PREDICTIONS vs RESULTS (coordinator):**
+- K1 PASS ~0.97 → 0.997.
+- K2 FAIL ~0.75 → 0.735.
+- K3 PASS ~0.86 → 0.866.
+- port HYBRID_ROLE → HYBRID_ROLE.
+**DISCLOSED, as stated at firing:** the role flag is near-ORACLE in this toy. The generator's coreference rule IS "the previous subject wins", and the flag equals the gold slot 1.000 on the role cell. So K1 shows the mechanism ACCEPTS structure (the weight is learned, nothing else regresses); it does not show the rule is right for wild text. K3 bounds the cost of parse errors. The rule's coverage on real GSM8K pronouns is a separate, labeled question.
+**THE NEW WALL (diagnostic, not a bar): the role cell on HELD-OUT names.**
+- HYBRID 0.424 / NL4 0.450 / ROLE 0.703 / N15 0.594.
+- Even a perfect flag leaves ~0.30 of unseen-name role pronouns wrong. The likely reason: the HYBRID terms (EXACT's gender type read, LEARNED's contextual match) put confident wrong logits on unseen frozen names and outvote the flag.
+- Unconfirmed; an autopsy would compare logit shares per term on that cell.
+- If it holds: role structure should GATE the pronoun decision (a road, per the mandatory-road law), not add to it (a gain).
+**READING:** structure, not depth: the second time today the single learned pass failed at a join and an imposed structure closed it (T2g → T2h, T2j → T2k). Role enters as structure, as the binding/structural-entry laws say.
