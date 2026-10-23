@@ -52602,3 +52602,35 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - (2) The construction is not yet trustworthy as gold. A ~7.5 % gold-error rate exceeds the gaps any arm will be judged on (claims need +0.020).
 - (3) The fix is defined, not tuned: licensed constants only, reject identity steps, a world-fact freeze. It needs its own registration (v2), with this run disclosed as a preview. v2 will likely LOWER yield, so F1's bar should be re-pinned with that tradeoff stated before v2 runs, never after.
 - (4) The graph-memorizer limit stands as registered. Name swaps and GSM8K-test carry reader-vs-graph separation.
+
+### 2026-10-23 (13:33) — WORD GIVEN ("word given and use haiku if you want to alter GSM8K numbers"); REGISTERED: THE COUNTERFACTUAL FIXTURE v2 (licensed constants + Haiku proposer + blind Haiku solver as a second channel)
+**v1 is disclosed as the preview** (13:30 entry: F1 0.494, F3 0.057, F2 35 + 1 borderline, gold-error class 3/40).
+**CONSTRUCTION (scripts/gsm8k_counterfactual.py, CF_V=2):**
+- **(a) LICENSED CONSTANTS.** A trace constant is sourced only if:
+  - it is 0, 1 or 2; or
+  - it is a number word's value; or
+  - a frozen literal; or
+  - a unit or word in the question licenses it. The licence table is in the script: 60 by minute/hour/second/mph; 24 by hour/day; 7 by day/week; 12 by dozen/month/year/foot/inch; 52/365/30/31 by calendar words; 100 or .01 by %/percent/cent/dollar; 1000 by thousand and metric units; 0.5 by half; 0.25 by quarter; 0.75 by three-quarter; 3 by triple/third; 4 by quarter/fourth; 10 by ten/tenth/dime/decade.
+  Everything else is 'unsourced'.
+- **Bare-constant steps** (`<<100=100>>`) are rejected.
+- **(b) HAIKU PROPOSER** (offline data generation, the 10-22 ruling; GSM8K-TRAIN question text only, no answer field, fixtures excluded):
+  - Haiku sees the question with the trace-used literals marked.
+  - For each literal it proposes a new value or FROZEN. World facts (scoring rules, legs, sides, calendar/unit facts, times, dates) are frozen.
+  - It gives 2 sets per problem.
+  - The executor re-runs the trace with the type checks. A set failing them falls back to the rule draw, which respects Haiku's freezes. Each row records its source (haiku|rule).
+- **(c) BLIND HAIKU SOLVER** (a separate agent; it sees only the counterfactual question and writes its own program).
+  - A row is ACCEPTED only if its final equals the executor's final (within 1e-6 or to the cent).
+  - **Gold is the executor's trace, always.** Haiku never writes gold.
+- **DISCLOSED BIAS:** agreement keeps the problems Haiku reads correctly, so the fixture is skewed toward Haiku-legible problems.
+**BARS (pinned now; F1 is re-pinned as a PRECISION bar, not a yield bar):**
+- **G0 VALIDITY OF THE SOLVER GUARD.** On v1's 40 hand-checked rows, the blind solver must DISAGREE with all 3 known gold errors (#12, #16, #27), AND agree on ≥ 33 of the 36 others. Fail → the agreement filter is VOID and v2 is not adopted.
+- **F1 SIZE: ≥ 1,500 accepted problems.** This is ~4.5k intermediates at p ~0.5, SE ≈ 0.0075 per read, under THE NUMBER's +0.020 claim floor even with clustering.
+- **F2 VALIDITY:** a fresh seeded 40-row hand-check (30 numeral-only, 10 with names) needs ≥ 38/40 OK AND ≤ 1 gold error. **A borderline counts as BAD** (pinned now, after v1's judgment call).
+- **F3 SEPARATION:** the value memorizer scores ≤ 0.15.
+**PREDICTIONS (coordinator):**
+- G0 passes (3/3 disagree; ~35/36 agree).
+- Rule-side v2 eligible ~2,800.
+- Solver agreement ~0.88.
+- F1 ~2,300 accepted (PASS).
+- F2 39/40.
+- F3 ~0.06.
