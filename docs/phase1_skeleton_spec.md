@@ -52768,7 +52768,7 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - Bar: held-out role ≥ 0.90; in-dist cells held; held-out pron_gender ≥ 0.95.
 
 ### 2026-10-23 (16:23) — WORD GIVEN ("word given for both -- Salute!"); REGISTERED + FIRED (CPU): T2l TYPE FROM THE PERMANENT TREE + THE GSM8K PREVIOUS-SUBJECT CHECK
-**Bryce's architecture (16:0x, recorded):**
+**Bryce's architecture (stated this session, before 16:23):**
 - **The PERMANENT database is the coarse-to-fine hierarchical TREE:** entity → person → {female, male} / group / business, plus name→type leaves, and concepts.
 - **The VOLATILE per-problem composite key (slot, time, tree level)** is made by phase binding and unbinding. It points a story slot at a permanent node.
 - The 15:32 proposal ('type as a DB row field') was the right information flow in the wrong place: the type lives on the TREE NODE the slot binds to.
