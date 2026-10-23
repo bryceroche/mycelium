@@ -52816,3 +52816,28 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (2) T2k's MECHANISM finding stands (role structure is accepted, depth does not substitute), but the port's role flag must carry the DISCOURSE TOPIC (the chain head / protagonist) and the recency order, not the previous sentence's literal subject.
   - (3) This is Bryce's tree again: the protagonist is the problem's first-created person slot, a property of the volatile key's creation order (the time component), not of the previous sentence's syntax.
 - **NEXT (needs the word):** re-run T2k's generator with a PROTAGONIST-CENTRIC coreference rule matched to these rates (protagonist ~0.75, recency ~0.20, other), with a topic flag in place of the previous-subject flag. This keeps the toy honest to the register before the port.
+
+### 2026-10-23 (16:47) — T2m REGISTRATION: THE T6 CLOCK AS THE TIME KEEPER, GEARS BUILT IN (Bryce's word: "word given for T6 clock which should have the gears built in"; CPU; scripts/toys/clock_coref_toy.py → .cache/clock_coref.{txt,json})
+- **Question:** can a clock stamp be the slot's TIME component, carrying the two discourse reads the 16:27 check found in GSM8K (protagonist = the oldest creation stamp; recency = the youngest last-mention stamp)? This holds the READING fixed (slots, tree type node and pronoun flag are given), so only time is under test.
+- **Register:** a pronoun's antecedent is the protagonist if it is type-compatible, else the most recently mentioned compatible slot. Pronouns occur only where that rule picks the mentioned entity unambiguously. Protagonist share is 0.82 (GSM8K 0.753); contested pronouns (≥ 2 compatible) are 0.42.
+- **Stamps:** tick = sentence index, offset by 0–2 preamble sentences. Stamps are read RELATIVE to now: clock(s)·conj(clock(now)).
+- **Resolver (shared by every arm):** a per-slot MLP, then one self-attention layer over the live slots, then a score, plus a type-match weight.
+- **Arms:**
+  - NOCLOCK (floor).
+  - HAND (ceiling): is-earliest-created + recency-rank flags.
+  - GEARS: six gears with periods 2/4/8/16/32/64 ticks (ratio 2).
+  - FLAT6: the deployed six-wave as-is (one period-6 wheel, six 60° teeth).
+  - BAND: six full-band frequencies, the 10-16 hash clock. The draw's periods are 5.04/2.31/4.34/6.53/3.48/22.43.
+  - GEARS_BOUND: the stamps live VOLATILE in each slot's own register (theta-gamma: slot = register). The register is r = role_c·gear(c) + role_l·gear(l) at PB 64; the last-mention stamp is updated in place (unbind old, bind new) and read back by unbind + cleanup.
+- **Splits:** in-dist (6–16 sentences); LONG (20–32 sentences, ages never trained).
+- **Run:** 3 seeds × 3000 steps; 4000 eval episodes per split.
+- **SMOKE DISCLOSURE (1 seed, 300 steps):** the first smoke carried a LEAK. On type-only ties argmax returned slot 0 = the protagonist, so NOCLOCK read 0.968.
+  - Fixed: slot order is now shuffled per record. NOCLOCK re-smoked at 0.737 (contested 0.380); HAND 1.000.
+  - The leaky smoke also showed GEARS in-dist 0.999 / long 0.871, FLAT6 in-dist 0.889, and BAND in-dist 0.999 / long 0.848. Those reads were SEEN before these bars were pinned, so the predictions below are informed by them.
+- **BARS (3-seed means):**
+  - **M1 (the claim): GEARS in-dist ≥ HAND − 0.03.**
+  - **M1L: GEARS long ≥ HAND − 0.03.** PREDICTION FAIL: an MLP readout does not extrapolate to unseen ages. A pass would mean the gears generalize by construction.
+  - **M3: lossless volatile stamps.** GEARS_BOUND recovery must be exactly 100% AND GEARS_BOUND must sit within 0.01 of GEARS on both splits.
+- **PREDICTIONS (not bars):**
+  - M2a: FLAT6 in-dist ≤ GEARS − 0.05 (the deployed wheel aliases after 6 ticks).
+  - M2b: BAND in-dist within 0.01 of GEARS. The coordinator's honest expectation: in range, a hash costs nothing when the readout is a learned lookup. The gears' case then rests on M1L / data efficiency, not on in-range accuracy.
