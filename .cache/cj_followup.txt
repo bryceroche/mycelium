@@ -1,0 +1,13 @@
+mode full steps 3000
+(1) PARITY vs MIRRORING vs SINGLE (analytic, unseen, cov 0.125, snap; acc at loss p 0 / 0.1 / 0.3)
+   W  32 PHASOR    D1 0.795/0.718/0.567   D3 0.565/0.452/0.274
+   W  32 REDUNDANT D1 0.758/0.672/0.498   D3 0.491/0.369/0.215
+   W  32 PARITY    D1 0.655/0.612/0.506   D3 0.343/0.307/0.224
+   W 128 PHASOR    D1 1.000/0.901/0.708   D3 0.999/0.765/0.449
+   W 128 REDUNDANT D1 0.999/0.980/0.884   D3 0.996/0.936/0.751
+   W 128 PARITY    D1 0.998/0.966/0.811   D3 0.996/0.929/0.619
+(2) PER-HOP TABLE (W 128, cov 0.125, snap, UNSEEN depth 3; conditional on every earlier step right)
+   PHASOR_L  match1 1.000 | partner1 1.000 | match2 1.000 | partner2 1.000 | match3 1.000 | value 1.000 || product 1.000 = all-steps-right 1.000; end-to-end answer 1.000
+   COMPRESS  match1 0.836 | partner1 0.669 | match2 0.820 | partner2 0.661 | match3 0.825 | value 1.000 || product 0.250 = all-steps-right 0.254; end-to-end answer 0.394
+   FLAT      match1 0.800 | partner1 0.342 | match2 0.962 | partner2 0.330 | match3 0.960 | value 1.000 || product 0.083 = all-steps-right 0.084; end-to-end answer 0.414
+DONE in 296s

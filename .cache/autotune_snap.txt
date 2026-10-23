@@ -1,0 +1,11 @@
+mode full steps 3000
+FLAT      W 128 | D3 unseen: HARD 0.414 RAW 0.452 SCALE 0.418 | RETUNE 0.25:0.449 0.5:0.443 0.75:0.427 | GATED 0.451 (val-picked decile 0.87; snaps 0.12 of hops, right when snapping 0.764, right when raw 0.276) | HARD wrong partner snaps 0.667, of them inside the episode 0.179; SCALE wrong 0.575  [98s]
+COMPRESS  W 128 | D3 unseen: HARD 0.394 RAW 0.304 SCALE 0.398 | RETUNE 0.25:0.340 0.5:0.374 0.75:0.397 | GATED 0.399 (val-picked decile 0.17; snaps 0.83 of hops, right when snapping 0.845, right when raw 0.004) | HARD wrong partner snaps 0.309, of them inside the episode 0.229; SCALE wrong 0.463  [170s]
+PHASOR_L  W 128 | D3 unseen: HARD 1.000 RAW 0.843 SCALE 1.000 | RETUNE 0.25:0.956 0.5:0.994 0.75:1.000 | GATED 1.000 (val-picked decile 0.00; snaps 1.00 of hops, right when snapping 1.000, right when raw 1.000) | HARD wrong partner snaps 0.000, of them inside the episode nan; SCALE wrong 0.000  [269s]
+PHASOR    W  32 | D3 unseen: HARD 0.565 RAW 0.278 SCALE 0.662 | RETUNE 0.25:0.354 0.5:0.440 0.75:0.528 | GATED 0.565 (val-picked decile 0.00; snaps 1.00 of hops, right when snapping 0.837, right when raw nan) | HARD wrong partner snaps 0.163, of them inside the episode 0.240; SCALE wrong 0.147  [269s]
+VERDICTS (3-seed means, unseen depth 3)
+(G1) THE GATE IS NEVER WORSE THAN THE BETTER OF SNAP AND RAW  (FLAT@128 gated 0.451 vs max 0.452, COMPRESS@128 gated 0.399 vs max 0.394, PHASOR_L@128 gated 1.000 vs max 1.000, PHASOR@32 gated 0.565 vs max 0.565)
+(G2) THE GATE IS NOT CALIBRATED EVERYWHERE  (FLAT@128 0.764, COMPRESS@128 0.845, PHASOR_L@128 1.000, PHASOR@32 0.837)
+(S1) SCALE DOES NOT HALVE FLAT'S WRONG SNAPS  (wrong partner snaps HARD 0.667 -> SCALE 0.575; HARD's wrong snaps inside the episode 0.179)
+RETUNE (reported): best alpha per memory: FLAT@128 0(raw), COMPRESS@128 0.75, PHASOR_L@128 0.75, PHASOR@32 1(hard)
+DONE in 269s

@@ -1,0 +1,15 @@
+mode full steps 4000 seeds [0, 1, 2]
+STRUCT_U none   r 0.00 | combo 0.712 (explicit 0.696 implicit 0.768) iid 0.687  [328s]
+SUP_REC  random r 0.00 | combo 0.983 (explicit 0.983 implicit 0.983) iid 0.990  [623s]
+SUP_REC  random r 0.15 | combo 0.982 (explicit 0.981 implicit 0.984) iid 0.987  [936s]
+SUP_REC  random r 0.30 | combo 0.983 (explicit 0.983 implicit 0.982) iid 0.988  [1221s]
+SUP_REC  random r 0.45 | combo 0.982 (explicit 0.982 implicit 0.984) iid 0.988  [1577s]
+SUP_REC  struct r 0.15 | combo 0.972 (explicit 0.969 implicit 0.981) iid 0.981  [1903s]
+SUP_REC  struct r 0.30 | combo 0.960 (explicit 0.954 implicit 0.982) iid 0.963  [2222s]
+SUP_REC  struct r 0.45 | combo 0.964 (explicit 0.959 implicit 0.982) iid 0.961  [2511s]
+VERDICTS (3-seed means, COMBO; gain = SUP_REC clean 0.983 − STRUCT_U 0.712 = +0.271)
+(N1) THE GAIN SURVIVES 15 % RANDOM NOISE  (kept 0.99)
+(N2) THE GAIN SURVIVES 45 % STRUCTURED NOISE  (kept 0.93)
+(N3) STRUCTURED NOISE COSTS >= 2x RANDOM  (r 0.15: random −0.002 struct −0.011, r 0.3: random −0.000 struct −0.023, r 0.45: random −0.001 struct −0.019)
+CURVE kept-share random / struct: r 0.0: 1.00 / 1.00, r 0.15: 0.99 / 0.96, r 0.3: 1.00 / 0.91, r 0.45: 1.00 / 0.93
+DONE in 2511s
