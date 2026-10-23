@@ -52547,3 +52547,21 @@ Unit entity-slot finished 07:0x (`.cache/entity_slot.{txt,json}`; 3 seeds, 6000 
 - Arms: HYBRID + a previous-sentence-subject/recipient role feature per slot (from the gold parse, as spaCy would give it); HYBRID with NL=4; HYBRID as the control.
 - Bar: role pronouns ≥ 0.90, other cells held.
 - A port rule written RELATIVE to EXACT, cell by cell.
+
+### 2026-10-23 (13:31) — WORD GIVEN ("word given -- Salute!"); REGISTERED: THE GSM8K COUNTERFACTUAL FIXTURE (zero-GPU; Bryce's 12-point parser brainstorm, point 11 reframed)
+**Context.** Bryce's brainstorm (relayed with a Gemini write-up) proposed training and testing on the same GSM8K set, with a model "too small to memorize". Critique accepted in the session: GSM8K-train's intermediate answers are ~40 KB of content (memorizable by ~150k params at ~2 bits/param), and a literal entity database is itself a storage channel. So size cannot be the memorization guard. **The reframe:** overfit the TEXT and score on COUNTERFACTUAL copies whose gold is recomputed. A memorizer returns the old intermediates; a binder recomputes them.
+**What gets built (scripts/gsm8k_counterfactual.py; .cache/gsm8k_cf_*.jsonl + census):**
+- **The trace.** Each GSM8K-train answer's `<<expr=result>>` steps are parsed into an executable graph. Every operand is sourced by value: a QUESTION literal (unique value), a PRIOR result, or a CONSTANT (implicit: 'twice', '100' for percent, 'a dozen', 7 days). Ambiguous sourcing is rejected and counted. Every step must re-evaluate to its stated result, and '####' must equal a trace result.
+- **The disclosure (custody):** the GSM8K answer field is read here. It is harvest gold, not pen-written, and no LLM sees any of it.
+- **Numeral counterfactuals.** Every trace-used question literal gets a new value of similar magnitude (integers stay integers, percents ≤ 100). The trace is re-executed and the draw is rejected unless every intermediate keeps the original's type (non-negative; integer where the original was integer). Literals in definitional phrases ('12 eggs in a dozen', '60 minutes in an hour') and times/ordinals/years are FROZEN and counted. The rewritten answer text carries the recomputed `<<>>` values.
+- **Name counterfactuals.** spaCy PERSON first names are swapped to same-gender names from .cache/names_gazetteer.json, never colliding with the text. The photobooth's guards hold: titles and post-title surnames are kept, and nothing inside a hyphenated token is swapped. The swap is applied to question and answer alike.
+- **Exclusions.** All texts in .cache/wild_*holdout*.jsonl are excluded (measurement fixtures). GSM8K-test is untouched: it stays the honest generalization read and gets no counterfactuals here.
+- **Two anchors:**
+  - THE VALUE MEMORIZER: lookup keyed by the numeral-masked text, returning the ORIGINAL intermediates. Its counterfactual score is the share of intermediates the perturbation left unchanged.
+  - THE GRAPH MEMORIZER: the same key, returning the original op graph re-executed on the new literals. It scores 1.000 by construction.
+**BARS (pinned before any output is read):**
+- **F1 YIELD:** ≥ 0.50 of eligible train problems get ≥ 1 valid numeral counterfactual with EVERY trace-used question literal changed.
+- **F2 VALIDITY:** a coordinator hand-check of 40 seeded counterfactuals (read as text and gold together) finds ≥ 36/40 both sensible English-world and gold-correct. Below that, the fixture is VOID, as the mention-type slice was.
+- **F3 SEPARATION:** the value memorizer's counterfactual intermediate score is ≤ 0.15.
+**THE LIMIT, STATED NOW:** the fixture separates VALUE memorizers from binders. It does NOT separate a GRAPH memorizer (problem identity → op graph) from a reader. That anchor scores perfectly, and arguably it IS the "frame lexicon" Bryce's point 5 wants. Name swaps and GSM8K-test carry that separation; paraphrase would too (not built).
+**PREDICTIONS (coordinator):** trace parse + self-consistency ~0.95 of train. F1 yield ~0.60 (loss to ambiguous sourcing, negatives, definitional literals). F2 ~37/40 (borderline: world-plausibility like ages and prices is the risk). F3 floor ~0.10.
