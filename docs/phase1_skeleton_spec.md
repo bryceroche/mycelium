@@ -52434,3 +52434,14 @@ Bryce: "word given for your choice" (Opus: audit for shortcuts before training; 
 - **BARS (pinned now; B0 and the arms were PREVIEWED by smokes, disclosed):** **(B0)** above. **(B3, validity)** SUP_REC blind ≤ SUP_REC explicit − 0.05 (else B1 untested). **(B1)** SUP_BOTH − SUP_REC ≥ +0.10 on blind queries (query supervision earns its keep — the main line's wall, asked for the third time, now without a leak). **(B2)** SUP_BOTH blind ≥ 0.90.
 - **SMOKE PREVIEWS (seed 0, n 300):** probe at 1500 steps HAS-operand 0.324 vs chance 0.415 (B0 passing); SUP_REC / SUP_BOTH at 1500 steps blind 0.727 / 0.727, explicit 0.994 / 0.981 (B3 passing, B1 +0.000 at that point).
 - **PREDICTIONS:** coordinator — B0 PASS; B3 PASS; B1 FAIL (third time: the query side gains nothing from labels; the smoke shows +0.000); B2 FAIL (blind stays below 0.90; the identity join is the hard part and record labels already give the channel its owner). Opus: no numeric prediction relayed.
+
+## 2026-10-22 20:18 — T2g VERDICTS: B0 PASS (no leak, at last), B3 PASS, B1 FAILS (+0.011, a third time), B2 FAILS (0.838) — the query side's wall reproduced WITHOUT a leak; labels don't move it
+
+Unit blind-query finished 20:1x (`.cache/blind_query.{txt,json}`; 3 seeds × 6000 episodes).
+- **(B0) PASS:** owner-erased probe HAS-operand 0.362 (seeds 0.357 / 0.367 / 0.362) vs chance 0.416. The first query toy in this branch that does not leak.
+- Unlabeled arms sit at chance on BOTH forms: FLAT 0.383 / 0.383, STRUCT_U 0.380 / 0.378 (blind / explicit). With object and verb identical across the candidates, nothing but identity separates them, and without record labels no arm learns identity in 4000 steps (cf. T2f's no-label 0.676 where obj/verb still helped). **SUP_QRY alone is at chance too (0.346 / 0.338):** query labels without record labels buy nothing — the records must carry identity first.
+- **(B3, validity) PASS:** SUP_REC blind 0.827 vs explicit 0.998.
+- **(B1) FAILS:** SUP_BOTH 0.838 − SUP_REC 0.827 = +0.011 (seed spreads 0.81–0.87 / 0.79–0.86). Third time (T2c, T2d, T2g), now leak-free: query supervision adds nothing over record supervision.
+- **(B2) FAILS:** best blind 0.838 vs 0.90. The JOIN costs ~0.16 (explicit 0.998 → blind 0.838) whatever the labels.
+- Predictions: coordinator B0 ✓ B3 ✓ B1 FAIL ✓ B2 FAIL ✓.
+- **READING (coordinator):** the blind question is a TWO-STEP read — find the OUT (surface), take ITS owner, then match the HAS by that owner. A single query vector from '?' has to do both inside the encoder, and labels on the query don't teach it to. That is T3's lesson on the query side: learn the pieces (record owner channels: SUP_REC gives them), IMPOSE the composition (an explicit second hop that reads operand 1's owner channel, snaps it to the codebook, and keys operand 2 with it). It is also the main line's 10-15 finding in miniature: "the slot QUERY has no owner expectation". Candidate next toy T2h (not registered).
