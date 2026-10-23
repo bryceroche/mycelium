@@ -1,0 +1,9 @@
+mode full steps 4000 seeds [0, 1, 2] heldout names [6, 7, 14, 15]
+SUP_BOTH | IN-DIST blind 0.812 (seeds 0.843 / 0.807 / 0.786) explicit 0.997 | HELD-OUT blind 0.425 explicit 0.481  [449s]
+HOP2_I   | IN-DIST blind 0.855 (seeds 0.857 / 0.849 / 0.858) explicit 0.995 | HELD-OUT blind 0.354 explicit 0.488 | OUT-owner resolution blind in-dist 0.831 held-out 0.000  [904s]
+SLOT     | IN-DIST blind 0.998 (seeds 0.999 / 0.996 / 0.999) explicit 1.000 | HELD-OUT blind 0.931 explicit 0.998 | OUT-owner resolution blind in-dist 0.996 held-out 0.916 | slot resolution in-dist first/name/desc/pronoun 1.000 / 1.000 / 1.000 / 0.990; held-out 1.000 / 1.000 / 1.000 / 0.780  [1356s]
+VERDICTS (3-seed means)
+(I1) ENTITY SLOTS SOLVE BLIND QUERIES  (SLOT in-dist blind 0.998 [bar >= 0.95]; HOP2_I 0.855; SUP_BOTH 0.812)
+(I2) DESCRIPTIONS RESOLVE  (SLOT description-mention resolution 1.000 [bar >= 0.95]; pronoun 0.990)
+(I3) SLOTS SURVIVE HELD-OUT NAMES WHERE THE GLOBAL CODEBOOK DOESN'T  (held-out blind SLOT 0.931 − HOP2_I 0.354 = +0.577; SUP_BOTH 0.425)
+DONE in 1356s

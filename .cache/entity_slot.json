@@ -1,0 +1,137 @@
+[
+ {
+  "arm": "SUP_BOTH",
+  "seeds": [
+   {
+    "indist_acc_blind": 0.8429561257362366,
+    "indist_acc_explicit": 0.9962950348854065,
+    "heldout_acc_blind": 0.47937265038490295,
+    "heldout_acc_explicit": 0.5242908596992493
+   },
+   {
+    "indist_acc_blind": 0.8068697452545166,
+    "indist_acc_explicit": 0.9972546100616455,
+    "heldout_acc_blind": 0.4100404381752014,
+    "heldout_acc_explicit": 0.4597625434398651
+   },
+   {
+    "indist_acc_blind": 0.7864945530891418,
+    "indist_acc_explicit": 0.9979858994483948,
+    "heldout_acc_blind": 0.38648295402526855,
+    "heldout_acc_explicit": 0.45867207646369934
+   }
+  ],
+  "agg": {
+   "indist_acc_blind": 0.8121068080266317,
+   "indist_acc_explicit": 0.9971785147984823,
+   "heldout_acc_blind": 0.42529868086179096,
+   "heldout_acc_explicit": 0.4809084932009379
+  }
+ },
+ {
+  "arm": "HOP2_I",
+  "seeds": [
+   {
+    "indist_acc_blind": 0.8574727773666382,
+    "indist_acc_explicit": 0.9962950348854065,
+    "indist_outres_blind": 0.8327284455299377,
+    "heldout_acc_blind": 0.3920900225639343,
+    "heldout_acc_explicit": 0.5731985569000244,
+    "heldout_outres_blind": 0.0
+   },
+   {
+    "indist_acc_blind": 0.8486714363098145,
+    "indist_acc_explicit": 0.9948524236679077,
+    "indist_outres_blind": 0.8243681192398071,
+    "heldout_acc_blind": 0.33389487862586975,
+    "heldout_acc_explicit": 0.48482850193977356,
+    "heldout_outres_blind": 0.0
+   },
+   {
+    "indist_acc_blind": 0.8583250641822815,
+    "indist_acc_explicit": 0.9953004121780396,
+    "indist_outres_blind": 0.8371400237083435,
+    "heldout_acc_blind": 0.33595800399780273,
+    "heldout_acc_explicit": 0.40616530179977417,
+    "heldout_outres_blind": 0.0
+   }
+  ],
+  "agg": {
+   "indist_acc_blind": 0.854823092619578,
+   "indist_acc_explicit": 0.9954826235771179,
+   "indist_outres_blind": 0.8314121961593628,
+   "heldout_acc_blind": 0.35398096839586896,
+   "heldout_acc_explicit": 0.48806412021319073,
+   "heldout_outres_blind": 0.0
+  }
+ },
+ {
+  "arm": "SLOT",
+  "seeds": [
+   {
+    "indist_acc_blind": 0.9990102052688599,
+    "indist_acc_explicit": 1.0,
+    "indist_res_first": 1.0,
+    "indist_res_name": 1.0,
+    "indist_res_desc": 1.0,
+    "indist_res_pronoun": 0.9906563758850098,
+    "indist_outres_blind": 0.9963708519935608,
+    "heldout_acc_blind": 0.9311285614967346,
+    "heldout_acc_explicit": 0.9996739625930786,
+    "heldout_res_first": 1.0,
+    "heldout_res_name": 1.0,
+    "heldout_res_desc": 1.0,
+    "heldout_res_pronoun": 0.7797121405601501,
+    "heldout_outres_blind": 0.9151039719581604
+   },
+   {
+    "indist_acc_blind": 0.9964355230331421,
+    "indist_acc_explicit": 1.0,
+    "indist_res_first": 1.0,
+    "indist_res_name": 1.0,
+    "indist_res_desc": 1.0,
+    "indist_res_pronoun": 0.990756094455719,
+    "indist_outres_blind": 0.9957874417304993,
+    "heldout_acc_blind": 0.9265498518943787,
+    "heldout_acc_explicit": 0.9963720440864563,
+    "heldout_res_first": 1.0,
+    "heldout_res_name": 1.0,
+    "heldout_res_desc": 1.0,
+    "heldout_res_pronoun": 0.7869198322296143,
+    "heldout_outres_blind": 0.9147574305534363
+   },
+   {
+    "indist_acc_blind": 0.9986759424209595,
+    "indist_acc_explicit": 1.0,
+    "indist_res_first": 1.0,
+    "indist_res_name": 1.0,
+    "indist_res_desc": 1.0,
+    "indist_res_pronoun": 0.9897003769874573,
+    "indist_outres_blind": 0.9970208406448364,
+    "heldout_acc_blind": 0.9353674650192261,
+    "heldout_acc_explicit": 0.9983062148094177,
+    "heldout_res_first": 1.0,
+    "heldout_res_name": 1.0,
+    "heldout_res_desc": 1.0,
+    "heldout_res_pronoun": 0.7735759019851685,
+    "heldout_outres_blind": 0.9183070659637451
+   }
+  ],
+  "agg": {
+   "indist_acc_blind": 0.9980405569076538,
+   "indist_acc_explicit": 1.0,
+   "indist_res_first": 1.0,
+   "indist_res_name": 1.0,
+   "indist_res_desc": 1.0,
+   "indist_res_pronoun": 0.9903709491093954,
+   "indist_outres_blind": 0.9963930447896322,
+   "heldout_acc_blind": 0.9310152928034464,
+   "heldout_acc_explicit": 0.9981174071629842,
+   "heldout_res_first": 1.0,
+   "heldout_res_name": 1.0,
+   "heldout_res_desc": 1.0,
+   "heldout_res_pronoun": 0.7800692915916443,
+   "heldout_outres_blind": 0.9160561561584473
+  }
+ }
+]
