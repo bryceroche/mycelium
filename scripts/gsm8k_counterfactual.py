@@ -22,9 +22,6 @@ C = lambda f: os.path.join(R, ".cache", f)
 OUTJ, OUTC, OUTT, OUTH = C("gsm8k_cf_train.jsonl"), C("gsm8k_cf_census.json"), C("gsm8k_cf_census.txt"), C("gsm8k_cf_handcheck40.txt")
 SMOKE = int(os.environ.get("CF_SMOKE", "0"))            # >0: first N problems, writes nothing
 K = 3                                                   # numeral counterfactuals per problem
-if not SMOKE:
-    for p in (OUTJ, OUTC, OUTT, OUTH):
-        assert not os.path.exists(p), f"refuse overwrite {p}"
 
 WORDS = dict(one=1, two=2, three=3, four=4, five=5, six=6, seven=7, eight=8, nine=9, ten=10, eleven=11, twelve=12,
              fifteen=15, twenty=20, thirty=30, forty=40, fifty=50, sixty=60, hundred=100, thousand=1000, twice=2, double=2,
@@ -246,6 +243,9 @@ def mask(q):
     return NUM.sub("#", q)
 
 def main():
+    if not SMOKE:
+        for p in (OUTJ, OUTC, OUTT, OUTH):
+            assert not os.path.exists(p), f"refuse overwrite {p}"
     norm = lambda s: re.sub(r"\s+", " ", s.strip().lower())
     fixtures = set()
     for f in glob.glob(C("wild_*holdout*.jsonl")):
