@@ -52932,3 +52932,24 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (3) The field read fails only in CHAINS. BIND_MLP is 1.000 at depth 1 on every coverage and decays with depth (T3's X1/X2 shape again). Mechanism UNREAD: a fixed-role unbind is linear, yet the MLP's partner read degrades on unseen-pair records. Candidate: it uses the superposed key term (novel on unseen pairs) as a feature instead of cancelling it. Texture-rule item, not claimed.
   - (4) THE BUILD RULE this supports: the lever is a read that RESPECTS THE PLANES, not the conjugate formula itself. A learned per-plane read that is given the role phase equals the algebra (0.998). Learned parts are allowed at the joins if they are plane-wise (equivariant). A free MLP across planes is not allowed, on either the composition or the read.
 - **SCOPE:** BIND_MLPQ is the hardest case: its key must reproduce an algebraic write's exact phase product for unseen pairs. T3's FLAT (learned write AND learned query, co-adapted) read unseen D1 at 0.898. R2 says a learned composer cannot stand in for the product against a bound store; it does not say every learned key fails.
+
+### 2026-10-24 (15:46) — WORD GIVEN: T2n REGISTERED — THE LEARNED TERM READS THE TREE, PLANE BY PLANE (scripts/toys/plane_term_toy.py; .cache/plane_term.{txt,json}; CPU, alone on the box; predictions written BEFORE the smoke)
+- **Bryce (10-24):** "force the neural net to only look at the data one complex plane at a time." And: "the breathing transformer is MHA without the MLP; MHA reads text and compresses it into the composite key (slot, tree level, T6 clock stamp) to compare against The Tree."
+- **Question:** the 12:02 autopsy convicted the learned term, which reads the unseen name's surface. Does a term that reads ONLY the database (the slot's composite key) and decides plane-wise (T3d's rule) clear the held-out role cell, and is plane-wise worth anything beyond the key itself?
+- **Method:** T2l's HYBRID_ROLE_TREE (generator, seeds, eval sets, reader, query hop, other terms imported unchanged; 3 seeds × 4000 steps). Slot key phases K_s = node(type) + slot(j) + time(j) + level(node), from tree_type_toy's fixed codebooks (PB 64), i.e. TREE_BOUND's composite key. The mention side is the reader state. The control is asserted equal to T2l's arm on a forward at init.
+- **ARMS:**
+  - TREE — control (free learned term on surface).
+  - NOLEARN — learned term removed.
+  - FREEKEY — the key read by a free MLP across planes.
+  - PLANE — the reader emits one query phase per plane; each plane scores its own phase difference with ONE shared function f(d) = a1 cos d + b1 sin d + a2 cos 2d + b2 sin 2d; the planes are pooled by a plain sum. Disclosed: the plane-wise function is a degree-2 Fourier family, not an MLP (an MLP per (mention, slot, plane) did not fit eval memory).
+  - PLANE_NOMLP — PLANE with an MHA-only reader (every FFN zeroed and frozen).
+- **BARS (3-seed means):**
+  - CONTROL: TREE held-out role within 0.03 of the banked 0.894, else VOID.
+  - P1 PLANE-WISE TREE TERM: PLANE held-out role ≥ 0.95 AND no in-dist cell below TREE − 0.01 AND held-out all ≥ TREE − 0.02 (L1's form).
+  - P2 PLANE-WISE BEYOND THE KEY: PLANE − FREEKEY held-out role ≥ 0.03 with the sign on 3/3 seeds.
+  - Reported, no bar: NOLEARN, PLANE_NOMLP.
+- **PREDICTIONS (coordinator, pre-smoke):**
+  - NOLEARN: held-out role ~0.99 (the role flag is near-oracle on this cell, disclosed at T2k), but some in-dist cell drops > 0.01 (the learned term earned its place on aliases at T2j).
+  - PLANE: P1 PASS (~0.97).
+  - FREEKEY: ~0.93. P2 PASS, low confidence: the key has only ~4 node values × 6 slots, so a free MLP may not have enough combinations to memorize.
+  - PLANE_NOMLP within 0.01 of PLANE.
