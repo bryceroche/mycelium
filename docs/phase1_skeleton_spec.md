@@ -52953,3 +52953,21 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - PLANE: P1 PASS (~0.97).
   - FREEKEY: ~0.93. P2 PASS, low confidence: the key has only ~4 node values × 6 slots, so a free MLP may not have enough combinations to memorize.
   - PLANE_NOMLP within 0.01 of PLANE.
+
+### 2026-10-24 (16:33) — T2n VERDICTS: P1 PASS (held-out role 0.894 → 0.995), P2 FAIL (FREEKEY ties PLANE, 0.997); MHA-only reader costs nothing (0.994) (.cache/plane_term.{txt,json}; unit t2n, Result=success, 2764 s alone on the box)
+- **CONTROL OK:** TREE held-out role 0.894 (banked 0.894), seeds 0.944 / 0.891 / 0.846.
+- **P1 PLANE-WISE TREE TERM: PASS.** PLANE held-out role **0.995** (seeds 0.997 / 0.994 / 0.994). Worst in-dist cell delta −0.002. Held-out all 0.998 vs 0.984.
+- **P2 PLANE-WISE BEYOND THE KEY: FAIL.** FREEKEY held-out role **0.997** (0.996 / 0.999 / 0.996). PLANE − FREEKEY = −0.002 (per seed +0.001 / −0.006 / −0.002).
+- **READ NOLEARN:** held-out role 0.984, but the **they** cell falls 1.000 → 0.883 in-dist (0.848 held-out); it 0.992. Worst in-dist delta −0.117.
+- **READ PLANE_NOMLP (MHA-only reader):** held-out role 0.994, worst in-dist delta −0.002 = PLANE.
+- **PREDICTIONS SCORED:**
+  - PLANE P1 ✓ (said ~0.97; it was 0.995).
+  - FREEKEY ~0.93 ✗ (0.997), so P2 ✗. It was flagged low-confidence at registration for the reason that held: the key space is tiny.
+  - NOLEARN ✓ on the role cell (~0.99 → 0.984). An in-dist cell did drop, but it was the GROUP pronoun 'they', not the aliases predicted.
+  - NOMLP within 0.01 ✓.
+- **READING:**
+  - (1) The second culprit is cured the same way as the first. Once the learned term reads the slot through the DATABASE (the composite key) instead of the name's surface, the held-out role cell goes 0.894 → 0.995, and the seed fragility (0.846–0.944) collapses to 0.994–0.997. Both T2l culprits were surface reads of unseen names; both are fixed by the tree.
+  - (2) Plane-wise did NOT separate from a free read HERE, and T3d says why. The key has ~4 nodes × 6 slots, every combination is covered in training, and no cross join exists to memorize. T3d's rule is about SPARSE combination coverage. This toy's key never had any. P2's null is scoped to a fully-covered key; it does not contradict T3d.
+  - (3) The learned term is still needed: removing it costs the group-pronoun cell 0.117 ('they' → which group). Its job is real; it just must not read surface.
+  - (4) Bryce's breathing-transformer definition, first direct read: an MHA-only reader (FFN zeroed) loses nothing on any cell in this toy (0.994 vs 0.995). Scoped to this toy's reader load; not yet a claim about real text.
+- **CARRIED (Bryce, 10-24):** the next toy uses REAL T6 gear stamps (creation tick + last-mention tick), not the slot index; and the reader must SEARCH the tree for the node (no gold node). T2o, drafted after this verdict, needs the word. That is also where plane-wise can be re-tested: a searched node × a real clock stamp × slot is a key space large and sparse enough for a cross join.
