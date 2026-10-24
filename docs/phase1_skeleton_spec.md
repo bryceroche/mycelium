@@ -52898,3 +52898,19 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (2) Both culprits so far are the SAME failure: a term that reads the name's SURFACE embedding on a name never trained. The type read was moved to the tree and stopped failing; the learned term still reads surface.
   - (3) The seed spread is wide (0.838–0.946). The learned term's unseen-name read is seed-fragile.
 - **NEXT (needs the word):** T2n — the learned term sees the entity through the DATABASE, not the surface: its slot side reads the slot's tree node / composite key (or the name tokens are masked out of its span), so an unseen name looks like any known name of its node. Bar to be pinned at registration; natural one = held-out role ≥ 0.95 with no in-dist cell below control − 0.01.
+
+### 2026-10-24 (14:43) — WORD GIVEN: T3d REGISTERED — WHICH HALF OF BINDING BEATS THE CROSS JOIN, THE WRITE OR THE READ? (scripts/toys/cj_readout_toy.py; .cache/cj_readout.{txt,json}; CPU, one unit alone on the box)
+- **Correction on record (coordinator):** this morning the coordinator proposed "the cross-join test" from memory and said the conjugate-unbind + snap readout was untested. **Both wrong:** T3 (10-22 14:59) is that test, and its PHASOR_L arm is that readout (unseen D3 1.000). The proposal was withdrawn before registration. While building it, the committed cross_join_toy.py was overwritten by mistake and restored from git (no banked artifact touched).
+- **The gap T3 left:** T3's arms were algebraic on BOTH sides (PHASOR_L) or free-form on BOTH sides (FLAT 0.414, COMPRESS 0.394 unseen D3). It never separated the binding WRITE from the algebraic READ.
+- **Method:** T3's world, recipe and splits imported UNCHANGED (W 128, snap, 3 seeds × 3000 steps, cov 0.5 / 0.25 / 0.125). Every arm uses PHASOR_L's write (learned phases, one superposed register); the record match stays the conjugate dot; one READ is replaced:
+  - PHASOR_L — the control (T3's arm, re-run; asserted bit-identical to T3's PHASOR_L on a forward at init).
+  - BIND_MLP — the FIELD read (partner / value out of the selected register) by an MLP over (Re, Im).
+  - BIND_MLPD — the field read by a per-plane MLP shared across planes, given each plane's role phase (reported, no bar).
+  - BIND_MLPQ — the QUERY composition: key = MLP(owner code, object code) in place of the phase product. Added by the coordinator at build time, before the smoke: the "readout" has two places, and composing two VARIABLE factors is where the multiplicative (cross-join) work lives.
+- **BARS (unseen pairs, depth 3, cov 0.125, 3-seed means):**
+  - CONTROL: PHASOR_L ≥ 0.97, else everything VOID.
+  - R1 THE FIELD READ: PHASOR_L − BIND_MLP ≥ 0.20 → SUPPORTED (the learned read re-admits the cross join); ≤ 0.05 → REFUTED; between → BETWEEN.
+  - R2 THE QUERY COMPOSITION: the same thresholds for BIND_MLPQ.
+  - VALIDITY: an arm with seen D3 < 0.90 is undertrained and its bar is VOID.
+- **SMOKE DISCLOSED (1 seed, 150 steps, n 200; .cache/cj_readout_smoke.txt) — read BEFORE these predictions were written, so the predictions are contaminated:** unseen D3 at cov 0.125: PHASOR_L 1.000, BIND_MLP 0.485, BIND_MLPD 0.930, BIND_MLPQ 0.170 (seen D3 1.000 / 1.000 / 0.960 / 1.000).
+- **PREDICTIONS (coordinator, post-smoke):** R1 SUPPORTED (gap ~0.4), R2 SUPPORTED (gap ~0.8), MLPD near the control. Pre-smoke the coordinator expected R1 REFUTED (unbinding by a FIXED role is linear, so an MLP should learn it from any coverage). The smoke contradicts that, so this run is where it is read.
