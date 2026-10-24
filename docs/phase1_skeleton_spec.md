@@ -52841,3 +52841,17 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - **PREDICTIONS (not bars):**
   - M2a: FLAT6 in-dist ≤ GEARS − 0.05 (the deployed wheel aliases after 6 ticks).
   - M2b: BAND in-dist within 0.01 of GEARS. The coordinator's honest expectation: in range, a hash costs nothing when the readout is a learned lookup. The gears' case then rests on M1L / data efficiency, not on in-range accuracy.
+
+### 2026-10-23 (18:33) — T2l VERDICTS: TYPE FROM THE PERMANENT TREE (.cache/tree_type.{txt,json}; 3 seeds × 4000 steps; unit tl-chain, Result=success)
+- **Run note:** T2m was fired at 16:47 on the same 16 cores. Both toys' thread pools oversubscribed the box (load 24) and T2l's arm 2 slowed ~10×. T2m was paused by PID (SIGSTOP) at 18:11 and resumed on T2l's exit. Numbers are unaffected; wall-clock only. RULE: CPU toys fire ONE AT A TIME, or with thread counts summing ≤ 16.
+- **Control (HYBRID_ROLE) reproduced the banked read:** held-out role 0.703, in-dist all 0.998.
+- **L1 tree type: FAIL.** TREE held-out role **0.894** vs the 0.90 bar (control 0.703). In-dist cells: worst delta +0.000 ✓. Held-out all: 0.984 vs 0.964 ✓. The 0.894 misses the bar by 0.006. The bar does not bend.
+  - Coordinator predicted ~0.97: WRONG by 0.08.
+  - What the tree DID: +0.191 on the role cell; pron_gender 0.917 → 0.958; held-out title 0.986 → 0.999; title_family 0.982 → 0.998; GIVES err 0.028 → 0.014.
+  - ~0.11 of held-out role pronouns still miss with a CORRECT type. The remaining culprit is NOT the type read; candidates are the learned context term and the rank term on unseen names. That is UNAUTOPSIED; this ledger does not claim which.
+- **L2 lossless binding: PASS.** TREEB is identical to TREE (held-out role 0.894 vs 0.894; in-dist all 0.998 vs 0.998). Unbind + cleanup type recovery 2,615,459 / 2,615,459 = 1.0000 (predicted identical ✓).
+- **L3 gazetteer misses: PASS.** N10 held-out role 0.853 vs the 0.85 bar (predicted ~0.88; it passed by 0.003).
+- **READING:**
+  - (1) Type belongs to the permanent tree: the autopsy's culprit removed, the role cell rose 0.703 → 0.894, and nothing in-distribution moved.
+  - (2) The composite key's binding is lossless at this scale. A single binding per key is exact, as the arithmetic says.
+  - (3) The role cell's last ~0.11 is a SECOND term. Its natural next read is role_autopsy.py's term split on the TREE arm (zero new design; needs the word).
