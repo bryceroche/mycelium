@@ -52872,3 +52872,16 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (2) The DEPLOYED six-wave as-is (one period-6 wheel) is NOT sufficient. It aliases after six ticks and loses 0.094 in range. If the T6 clock is to be the time keeper, it needs the gears.
   - (3) The gears' in-range advantage over a hash is NIL. Their real case is order PAST the trained range, and an MLP readout throws most of it away (0.884).
 - **NEXT (needs the word):** a readout that USES the gears' structure instead of a learned lookup. For example, an odometer comparator: pairwise stamp order read slow-gear-first from the phase difference clock(a)·conj(clock(b)), so "older than" is a rotation-equivariant read, not memorized ages. The bar is M1L.
+
+### 2026-10-24 (11:55) — WORD GIVEN: T2l TERM SPLIT REGISTERED (scripts/toys/tree_role_autopsy.py; .cache/tree_role_autopsy.{txt,json}; CPU, one unit alone on the box)
+- **Context:** the box crashed three times on 10-23 (12:05, 12:13, 18:45:04 — the last ~1 min after the CPU toys went idle; nothing lost, T2m's verdict commit landed at 18:45). Bryce set BIOS Power Supply Idle Control = Typical Current Idle on 10-24.
+- **Question:** T2l's tree arm reads type exactly, yet ~0.11 of held-out role pronouns still miss (0.894). Which term carries those misses?
+- **Method:** role_autopsy.py's term split ported to HYBRID_ROLE_TREE. Training is tree_type_toy.run VERBATIM (its evaluate() is wrapped to keep the net); per-seed accuracy is asserted equal to the toy's own evaluate(); the summed terms are asserted to reproduce the resolver's argmax. Seeds 0–2 × 4000 steps, TOY_THREADS=8 (the banked run's default).
+- **BARS (pinned before the run):**
+  - SINGLE CULPRIT X: X pushes wrong in ≥ 0.70 of errors AND X's margin alone exceeds the role term's gold-favor in ≥ 0.50 of errors.
+  - TWO-TERM X+Y: else, the top-two terms' summed margin exceeds the role term's gold-favor in ≥ 0.70 of errors.
+  - DIFFUSE: otherwise.
+  - VOID: re-run held-out role acc misses the banked 0.894 by > 0.03.
+  - INTEGRITY: type pushes wrong in 0.000 of errors (the tree is exact), else FLAG.
+- **PREDICTION (coordinator):** SINGLE CULPRIT = **learned** (the contextual term reads the unseen first name's frozen random embedding, off-distribution; in the T2k autopsy it already pushed wrong in 0.952 of errors, mean +1.128, second to type). Also reported (no bar): the share of errors whose wrong pick is the previous RECIPIENT.
+- **Smoke (plumbing only, 1 seed × 100 steps, .cache/tree_role_autopsy_smoke.txt):** asserts pass, integrity OK, VOID as expected at 100 steps. Not evidence.
