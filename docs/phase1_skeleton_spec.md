@@ -52855,3 +52855,20 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (1) Type belongs to the permanent tree: the autopsy's culprit removed, the role cell rose 0.703 → 0.894, and nothing in-distribution moved.
   - (2) The composite key's binding is lossless at this scale. A single binding per key is exact, as the arithmetic says.
   - (3) The role cell's last ~0.11 is a SECOND term. Its natural next read is role_autopsy.py's term split on the TREE arm (zero new design; needs the word).
+
+### 2026-10-23 (18:45) — T2m VERDICTS: THE T6 CLOCK AS THE TIME KEEPER, GEARS BUILT IN (.cache/clock_coref.{txt,json}; 3 seeds × 3000 steps; unit ck-chain, Result=success)
+- **Run note:** alone on the box, each clock arm took ~100–400 s. While sharing the CPU with T2l, NOCLOCK and HAND took ~2,000 s each. That is the oversubscription cost the 18:33 rule addresses.
+- **Floor and ceiling:**
+  - NOCLOCK: in-dist 0.772, long 0.757, contested 0.406.
+  - HAND: 1.000 everywhere, all seeds.
+- **M1 (the claim): PASS.** GEARS in-dist 1.000 vs HAND 1.000 (all three seeds 1.0). Contested 1.000 vs the floor's 0.406.
+- **M1L: FAIL, AS PREDICTED.** GEARS long 0.884 vs HAND 1.000 (seeds 0.884 / 0.892 / 0.876). Protagonist 0.869, recency 0.945, contested 0.719. The MLP readout does not carry the order past the trained ages.
+- **M2a: HELD.** FLAT6 in-dist 0.906 ≤ GEARS − 0.05. The deployed period-6 wheel aliases; contested in-dist is 0.756 and the protagonist read 0.894.
+- **M2b: HELD.** BAND in-dist 1.000 = GEARS. In range, a hash clock costs nothing to a learned lookup.
+- **Read (not a bar):** BAND long 0.856 (0.853–0.857) vs GEARS long 0.884 (0.876–0.892). Every GEARS seed is above every BAND seed, a +0.028 gap; on contested pronouns it is 0.719 vs 0.648. On ages never seen, the gears hold order modestly better than the hash, but neither carries it.
+- **M3 lossless volatile stamps: PASS.** Recovery is 18,218,174 / 18,218,174. GEARS_BOUND is IDENTICAL to GEARS on both splits. The slot-as-register store survives the in-place last-mention rewrite exactly (theta-gamma at PB 64, two terms per register).
+- **READING:**
+  - (1) A clock stamp in the slot's volatile key is a sufficient time keeper for GSM8K's two discourse reads (protagonist = oldest creation, recency = newest mention), and it stores losslessly in the slot's own register.
+  - (2) The DEPLOYED six-wave as-is (one period-6 wheel) is NOT sufficient. It aliases after six ticks and loses 0.094 in range. If the T6 clock is to be the time keeper, it needs the gears.
+  - (3) The gears' in-range advantage over a hash is NIL. Their real case is order PAST the trained range, and an MLP readout throws most of it away (0.884).
+- **NEXT (needs the word):** a readout that USES the gears' structure instead of a learned lookup. For example, an odometer comparator: pairwise stamp order read slow-gear-first from the phase difference clock(a)·conj(clock(b)), so "older than" is a rotation-equivariant read, not memorized ages. The bar is M1L.
