@@ -52885,3 +52885,16 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - INTEGRITY: type pushes wrong in 0.000 of errors (the tree is exact), else FLAG.
 - **PREDICTION (coordinator):** SINGLE CULPRIT = **learned** (the contextual term reads the unseen first name's frozen random embedding, off-distribution; in the T2k autopsy it already pushed wrong in 0.952 of errors, mean +1.128, second to type). Also reported (no bar): the share of errors whose wrong pick is the previous RECIPIENT.
 - **Smoke (plumbing only, 1 seed × 100 steps, .cache/tree_role_autopsy_smoke.txt):** asserts pass, integrity OK, VOID as expected at 100 steps. Not evidence.
+
+### 2026-10-24 (12:02) — T2l TERM SPLIT VERDICT: SINGLE CULPRIT = LEARNED (prediction landed; .cache/tree_role_autopsy.{txt,json}; unit tl-autopsy, Result=success, ~7 min alone on the box)
+- **Re-run:** held-out role 0.890 vs banked 0.894 → not VOID. Per seed 0.946 / 0.884 / 0.838 vs banked 0.944 / 0.892 / 0.846: the same ordering, small drift (CPU float nondeterminism across runs; the per-seed assert against the toy's own evaluate() held within each run). Disclosed, not bent.
+- **Errors:** 527 of 4795. The role flag favors GOLD in 1.000 of them; it is outvoted every time.
+- **Terms (mean wrong − gold | pushes wrong | alone outvotes role):** learned **+2.847 | 1.000 | 0.674**; rank +0.280 | 0.763 | 0.000; overlap / kind / type 0.000 everywhere.
+- **INTEGRITY: OK** — type pushes wrong in 0.000 of errors.
+- **VERDICT: SINGLE CULPRIT = learned** (1.000 ≥ 0.70 and 0.674 ≥ 0.50). Coordinator predicted learned: RIGHT.
+- **Report (no bar):** the wrong pick is the previous RECIPIENT in 0.702 of errors. The remaining ~1/3 need learned + rank together.
+- **READING:**
+  - (1) The second term is the contextual (learned) term reading the unseen first name's frozen random embedding. With type exact, its push grew: +1.128 in the T2k autopsy → +2.847 here (learned scale ~8.75).
+  - (2) Both culprits so far are the SAME failure: a term that reads the name's SURFACE embedding on a name never trained. The type read was moved to the tree and stopped failing; the learned term still reads surface.
+  - (3) The seed spread is wide (0.838–0.946). The learned term's unseen-name read is seed-fragile.
+- **NEXT (needs the word):** T2n — the learned term sees the entity through the DATABASE, not the surface: its slot side reads the slot's tree node / composite key (or the name tokens are masked out of its span), so an unseen name looks like any known name of its node. Bar to be pinned at registration; natural one = held-out role ≥ 0.95 with no in-dist cell below control − 0.01.
