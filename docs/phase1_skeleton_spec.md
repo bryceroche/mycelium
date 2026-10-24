@@ -52914,3 +52914,21 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - VALIDITY: an arm with seen D3 < 0.90 is undertrained and its bar is VOID.
 - **SMOKE DISCLOSED (1 seed, 150 steps, n 200; .cache/cj_readout_smoke.txt) — read BEFORE these predictions were written, so the predictions are contaminated:** unseen D3 at cov 0.125: PHASOR_L 1.000, BIND_MLP 0.485, BIND_MLPD 0.930, BIND_MLPQ 0.170 (seen D3 1.000 / 1.000 / 0.960 / 1.000).
 - **PREDICTIONS (coordinator, post-smoke):** R1 SUPPORTED (gap ~0.4), R2 SUPPORTED (gap ~0.8), MLPD near the control. Pre-smoke the coordinator expected R1 REFUTED (unbinding by a FIXED role is linear, so an MLP should learn it from any coverage). The smoke contradicts that, so this run is where it is read.
+
+### 2026-10-24 (15:13) — T3d VERDICTS: R1 SUPPORTED (+0.402), R2 SUPPORTED (+0.846); the per-plane learned read = the algebra (0.998) (.cache/cj_readout.{txt,json}; unit t3d, Result=success, 1753 s alone on the box)
+- **CONTROL OK:** PHASOR_L unseen D3 1.000 (T3 banked 1.000).
+- **R1 THE FIELD READ: SUPPORTED.** BIND_MLP unseen D3 **0.598** (seeds 0.517 / 0.623 / 0.654) vs 1.000; seen D3 1.000. Gap +0.402 ≥ 0.20.
+- **R2 THE QUERY COMPOSITION: SUPPORTED.** BIND_MLPQ unseen D3 **0.154** vs 1.000; seen D3 1.000. Gap +0.846.
+- **READ (no bar): BIND_MLPD** (per-plane shared MLP, given the role phase) unseen D3 **0.998**, seen 1.000.
+- **Coverage curves (unseen D1:D3 at cov 0.5 / 0.25 / 0.125):**
+  - PHASOR_L 1.000:1.000 / 1.000:1.000 / 1.000:1.000
+  - BIND_MLP 1.000:0.967 / 1.000:0.834 / 1.000:0.598
+  - BIND_MLPD 1.000:1.000 / 1.000:0.999 / 1.000:0.998
+  - BIND_MLPQ 0.472:0.242 / 0.220:0.154 / 0.170:0.154
+- **PREDICTIONS SCORED:** post-smoke R1 ✓ (said ~0.4), R2 ✓ (said ~0.8), MLPD ✓. The pre-smoke R1 expectation (REFUTED) was WRONG.
+- **READING:**
+  - (1) A binding WRITE alone does not keep the cross join out. A learned network doing either READ re-admits it: on unseen pairs every learned-read arm hits 1.000 seen and falls on unseen.
+  - (2) The query composition is the cross join's home. An MLP composing (owner, object) fails unseen pairs even at 50 % coverage and depth 1 (0.472). That is the SQL cross join in its purest form: the MLP learns a table of pairs, not a product.
+  - (3) The field read fails only in CHAINS. BIND_MLP is 1.000 at depth 1 on every coverage and decays with depth (T3's X1/X2 shape again). Mechanism UNREAD: a fixed-role unbind is linear, yet the MLP's partner read degrades on unseen-pair records. Candidate: it uses the superposed key term (novel on unseen pairs) as a feature instead of cancelling it. Texture-rule item, not claimed.
+  - (4) THE BUILD RULE this supports: the lever is a read that RESPECTS THE PLANES, not the conjugate formula itself. A learned per-plane read that is given the role phase equals the algebra (0.998). Learned parts are allowed at the joins if they are plane-wise (equivariant). A free MLP across planes is not allowed, on either the composition or the read.
+- **SCOPE:** BIND_MLPQ is the hardest case: its key must reproduce an algebraic write's exact phase product for unseen pairs. T3's FLAT (learned write AND learned query, co-adapted) read unseen D1 at 0.898. R2 says a learned composer cannot stand in for the product against a bound store; it does not say every learned key fails.
