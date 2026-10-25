@@ -53110,3 +53110,24 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - Evidence precision: GOLD_RES 1.000; ANSWER_ALL 0.992; ANSWER_PATH 0.999; ANY_ALL 0.977; TIERS 0.999. All five end with 0 wrong rows.
   - **HUNCH COLLAPSED:** 14 of 18 rows wrong at the end; the resolver saw a wrong node 0.853 of the time; hunches disagree with the truth 0.853; held-out names PRIOR 0.000. Mechanism (coordinator's reading, unverified at full length): the untrained walk's posterior is structurally biased (an empty-centroid level-1 snap splits person mass across he/she, so its argmax is they/it). Hunches outnumber evidence ~5:1, the rows flip, the certified labels that train the walk come from those rows, and the loop closes on itself. The full run decides whether training escapes it.
   - Role numbers are undertrained and not read. Fired.
+
+### 2026-10-25 (08:44) — T2r VERDICTS: CONTROL OK (0.996), V1 PASS — final-answer volume grows a clean tree; HUNCH collapses permanently into a private code
+
+Read: .cache/tree_volume.txt (full, 4000 steps, seeds 0-2, 3292 s). Scored mode = TITLES; PRIOR = read.
+
+| arm | evidence admitted | precision | wrong rows @50 / 200 / 1000 / end (of 18) | held-out role | PRIOR held-out node |
+|---|---|---|---|---|---|
+| GOLD_RES | 406,104 | 1.0000 | 0 / 0 / 0 / 0 | 0.996 | 0.917 |
+| ANSWER_ALL | 381,737 (0.94x) | 0.9994 | [2,3,3] / [0,2,1] / 0 / 0 | 0.996 | 0.917 |
+| ANSWER_PATH | 123,702 (0.30x) | 0.9998 | [4,2,2] / [1,0,0] / 0 / 0 | 0.997 | 0.917 |
+| ANY_ALL | 406,104 | 0.9964 | [5,6,2] / [2,5,1] / 0 / 0 | 0.993 | 0.833 |
+| TIERS | 422,225 | 0.9999 | 0 / 0 / 0 / 0 | 0.996 | 0.917 |
+| HUNCH | 374,214 + 832,856 hunches | 0.9471 | [14,15,14] at every checkpoint | **0.530** | **0.000** |
+
+- **CONTROL OK** (GOLD_RES 0.996 = T2p banked). **V1 PASS**: ANSWER_ALL 0 wrong rows on every seed at end, held-out role 0.996 vs 0.996, worst in-dist cell −0.001.
+- **Bryce's volume theory holds in this toy**: every slot in a correct-answer episode written as evidence -> 0.94x the clean judge's volume at 0.9994 precision; Welford drowned the 0.06% fully. The answer filter cut the error rate ~6x vs no filter (ANY_ALL 0.9964). Early rows DID flip (2-3 of 18 at step 50) and were drowned by step 1000: the noise is transient, not banked.
+- **Scope caveat**: answer-right rate was 0.947 over the run, so the filter removed only ~6% of episodes; the test is in a data-rich, text-anchored, mostly-right regime. ANY_ALL's residual cost shows in the walk (PRIOR held-out node 0.833 vs 0.917), not the rows.
+- **HUNCH: permanent collapse.** 14-15 of 18 rows wrong from step 50 to end; resolver saw the wrong node 0.866 of the time; in-dist role still 0.991 and PRIOR held-out role 0.988 with held-out node accuracy 0.000, but TITLES held-out role 0.530. READING (unverified mechanism): the hunch loop wrote a self-consistent PRIVATE CODE (rows, walk and resolver agree on a relabeled dictionary); it works on its own terms and breaks the moment truth-anchored evidence (titles) writes the real node. Bias, not noise: a model's own reads are not evidence (extends T2o's law).
+- **PREDICTIONS SCORED**: CONTROL OK ✓; V1 PASS ✓ (precision predicted ~0.97, got 0.9994 — better; volume ~0.9x, got 0.94x ✓); ANY_ALL clean at end ✓; ANSWER_PATH ~1/3 ✓ (0.30x); TIERS clean ✓; HUNCH "clean at end, slower early" ✗ (collapsed from step 50, never recovered).
+- **LAW (candidate, toy-scoped)**: evidence attached to a correct final answer may grow the tree; a model's own unanchored reads may not. Admission = anchored to text + judged by the key.
+- **CARRIED**: T2q Q1 clean re-read (needs the word); provenance-in-rows + custody tiers; GSM8K-stage test where the answer-right rate is low (the filter's real test).
