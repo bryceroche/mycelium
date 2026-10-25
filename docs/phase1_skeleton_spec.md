@@ -53448,3 +53448,31 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - PRIVATE: coded episodes wrong against the truth at similar tension, AUROC ~0.5, so Y2 PASS (~80%). Risk: PRIVATE may fail to learn the code (snapping onto π(e) breaks the chain unless the reader learns to invert π).
 - Consolidation: tension falls over training (margins grow).
 - T2y smoke (15:05; 300 steps): runs end to end; every arm at the floor (acc 0.197, AUROC ~0.5), as expected at smoke length. Two bugs fixed before it ran cleanly: (1) the derangement loop could not terminate (a reseed from a constant); it is now a single cycle, asserted fixed-point free. (2) PROCESS NOTE: I killed the hung smoke with `pkill -f` on a pattern my own shell matched, breaking the rule of the day (kill by PID). Only my own shell died; units t2w and t2x were unaffected. Queued as unit t2y behind t2w and t2x.
+
+### 2026-10-25 (15:18) — T2w VERDICTS: W0 W1 W2 W3 ALL PASS — the handshake across processes works on SQLite; T2x VERDICTS: CONTROL OK, X1 PASS, X2 PASS (+0.819) — the phase rejoin generalizes to unseen pairs, learned binding memorizes the cross join
+
+**T2w** (.cache/tree_handshake.txt; journal: phase A pid 42856, 14:36–14:46; phase B pid 41663, 14:46–15:08; only the .db files and A's report json passed between them)
+- A: about 406k events per seed in 82 permanent batches → 18 rows. FIDELITY OK on every seed.
+- B: both guards fired on every seed; 18 rows read, 0 flipped; reserved node PRIOR 1.000 and TITLES 1.000.
+  - Role: indist 0.998 / 0.995 / 0.997; reserved 0.994 / 0.947 / 0.978, mean **0.973** (T2q B_INHERIT banked 0.973); TITLES reserved 0.994 / 0.993 / 0.998.
+- Probation: about 405k provisional events per seed, with the store unchanged until promotion. Audition 1.000 on 14 keys → PROMOTED. Rebuild == incremental.
+- Saboteur: audition 0.000 → rejected, store byte-identical.
+- **W0 PASS, W1 PASS, W2 PASS, W3 PASS.**
+- **The introduction protocol is validated at toy scale:** connect read-only, train with the tree in the loop, re-anchor the centroids, then provisional → audition → promote. The store is never rebuilt, a foreign model's centroids are refused, and a corrupting model's evidence cannot land.
+- **PREDICTIONS:** W0 ✓, W1 ✓, W2 ✓, W3 ✓, reserved role ≈ 0.973 ✓ (exact).
+
+**T2x** (.cache/phase_rejoin.txt; 6000 steps; 3 seeds; PHYSICS: aligned 0.901, worst misaligned 0.060)
+
+| arm | in-dist | truly ambiguous | HELD-OUT PAIR (seeds) |
+|---|---|---|---|
+| ADD | 0.798 | **0.507** (chance) | 0.167 |
+| **BIND** | 1.000 | 1.000 | **1.000** (1/1/1) |
+| BIND_MLP | 1.000 | 1.000 | **0.003** |
+| LEARNED (DeepSets) | 1.000 | 1.000 | **0.181** |
+
+- **CONTROL OK:** the additive state really is ambiguous (0.507). Its 0.798 in-dist comes from the held-out exclusion acting as a pairing prior, the cross join memorized; held-out it falls to 0.167.
+- **X1 PASS:** the phase rejoin is perfect on unseen pairs.
+- **X2 PASS:** BIND − LEARNED = +0.819, with every seed at least +0.80. Learned binding is perfect in-dist and memorizes the cross join.
+- **THE SHARPEST READ, BIND_MLP 0.003:** the SAME phase-bound state read by a learned MLP memorizes completely. **The generalization lives in the unbinding OPERATION (z ⊙ conj(T̂)), not in the bound representation.** The rejoin must be a road (algebra), not a representation handed to a free reader: the mandatory-road law in its binding form.
+- **PREDICTIONS:** CONTROL ✓; X1 ✓; LEARNED held-out 0.3–0.8 ✗ (0.181, worse); X2 PASS ✓; BIND_MLP between BIND and LEARNED ✗ (0.003, the worst arm).
+- **CANDIDATE LAW (toy-scoped):** generalization to unseen combinations requires the composition to be done by fixed algebra (bind / unbind / snap to composed addresses). Any learned reader over the composite memorizes the cross join (T2v FLAT_FREE 0.094, T2x LEARNED 0.181, BIND_MLP 0.003).
