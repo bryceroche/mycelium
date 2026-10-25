@@ -26,9 +26,8 @@ SMOKE = B.SMOKE
 ARMS = os.environ.get("TY_ARMS", "ROT_M,MICRO_M,PRIVATE").split(",")
 OUT = ".cache/breath_tension{}.txt".format("_smoke" if SMOKE else "")
 NE, NB = B.NE, B.NB
-_pi = np.random.default_rng(7).permutation(NE // 2)
-while (_pi == np.arange(NE // 2)).any():
-    _pi = np.random.default_rng(int(_pi.sum())).permutation(NE // 2)
+_p = np.random.default_rng(7).permutation(NE // 2); _pi = np.empty_like(_p); _pi[_p] = np.roll(_p, 1)   # one cycle: no fixed point
+assert not (_pi == np.arange(NE // 2)).any()
 PI = torch.from_numpy(np.concatenate([_pi, np.arange(NE // 2, NE)])).long()   # derangement of the low half, identity above
 
 

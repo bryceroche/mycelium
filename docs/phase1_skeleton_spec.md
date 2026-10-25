@@ -53447,3 +53447,4 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - ROT_M: few errors.
 - PRIVATE: coded episodes wrong against the truth at similar tension, AUROC ~0.5, so Y2 PASS (~80%). Risk: PRIVATE may fail to learn the code (snapping onto π(e) breaks the chain unless the reader learns to invert π).
 - Consolidation: tension falls over training (margins grow).
+- T2y smoke (15:05; 300 steps): runs end to end; every arm at the floor (acc 0.197, AUROC ~0.5), as expected at smoke length. Two bugs fixed before it ran cleanly: (1) the derangement loop could not terminate (a reseed from a constant); it is now a single cycle, asserted fixed-point free. (2) PROCESS NOTE: I killed the hung smoke with `pkill -f` on a pattern my own shell matched, breaking the rule of the day (kill by PID). Only my own shell died; units t2w and t2x were unaffected. Queued as unit t2y behind t2w and t2x.
