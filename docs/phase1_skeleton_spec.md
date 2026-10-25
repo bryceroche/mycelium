@@ -53199,3 +53199,26 @@ Source: .cache/breath_rotor.txt (12000 steps, seeds 0–2, 2761 s). Columns h1�
 - **Scope:** every breath here does the SAME operation (follow). The rotation's case — different breaths asking different questions of a fixed memory — is not exercised. On this task the rotation and the label carry the same information, and the label carries it more easily.
 - **PREDICTIONS SCORED:** PLACEBO ✓; CEILING ✓; NO_ROT 0.25–0.35 ✓ (0.307); R1 PASS ✗ (0.918); MICRO ≈ ROT60_Q ✗ (label 1.000 vs rotation 0.918); R2 FAIL ✓; R3 PASS ✓; NOSNAP degrades ✗ (1.000, confounded by trace supervision).
 - **CARRIED (needs the word):** (a) a task where breaths must do DIFFERENT operations (e.g. relation A on some breaths, B on others), the rotation's home turf; (b) the snap test: final-answer or sparse supervision, a longer loop (e.g. 12 breaths, train h ≤ 6, test h 7–12), SNAP vs NOSNAP.
+
+### 2026-10-25 (10:34) — WORD GIVEN ("word given for T2t -- salute!"): T2t REGISTERED — THE BREATH-TIME RoPE: THE CLOCK'S GEARS AS QUERY ROTATIONS (scripts/toys/breath_multi_toy.py; .cache/breath_multi.{txt,json}; CPU, alone; predictions written BEFORE the smoke)
+
+**Motivation (Bryce's π question).** With a single rotation speed, every score is A cos(60°b) + B sin(60°b), so any breath rule is one straight line cutting the 6-point circle. The best margins are h3 0.50, h2/h4 0.43, h1/h5 0.25. The h3 cut is the π diameter; the wrap makes breath 5 the neighbour of breath 0. Speeds {180, 60, 30}°/breath (parity / full circle / v109pi's half circle) span every function of the six breaths: rank 6, asserted in code.
+
+**Task A.** T2s's pointer chase, unchanged. Arms: ROT60_Q and MICRO (reproductions; init asserted identical to T2s) plus ROT_MULTI (query plane p rotates at speed p%3).
+
+**Task B, different operations per breath.** Two relations, A and B, each a permutation. Six hops always, on the fixed schedule A A B A B B. That schedule is not an arc: a single-frequency line gets 4 of 6 breaths per head, though 4 heads could compose arcs. Arms: NO_ROT, MICRO (one gear as a label), MICRO_MULTI (three gears as labels, stamp norm matched), ROT60_Q, ROT_MULTI, UNTIED. Same reader, snap and per-breath trace supervision as T2s; 12000 steps, 3 seeds.
+
+**Bars (pinned):**
+- CONTROL A: ROT60_Q within 0.02 of 0.918 AND MICRO ≥ 0.99, else VOID.
+- CEILING B: UNTIED ≥ 0.95, else VOID.
+- **M1 (A):** ROT_MULTI ≥ 0.99 AND h1 ≥ 0.97.
+- **M2 (B):** ROT_MULTI ≥ UNTIED − 0.02.
+- **M3 (B), action beats label at matched speeds:** ROT_MULTI − MICRO_MULTI ≥ +0.02, every seed positive.
+- READ: the margin table on A's ROT60_Q, and per-breath step accuracy on B.
+
+**Predictions:**
+- CONTROL OK.
+- M1 PASS.
+- B: NO_ROT trace accuracy ≲ 0.05. MICRO and ROT60_Q partial (0.3–0.85), with a breath-dependent error pattern on the non-arc breaths; heads may compose arcs.
+- MICRO_MULTI ≈ ROT_MULTI ≈ 1.0, so M2 PASS and M3 FAIL (at matched frequencies the label and the action carry the same information).
+- Margin read: h1 lowest. h5 stays unexplained.
