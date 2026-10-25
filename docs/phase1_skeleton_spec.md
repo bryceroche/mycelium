@@ -53295,3 +53295,27 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
   - FLAT_FACTORED held-out 0.5–0.9: the residual can carry the index, but the flat snap competes with every leaf, and the linear write Ct[σt]−Ct[t] must be learned.
   - V2 PASS, at ~60% confidence.
 - T2u/T2v smokes OK (13:00; 300 steps, floors as expected; T2u relative-phase and distinct-offset asserts passed; T2v leak asserts passed). Smoke note: the held split has a STAY floor of ~0.24 (σ³(t)=t → answer = start), so the FLAT_FREE '~0' prediction should be read against ~0.24; the prediction stands as pinned. Fired back to back as systemd unit t2uv.
+
+### 2026-10-25 (13:24) — WORD GIVEN ("word given for the sqlite db -- salute!"): THE PERMANENT TREE STORE BUILT (mycelium/tree_db.py; audit scripts/tree_db_check.py — ALL CHECKS PASS)
+
+**The store.** SQLite, embedded, at .cache/tree.db, no daemons (campaign_db.py's pattern). It encodes today's rulings:
+- **The EVENTS table is append-only and is the source of truth.** Each event records key, vector, source (episode/mention), batch and time.
+- **LEAVES are materialized Welford aggregates** (n, mean, m2), always rebuildable from the events.
+- **BATCHES carry custody:** tier (permanent | provisional), certifier, generation, and status (live | rolled_back).
+  - Only live permanent events enter the aggregates.
+  - promote() moves a provisional batch into them.
+  - rollback() deletes a batch's events and nodes and re-aggregates the keys it touched; the batch row stays as the record.
+- **NODES:** tree shape persists only with a certifying batch.
+- **CENTROIDS** are cached by generation; load_centroids refuses any generation other than the current one (never mix generations).
+- The breath never queries SQLite: load_leaves() builds the run's in-memory working set in one query.
+
+**Audit (zero-GPU, scratch DB), each verified:**
+- incremental Chan/Welford == numpy over the raw events;
+- rebuild_all == incremental;
+- provisional events stay out of the aggregates until promoted;
+- rollback is indistinguishable from the batch never existing;
+- a reused batch name and a bad row mid-batch both fail atomically (no partial writes);
+- the generation guard refuses a foreign generation;
+- per-row provenance is returned.
+
+**Not yet:** the toys' in-memory Tree is not wired to the store. That wiring belongs with the GSM8K port, which is still HELD.
