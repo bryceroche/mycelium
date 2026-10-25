@@ -16,6 +16,8 @@ Arms (shared weights across breaths unless noted):
   FULL        ROT60_Q + MICRO (Bryce's design)
   UNTIED      per-breath weights, no rotation, no label (the ceiling)
   FULL_NOSNAP FULL without the snap (read: does the snap carry the chain?)
+TRAINING: per-breath supervision on the gold trace (follow h times, then stay; amendment after the smoke: with final-answer
+loss only, no arm -- not even UNTIED -- left chance in 2000 steps; one hop alone learns to 1.0). Every arm gets it.
 Macro gears are not used: the facts here carry no story time (stated in the registration)."""
 import json, math, os, sys, time
 import numpy as np
@@ -30,7 +32,7 @@ D, NH = 64, 4
 DH = D // NH
 TAU = 0.1
 BATCH, LR = 128, 3e-3
-STEPS = 300 if SMOKE else 6000
+STEPS = 300 if SMOKE else 12000
 SEEDS = [0] if SMOKE else [0, 1, 2]
 N_EVAL = 600 if SMOKE else 3000
 OUT = ".cache/breath_rotor{}.txt".format("_smoke" if SMOKE else "")
@@ -42,11 +44,11 @@ def episodes(rng, n):
     perm = np.stack([rng.permutation(KE) for _ in range(n)])
     src, dst = ents, np.take_along_axis(ents, perm, 1)
     start = rng.integers(0, KE, n); h = rng.integers(1, HMAX + 1, n)
-    cur = start.copy()
-    for k in range(HMAX):
-        cur = np.where(h > k, perm[np.arange(n), cur], cur)
+    cur = start.copy(); traj = []
+    for k in range(NB):                                                     # the gold trace: follow h times, then stay
+        cur = np.where(h > k, perm[np.arange(n), cur], cur); traj.append(ents[np.arange(n), cur])
     t = lambda a: torch.from_numpy(np.asarray(a)).long()
-    return dict(facts=t(np.stack([src, dst], -1)), x=t(src[np.arange(n), start]), h=t(h), y=t(ents[np.arange(n), cur]))
+    return dict(facts=t(np.stack([src, dst], -1)), x=t(src[np.arange(n), start]), h=t(h), y=t(traj[-1]), traj=t(np.stack(traj, 1)))
 
 
 def rot(z, th):
@@ -72,7 +74,7 @@ class Net(nn.Module):
         nw = NB if arm == "UNTIED" else 1
         self.q, self.k, self.v, self.o = (nn.ModuleList(nn.Linear(D, D) for _ in range(nw)) for _ in range(4))
         g = torch.Generator().manual_seed(6)                                 # the micro gear: period 6, fixed projection
-        self.register_buffer("gearP", torch.randn(2, D, generator=g) / math.sqrt(2))
+        self.register_buffer("gearP", F.normalize(torch.randn(2, D, generator=g), dim=-1))   # unit rows: the stamp ~ the state's norm
 
     def cn(self):
         return F.normalize(self.C, dim=-1)
@@ -81,7 +83,7 @@ class Net(nn.Module):
         f = bt["facts"]; B = f.shape[0]; Cn = self.cn()
         mem = torch.cat([self.read(torch.cat([Cn[f[..., 0]], Cn[f[..., 1]]], -1)),
                          self.stay.expand(B, 1, D), self.H[bt["h"] - 1][:, None]], 1)         # (B, KE+2, D)
-        s = Cn[bt["x"]]; snaps = []
+        s = Cn[bt["x"]]; lgs = []
         for b in range(NB):
             w = b if self.arm == "UNTIED" else 0
             qin = s
@@ -103,8 +105,8 @@ class Net(nn.Module):
             else:
                 soft = lg.softmax(-1); hard = F.one_hot(lg.argmax(-1), NE).float()
                 s = (hard + soft - soft.detach()) @ Cn                          # straight-through hard snap
-            snaps.append(lg.argmax(-1))
-        return lg, torch.stack(snaps, 1)
+            lgs.append(lg)
+        return lg, torch.stack(lgs, 1)
 
 
 def run(arm, seed):
@@ -113,13 +115,15 @@ def run(arm, seed):
     opt = torch.optim.AdamW(net.parameters(), lr=LR, weight_decay=0.01)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=LR, total_steps=STEPS, pct_start=0.1)
     for step in range(STEPS):
-        bt = episodes(rng, BATCH); lg, _ = net(bt); loss = F.cross_entropy(lg, bt["y"])
+        bt = episodes(rng, BATCH); _, lgs = net(bt)                         # per-breath supervision on the gold trace
+        loss = F.cross_entropy(lgs.reshape(-1, NE), bt["traj"].reshape(-1))
         opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step(); sched.step()
     net.eval()
     with torch.no_grad():
-        lg, sn = net(ev)
+        lg, lgs = net(ev)
     ok = (lg.argmax(-1) == ev["y"]).float()
-    r = {"acc": float(ok.mean()), "loss_end": float(loss)}
+    r = {"acc": float(ok.mean()), "loss_end": float(loss.detach()),
+         "trace_acc": float((lgs.argmax(-1) == ev["traj"]).all(-1).float().mean())}
     for h in range(1, HMAX + 1):
         r[f"acc_h{h}"] = float(ok[ev["h"] == h].mean())
     return r

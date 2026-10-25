@@ -53168,3 +53168,11 @@ Macro gears are not used, because the facts carry no story time. That is a scope
 - R3 PASS.
 - NOSNAP: lower accuracy, with a downward slope across hops (Bryce's point 2).
 - Risk: shared-weight loops sometimes fail to learn at all (a texture to autopsy, not a verdict).
+
+### 2026-10-25 (09:36) — T2s SMOKE + AMENDMENTS (registered before any full-length read; BARS UNCHANGED)
+
+- **Smoke as registered (300 steps, final-answer loss only):** every arm sat at the stay-everywhere floor, ~0.16. A 2000-step feasibility read showed even UNTIED at chance (0.107), while a single hop on a single breath learns to 1.000. So the multi-breath chain is a credit-assignment problem, not a bug.
+- **Amendment 1, per-breath supervision on the gold trace (follow h times, then stay), every arm.** The attention-bootstrap principle: new attention pathways need direct supervision. It is also the GSM8K `<<>>`-trace analogue. At 2000 steps: UNTIED 0.830, NO_ROT 0.300 (its floor; follow-always gives h6 1.000), MICRO 0.288.
+- **Amendment 2, unit-norm micro-gear stamp** (pre/post knob law). The stamp was randn/√2, norm ~8 against a unit state, so it outweighed the state 8×. With the fix, at 2000 steps: MICRO 0.323, ROT60_Q 0.255, FULL 0.238 (FULL at h3 0.98, other hops near chance). The shared-weight arms are still mid-learning.
+- **Amendment 3, STEPS 6000 → 12000** (~1 h on CPU) because the shared-weight arms are slow. The bars and predictions above stand as written.
+- Fired at 09:37 as systemd unit t2s.
