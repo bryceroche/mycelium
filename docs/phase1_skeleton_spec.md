@@ -53319,3 +53319,34 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - per-row provenance is returned.
 
 **Not yet:** the toys' in-memory Tree is not wired to the store. That wiring belongs with the GSM8K port, which is still HELD.
+
+### 2026-10-25 (14:11) — WORD GIVEN ("word given for T2w and the space guard -- salute!"): THE SPACE GUARD BUILT; T2w REGISTERED — THE HANDSHAKE ACROSS PROCESSES (scripts/toys/tree_handshake_toy.py; .cache/tree_handshake{.txt,.json,_s*.db}; CPU; predictions written BEFORE the smoke)
+
+**THE SPACE GUARD (mycelium/tree_db.py, commit before this entry). Rule: THE PERMANENT TREE SPEAKS ONLY IN SYMBOLS.**
+- Every batch declares a registered space (name, kind, dim, meaning). Only kind='symbolic' spaces may hold events.
+- Model-space vectors live only in the generation-tagged centroids, which are derived and disposable.
+- A key lives in one space, and a space cannot be redefined.
+- The audit was extended and passes: a model-space write, an unregistered space, a wrong dim, a key in two spaces and a redefinition are each refused, with nothing written.
+
+**T2w protocol (Bryce: "introduce a new model to an existing permanent database ... without rebuilding").** It runs as two PROCESSES; only the SQLite file and phase A's report pass between them.
+- **Phase A:** T2q's model A per seed. Every hard-evidence event is logged and written as permanent batches (certifier gold_resolution, space node-evidence, generation A.s). A's centroids are saved under A.s.
+- **Phase B, a fresh process:**
+  1. connect;
+  2. the GUARDS must refuse A's centroids and a model-space write;
+  3. rows come from load_leaves into T2q's B_INHERIT, verbatim (centroids reset);
+  4. B's training evidence goes in as a PROVISIONAL batch, then audition (agreement on shared keys ≥ 0.99), then promote or roll back;
+  5. a SABOTEUR batch (B's events with each node shifted by one) must fail the audition and roll back, leaving the store byte-identical.
+
+**Bars (every seed):**
+- **W0 FIDELITY:** the store's aggregates == A's in-memory rows; first-sight priors are never stored.
+- **W1 HANDSHAKE:** B's reserved-name node (PRIOR) ≥ 0.99 AND rows flipped == 0 (T2q B_INHERIT banked 1.000 / 0).
+- **W2 PROBATION:** B promoted AND saboteur rejected AND store unchanged after the rejection AND provisional writes leave the aggregates unchanged AND rebuild == incremental after promotion.
+- **W3 GUARDS:** both refusals fire.
+- READ: role numbers against T2q's (the reserved-split confound persists in Q.run's split, so they are reads only).
+
+**Predictions:**
+- W0 PASS.
+- W1 PASS (it reproduces T2q's 1.000 / 0, since the rows are the same symbols).
+- W2 PASS: B's audition ~1.0 (precision of gold-resolution evidence ≈ 1), saboteur ~0.0.
+- W3 PASS.
+- Reserved role ≈ T2q B_INHERIT's 0.973.
