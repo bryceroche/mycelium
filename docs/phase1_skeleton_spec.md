@@ -53010,3 +53010,28 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (3) **The upsert lesson (the answer to "is growth driven entirely by Welford stats?"): averaging the same biased read N times is not evidence.** The leaf's running mean converged to the walk's own majority, so a systematic misread was locked in, not corrected. Welford is the right ACCUMULATOR, but what it accumulates must be INDEPENDENT, certified observations: a title MR/MS, a resolved pronoun's type, the answer key. Never the walk's re-read of the same surface. This is the custody law applied to tree growth: provisional leaves update from certified evidence only.
 - **SCOPE:** 4 held-out names, 3 seeds. Which name was misplaced was not logged (the nets are not saved). Slot kind stays structural. The certified-evidence upsert is untested.
 - **CARRIED (needs the word):** T2p = the same toy with the leaf UPDATE fed by independent evidence (title tokens and pronouns that the resolver attaches to the slot under certification) instead of the walk's re-read. Bar to be pinned; natural one = held-out role ≥ 0.95 with the walk still the first-sight prior.
+
+### 2026-10-25 (06:16) — T2p DRAFTED + PINNED (awaiting the word to fire) — THE TREE IN TRAINING, GROWN ON HARD EVIDENCE ONLY (scripts/toys/tree_train_toy.py; .cache/tree_train.{txt,json}; CPU; predictions written BEFORE the smoke)
+- **Bryce (10-24, on T2o):** "agreed -- we only update the welford stats and birch math on hard evidence. the tree must be included in the training." Taken as the design. The coordinator holds the full run for an explicit word.
+- **Method:** T2o's world imported (tree_search_toy: real gear stamps in the key, PLANE term, the walk; T2o's generator, seeds and eval sets; 3 seeds × 4000 steps). The tree is a MANDATORY ROAD:
+  - The resolver never sees a gold node, in training or at test. A slot's node is the tree's: an exact-token leaf lookup. An unseen token is INSERTED with the walk's posterior as a FIRST-SIGHT PRIOR.
+  - Leaf node = argmax of its HARD-EVIDENCE statistic (exact running mean of evidence one-hots, count-based Welford) once it has any evidence; until then, the prior. The walk's re-reads are never evidence.
+  - HARD EVIDENCE = a gendered title (MR/MS) or a typed pronoun resolved to the slot. In training it is resolved by the gold resolution (the answer key gates training data; disclosed). At test it is resolved by the resolver's own pick. Scored mode TITLES: titles only, where the pick is carried by surname overlap. Read mode TP: titles + pronouns picked with p ≥ 0.9; circular, because the pick already used the node; disclosed. Read mode PRIOR: no test-time evidence (T2o-like).
+  - Interior search centroids = BIRCH cluster features (N, LS, SS), decayed ×0.95 per step (reader drift), updated ONLY from evidence-certified slots and labelled by the leaf's evidence node. The prototype loss uses the same certified labels.
+  - Streaming: training batches and 100-episode eval chunks run in order. Nodes are read before a chunk, evidence is written after it.
+- **ARMS:** GEARS (control = T2o GEARS, gold node) / TREE.
+- **BARS (3-seed means):**
+  - CONTROL: GEARS held-out role within 0.02 of T2o's 0.995, else VOID.
+  - T1 THE TREE IN TRAINING, HARD EVIDENCE: TREE held-out role (TITLES mode) ≥ 0.95 AND no in-dist cell below GEARS − 0.01.
+  - T2 THE LEAF: streamed held-out-name node accuracy (TITLES) ≥ 0.95.
+  - Reported, no bar: TP and PRIOR modes; the walk on unseen names (T2o S1 = 0.834); the wrong-node rate the resolver saw in training; per-name (node, evidence count).
+- **KNOWN LIMIT:** 4 held-out names, so T2 is near-binary per name per seed. The node accuracy is per occurrence, so a name corrected after k sightings costs only k occurrences.
+- **PREDICTIONS (coordinator, pre-smoke):**
+  - CONTROL OK.
+  - T1 PASS (~0.98). Titles arrive within the first few sightings of each name, so only those sightings ride the prior.
+  - T2 PASS (~0.98).
+  - Walk on unseen names ≈ T2o (~0.83). Certified labels ≈ gold labels on training names, so the walk still reads the surface.
+  - PRIOR mode ≈ T2o's SEARCH (~0.87).
+  - TP within 0.01 of TITLES.
+  - Training wrong-node rate < 0.01 (only first sightings early in step 0..~50).
+- **SMOKE (1 seed, 150 steps, n 300; .cache/tree_train_smoke.txt), read AFTER the predictions above:** runs end to end. Training wrong-node rate 0.0069. 18 leaves (12 training names + 6 heads), 0 wrong at the end. The walk on unseen names 0.800. TITLES / TP / PRIOR: all 4 held-out names placed right (evidence 148 / 197 / 0). Role numbers are undertrained and not read. Full run HELD for the word.
