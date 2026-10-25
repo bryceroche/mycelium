@@ -53048,3 +53048,23 @@ After the fixes the smoke read 0.49. Nothing else changed.
 - **READING / LAW (Bryce 10-24..25, measured here): THE TREE GROWS ON HARD EVIDENCE ONLY.** Welford leaf statistics and BIRCH centroid CFs update only from certified evidence events. The search's posterior is a first-sight prior, never evidence. The tree is a mandatory road in training: the resolver reads the tree's nodes, never gold. Result: unseen names reach the gold-node ceiling (0.996 vs 0.995) with no gold node anywhere in the loop, and the one confident misplacement in 3 seeds is corrected by evidence instead of locked in (T2o's failure).
 - **PERSISTENCE RULING (Bryce, 10-25):** keep the ROWS across runs and rebuild the CENTROIDS per run (they sit in one reader's coordinates; the never-mix-generations law). Requirements carried by the coordinator, agreed in substance: (a) rows carry PROVENANCE (which episode / mention certified each event), because rebuilding a centroid means re-reading the certified mentions through the new reader, and provenance is also the rollback; (b) CUSTODY TIERS: answer-key-certified rows are permanent; test-time rows (resolver-certified) are provisional until key evidence promotes them; (c) a measurement starts from a tree that has never seen its held-out names.
 - **SCOPE:** 4 held-out names; titles are frequent and the surname overlap that carries a title's pick is reliable in this generator. On real text the evidence channels and their rates must be measured. Slot kind stays structural.
+
+### 2026-10-25 (06:54) — WORD GIVEN: T2q REGISTERED — A NEW MODEL INHERITS THE TREE (scripts/toys/tree_inherit_toy.py; .cache/tree_inherit.{txt,json}; CPU, alone on the box; predictions written BEFORE the smoke)
+- **Bryce (10-25):** "ideally we never delete the tree between training runs. it only accumulates evidence via welford stats and birch math. we need a way to train new models to become familiar with the existing tree." The persistence ruling (keep rows, rebuild centroids per run) is applied.
+- **Design (knowledge lives ONLY in the tree):**
+  - MODEL A = T2p's TREE arm on the standard training names, which include RESERVED first names {4, 5, 12, 13} (2 he, 2 she). Its rows are kept per seed.
+  - MODEL B gets a fresh init (torch and data seed 500 + s), and its training data has the RESERVED names removed (set at generation time; asserted absent from B's in-dist eval).
+  - Arms: B_GOLD (gold node, GEARS form; the ceiling); B_INHERIT (A's rows inherited with evidence intact, centroid CFs RESET and rebuilt from B's own certified slots, B keeps adding hard evidence); B_EMPTY (empty tree).
+  - TEST split: protagonist = a RESERVED name, streamed in PRIOR mode (no test-time evidence: the tree as it stands), so only inheritance can place a reserved name. TITLES mode is a read.
+- **BARS (3-seed means):**
+  - CONTROL: B_GOLD reserved-split role ≥ 0.95, else VOID.
+  - Q1 INHERITANCE: B_INHERIT reserved role ≥ B_GOLD − 0.01 AND reserved-name node accuracy ≥ 0.99 AND no in-dist cell below B_GOLD − 0.01.
+  - Q2 NO CORRUPTION: zero inherited rows flipped by B's training, all seeds.
+  - Reads: B_EMPTY (reserved role and node), INHERIT − EMPTY, TITLES mode, the walk alone on reserved names, evidence B adds to reserved rows (must be 0: B never sees them).
+- **DISCLOSED UP FRONT:** the reserved node accuracy under inheritance is near-tautological (exact lookup of a correct row). The substantive questions are whether B's resolver, trained without these names, USES the tree's node for them at the ceiling (Q1 role parity), and whether B's training leaves A's knowledge intact (Q2). Provenance replay for centroid rebuild is NOT exercised: B's centroids rebuild from its own certified data, and replaying the reserved rows' examples would put those names into B's text and break the design. Carried.
+- **PREDICTIONS (coordinator, pre-smoke):**
+  - CONTROL OK (~0.995).
+  - Q1 PASS (~0.995).
+  - Q2 PASS (0 flips).
+  - B_EMPTY reserved node ~0.85–0.92 (the walk on unseen surface, T2o/T2p), reserved role ~0.93; INHERIT − EMPTY ≈ +0.06.
+- **SMOKE (1 seed, 150 steps, n 300; .cache/tree_inherit_smoke.txt), read AFTER the predictions:** runs end to end. A's reserved rows are right (~1100 evidence events each). B_INHERIT: 0 rows flipped, 0 evidence added to reserved rows (B never saw them), reserved node 1.000, B's walk alone 0.769. B_EMPTY: reserved node 0.774 (name 13 misplaced under he). Role numbers are undertrained and not read. Fired.
