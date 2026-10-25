@@ -53223,3 +53223,36 @@ Source: .cache/breath_rotor.txt (12000 steps, seeds 0–2, 2761 s). Columns h1�
 - MICRO_MULTI ≈ ROT_MULTI ≈ 1.0, so M2 PASS and M3 FAIL (at matched frequencies the label and the action carry the same information).
 - Margin read: h1 lowest. h5 stays unexplained.
 - T2t smoke OK (10:35; 300 steps, all arms at floor as expected at that length; the T2s-init equality assert passed); fired as systemd unit t2t.
+
+### 2026-10-25 (11:47) — T2t VERDICTS: CONTROL OK, CEILING OK, M1 PASS, M2 PASS, M3 FAIL — multi-speed query rotation orients fully on its own; matched-speed labels do exactly as well
+
+Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
+
+**Task A (pointer chase)**
+
+| arm | acc (seeds) | h1 | h2 | h3 | h4 | h5 | h6 |
+|---|---|---|---|---|---|---|---|
+| ROT60_Q | 0.916 (.956/.937/.854) | **0.63** | 0.95 | 0.99 | 0.98 | 0.98 | 0.97 |
+| MICRO | 1.000 | | | | | | |
+| **ROT_MULTI** | **1.000** (1/1/.999) | 0.999 | | | | | |
+
+**Task B (A A B A B B)**
+
+| arm | acc | trace | step accuracy given a correct prefix, by breath |
+|---|---|---|---|
+| NO_ROT | 0.066 | 0.008 | .90 .91 **.16** .87 **.24** **.32** (follows A always: right on the A breaths) |
+| MICRO | 1.000 | | |
+| MICRO_MULTI | 1.000 | | |
+| ROT60_Q | 1.000 | | |
+| ROT_MULTI | 1.000 | | |
+| UNTIED | 1.000 | | |
+
+- **CONTROL A OK:** T2s reproduced (ROT60_Q 0.916 vs 0.918; MICRO 1.000). **CEILING B OK.**
+- **M1 PASS:** adding speeds closes the single-speed gap. ROT_MULTI 1.000, h1 0.999 against ROT60_Q's 0.63, with no label, rotation alone.
+- **M2 PASS:** the multi-speed rotation runs different operations per breath.
+- **M3 FAIL (+0.000):** at matched speeds the action and the label are indistinguishable.
+- **Prediction miss, and the more informative read:** single-speed arms hit 1.000 on task B. The heads composed arcs, as the registration warned they might. A FIXED per-breath schedule, even a non-arc one, is easy for one speed because the weights bake it in across heads. Single speed struggles only with an EPISODE-DEPENDENT breath rule: the stop at hop h compares the breath with a content value (H_h) inside one score, and the h1 cut has the smallest margin (0.25). Task B did not discriminate between arms; everything with a breath signal saturated.
+- **Margin read:** h1 lowest ✓. h3/h5/h6 are flat at 0.97–0.99, so the margin ordering beyond h1 is not resolved.
+- **PREDICTIONS SCORED:** CONTROL ✓; M1 PASS ✓; NO_ROT trace ≲0.05 ✓ (0.008); single-speed partial on B ✗ (1.000); MULTI ≈ 1.0 ✓; M2 ✓; M3 FAIL ✓; h1 lowest ✓.
+- **READING:** the breath clock works as an ACTION (query rotation) or as a LABEL (stamp). It needs several speeds as either; one speed is not enough for content-dependent breath rules. The "π-cycled" ingredient that matters is the harmonics, not the half circle itself.
+- **CARRIED (needs the word):** the clean snap test (sparse supervision, 12 breaths, extrapolate h 7–12, SNAP vs NOSNAP); a task where the label and the action could differ (e.g. the breath rule must transfer to unseen loop lengths, where a rotation's relative-phase property could matter).
