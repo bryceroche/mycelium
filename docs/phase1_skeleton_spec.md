@@ -53387,3 +53387,35 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
   - **Amendment:** the CONTROL now reads the TRULY AMBIGUOUS in-dist subset (different indices AND both swapped pairings trainable). Smoke values on that subset: ADD 0.475 (chance), BIND 1.000. Every other bar is unchanged.
   - Smoke textures (300 steps, reads only): BIND held-out 1.000; BIND_MLP in-dist 1.000 but held-out 0.006; LEARNED in-dist 0.990, held-out 0.302.
   - Queued as unit t2x behind t2uv and t2w.
+
+### 2026-10-25 (14:37) — T2u VERDICTS: CEILING OK, U1 PASS (rotation transfers to unseen hop counts 0.985 vs label 0.398), U2 PASS (snap holds long chains); T2v VERDICTS: CONTROL OK, V1 PASS, V2 FAIL (a factored flat codebook generalizes as well as the U-Net)
+
+**T2u** (.cache/breath_transfer.txt, 12 breaths, 12000 steps, 3 seeds, 5048 s)
+
+| arm | trained h | HELD h4/h8 (seeds) | h9–11 | h11 | EDGE h12 |
+|---|---|---|---|---|---|
+| MICRO_M (labels) | 0.845 | **0.398** (.573/.092/.529) | | | 0.094 |
+| **ROT_M (rotations)** | 0.980 | **0.985** (.991/.969/.996) | 0.985 | 0.97 | 0.116 |
+| UNTIED | 0.957 | 0.439 (h8 0.25) | | | 0.085 |
+| ROT_M_NOSNAP | 0.927 | 0.979 | **0.783** | **0.39** | 0.114 |
+| ROT_ANS | 0.061 | 0.059 | | | (did not train) |
+| ROT_ANS_NOSNAP | 0.166 | 0.197 | | | (did not train) |
+
+- **U1 PASS:** relative phase transfers. Every offset the held-out hop counts need was trained, and only the rotation exploits that. Labels and per-breath weights learn the (b, h) pairs one by one and fail on the unseen ones. This is the rotation's advantage that the in-distribution tests (T2s/T2t) could not show.
+- **U2 PASS** (snap − nosnap on h9–11 per seed +0.041/+0.273/+0.293). Texture: NOSNAP's loss is concentrated at h11, the longest chain (0.39 vs h9 0.99, h10 0.97); the drift accumulates at the end of the loop.
+- EDGE h12 fails for every arm (offset −12 was never trained): relative phase interpolates, it does not extrapolate. Answer-only training does not bootstrap 12 breaths.
+- **PREDICTIONS:** CEILING ✓; ROT_M held ~0.95 ✓; MICRO_M 0.6–0.85 ✗ (0.398, worse); U1 PASS ✓; U2 FAIL ✗ (PASS: snap matters at length even under trace supervision); ANS do not train ✓; EDGE poor ✓.
+
+**T2v** (.cache/tree_unet.txt, 8×8 tree, 3 breaths, 12000 steps, 3 seeds, 679 s)
+
+| arm | in-dist | HELD-OUT LEAF (seeds) | type | index |
+|---|---|---|---|---|
+| FLAT_FREE | 1.000 | **0.094** (.051/.104/.127) | 0.758 | 0.138 |
+| FLAT_FACTORED | 1.000 | **1.000** | 1.000 | 1.000 |
+| UNET | 1.000 | **1.000** | 1.000 | 1.000 |
+
+- **CONTROL OK. V1 PASS.**
+- **V2 FAIL (+0.000):** with ONE entity per state, a composed codebook (type + index) and a plain residual generalize exactly as well as the forced U-Net. The residual is an adequate skip when nothing else shares the vector.
+- **FLAT_FREE = the cross-join memorizer:** type 0.758 but index 0.138 on unseen leaves, below even the 0.24 stay floor. Per-leaf free centroids cannot address a leaf they never saw.
+- **READING:** what generalizes is the tree's ADDRESS STRUCTURE (leaf = composition of node + position), not the U-Net shape. The U-Net's skip discipline should matter when several entities share one vector, which is the T2x question (queued).
+- **PREDICTIONS:** CONTROL ✓; V1 ✓; FLAT_FREE ~0 ✓ (0.094); FLAT_FACTORED 0.5–0.9 ✗ (1.000); V2 PASS ✗.
