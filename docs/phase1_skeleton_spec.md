@@ -53382,3 +53382,8 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - X1 PASS (~1.0; with 2 pairs the crosstalk is ~1/√64 = 0.125).
 - LEARNED in-dist ~1.0, held-out 0.3–0.8, so X2 PASS (~60% confidence).
 - BIND_MLP between BIND and LEARNED.
+- **T2x smoke (14:32) + AMENDMENT (before any full-length read).** PHYSICS line: aligned rejoin 0.901, worst misaligned 0.060, 1/√P = 0.125.
+  - At 300 steps: ADD scored 0.79 in-dist on pairs with different indices, above its supposed ≤ 0.53. The cause is that the held-out exclusion is itself a pairing prior: a swapped pairing that would be a held pair is "impossible" in training, so the reader learned the cross join. The proof is that ADD falls to 0.29 on held-out pairs.
+  - **Amendment:** the CONTROL now reads the TRULY AMBIGUOUS in-dist subset (different indices AND both swapped pairings trainable). Smoke values on that subset: ADD 0.475 (chance), BIND 1.000. Every other bar is unchanged.
+  - Smoke textures (300 steps, reads only): BIND held-out 1.000; BIND_MLP in-dist 1.000 but held-out 0.006; LEARNED in-dist 0.990, held-out 0.302.
+  - Queued as unit t2x behind t2uv and t2w.

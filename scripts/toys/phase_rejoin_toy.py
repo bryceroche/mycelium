@@ -108,6 +108,9 @@ def run(arm, seed):
             lt, li = net(bt); diff = bt["i"][:, 0] != bt["i"][:, 1]
             ok = li.argmax(-1) == bt["y"]
             r[f"{sp}_acc"] = float(ok.float().mean()); r[f"{sp}_acc_diff"] = float(ok[diff].float().mean())
+            t_, i_ = bt["t"].numpy(), bt["i"].numpy()                      # truly ambiguous: the swapped pairing is ALSO trainable
+            amb = diff & torch.from_numpy(~HELD[t_[:, 0], i_[:, 1]] & ~HELD[t_[:, 1], i_[:, 0]])
+            r[f"{sp}_acc_amb"] = float(ok[amb].float().mean()) if amb.any() else float("nan")
             r[f"{sp}_rule"] = float((lt.argmax(-1) == bt["tq"]).float().mean())
     return r
 
@@ -130,14 +133,15 @@ if __name__ == "__main__":
         rs = [run(arm, s) for s in SEEDS]
         ag = {k: float(np.mean([x[k] for x in rs])) for k in rs[0]}; A[arm] = ag; allres.append(dict(arm=arm, seeds=rs, agg=ag))
         say(f"{arm:9s} in-dist {ag['train_acc']:.3f} (diff-index {ag['train_acc_diff']:.3f}) | HELD-OUT PAIR {ag['held_acc']:.3f} "
-            f"(seeds {[round(x['held_acc'], 3) for x in rs]}; diff-index {ag['held_acc_diff']:.3f}) | rule {ag['held_rule']:.3f}  [{time.time() - t0:.0f}s]")
+            f"(seeds {[round(x['held_acc'], 3) for x in rs]}; diff-index {ag['held_acc_diff']:.3f}) | in-dist ambiguous {ag['train_acc_amb']:.3f} | rule {ag['held_rule']:.3f}  [{time.time() - t0:.0f}s]")
     json.dump(allres, open(OUT.replace(".txt", ".json"), "w"), indent=1)
     if not SMOKE and all(a in A for a in ("ADD", "BIND", "LEARNED")):    # PINNED (ledger 2026-10-25, T2x)
         ad, bi, le = A["ADD"], A["BIND"], A["LEARNED"]
         sd = lambda a: [x["held_acc"] for x in allres[ARMS.index(a)]["seeds"]]
         say("VERDICTS (3-seed means)")
-        c1 = ad["train_acc_diff"] <= 0.6 and bi["train_acc"] >= 0.95
-        say(f"CONTROL: ADD in-dist diff-index {ad['train_acc_diff']:.3f} (ambiguity real if <= 0.6); BIND in-dist {bi['train_acc']:.3f} -> {'OK' if c1 else 'VOID'}")
+        c1 = ad["train_acc_amb"] <= 0.6 and bi["train_acc"] >= 0.95
+        say(f"CONTROL: ADD in-dist truly-ambiguous {ad['train_acc_amb']:.3f} (ambiguity real if <= 0.6; all diff-index {ad['train_acc_diff']:.3f}); "
+            f"BIND in-dist {bi['train_acc']:.3f} -> {'OK' if c1 else 'VOID'}")
         say(f"X1 THE PHASE REJOIN GENERALIZES TO UNSEEN PAIRS: {'PASS' if bi['held_acc'] >= 0.95 else 'FAIL'} (BIND held-out {bi['held_acc']:.3f})")
         d = [a - b for a, b in zip(sd("BIND"), sd("LEARNED"))]
         x2 = bi["held_acc"] - le["held_acc"] >= 0.10 and all(x > 0 for x in d)
