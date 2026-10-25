@@ -53294,3 +53294,4 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
   - FLAT_FREE held-out ~0.
   - FLAT_FACTORED held-out 0.5–0.9: the residual can carry the index, but the flat snap competes with every leaf, and the linear write Ct[σt]−Ct[t] must be learned.
   - V2 PASS, at ~60% confidence.
+- T2u/T2v smokes OK (13:00; 300 steps, floors as expected; T2u relative-phase and distinct-offset asserts passed; T2v leak asserts passed). Smoke note: the held split has a STAY floor of ~0.24 (σ³(t)=t → answer = start), so the FLAT_FREE '~0' prediction should be read against ~0.24; the prediction stands as pinned. Fired back to back as systemd unit t2uv.
