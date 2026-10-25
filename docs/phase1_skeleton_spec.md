@@ -53256,3 +53256,41 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - **PREDICTIONS SCORED:** CONTROL ✓; M1 PASS ✓; NO_ROT trace ≲0.05 ✓ (0.008); single-speed partial on B ✗ (1.000); MULTI ≈ 1.0 ✓; M2 ✓; M3 FAIL ✓; h1 lowest ✓.
 - **READING:** the breath clock works as an ACTION (query rotation) or as a LABEL (stamp). It needs several speeds as either; one speed is not enough for content-dependent breath rules. The "π-cycled" ingredient that matters is the harmonics, not the half circle itself.
 - **CARRIED (needs the word):** the clean snap test (sparse supervision, 12 breaths, extrapolate h 7–12, SNAP vs NOSNAP); a task where the label and the action could differ (e.g. the breath rule must transfer to unseen loop lengths, where a rotation's relative-phase property could matter).
+
+### 2026-10-25 (12:59) — WORD GIVEN ("excellent. Unet to zoom out on the tree. the word given for both -- salute!"): T2u + T2v REGISTERED (CPU, run back to back, alone; predictions written BEFORE the smokes)
+
+**T2u — THE 12-BREATH LOOP: DOES THE ROTATION TRANSFER, DOES THE SNAP HOLD?** (scripts/toys/breath_transfer_toy.py; .cache/breath_transfer.{txt,json})
+- **Mechanism tested: RELATIVE PHASE.** The query is rotated by w·b and the hop token's key by w·h, so the stop score depends on b − h alone (asserted in code). A gear LABEL must learn the (b, h) comparison pair by pair.
+- **Task:** T2s's pointer chase with 12 breaths always. Train h ∈ {1,2,3,5,6,7,9,10,11}. HELD h ∈ {4, 8}: interior, every offset they need was trained. EDGE h = 12: offset −12 never trained, read only.
+- **Speeds:** {180, 60, 30, 15}°/breath. The 15° plane is v109pi's no-wrap sweep; offsets −11..11 get distinct phases (asserted). With periods ≤ 12, offsets +6 and −6 collide.
+- **Arms:** MICRO_M (labels), ROT_M (rotations), UNTIED (+ hop label; the ceiling), ROT_M_NOSNAP, and two answer-only reads, ROT_ANS and ROT_ANS_NOSNAP. Per-breath trace supervision except in the ANS arms; 12000 steps, 3 seeds.
+- **Bars:**
+  - CEILING: UNTIED trained-h ≥ 0.95.
+  - **U1 ROTATION TRANSFERS:** ROT_M held ≥ 0.95 AND ROT_M − MICRO_M held ≥ +0.05.
+  - **U2 SNAP HOLDS LONG CHAINS:** ROT_M h9–11 ≥ h1–3 − 0.03 AND ROT_M − NOSNAP on h9–11 ≥ +0.02, every seed positive.
+  - READ: the ANS arms; EDGE h12.
+- **Predictions:**
+  - CEILING OK.
+  - ROT_M held ~0.95. MICRO_M held partial (~0.6–0.85, fixed gear features may let it interpolate). U1 PASS, at ~55% confidence.
+  - U2 FAIL: NOSNAP ≈ SNAP while trace supervision anchors every breath (T2s).
+  - ANS arms do not train (≤ 0.2; T2s's smoke).
+  - EDGE: all arms poor except possibly ROT_M.
+
+**T2v — THE U-NET BREATH: ZOOM OUT ON THE TREE** (scripts/toys/tree_unet_toy.py; .cache/tree_unet.{txt,json})
+- **Tree:** 8 types × 8 indices = 64 leaves. Each episode's facts are TYPE-level (a permutation σ of the types). Three breaths, each hop (t, i) → (σ t, i); per-breath trace supervision.
+- **Held-out leaves:** (t+i)%4 == 0, 16 of 64. Training never touches them (asserted); the test asks for episodes whose ANSWER is a held-out leaf.
+- **Arms:**
+  - FLAT_FREE: free leaf centroids; the cross-join memorizer. Its held-out leaves are never targets, so ~0 is near-guaranteed (read).
+  - FLAT_FACTORED: flat snap over composed centroids normalize(Ct+Ci); the residual may carry the index.
+  - UNET: compress to the type code, reason and snap at the type level, carry the index pointer on a narrow skip, expand by type logits + index logits.
+- **Bars:**
+  - CONTROL: in-dist UNET and FLAT_FACTORED ≥ 0.95.
+  - **V1:** UNET held-out ≥ 0.95.
+  - **V2 BEYOND A FACTORED FLAT CODEBOOK:** UNET − FLAT_FACTORED held-out ≥ +0.05, every seed positive.
+  - READ: FLAT_FREE.
+- **Predictions:**
+  - CONTROL OK.
+  - V1 PASS (~1.0). By construction the type path never sees the index, so V1 tests that the hierarchy works, not that it was learned.
+  - FLAT_FREE held-out ~0.
+  - FLAT_FACTORED held-out 0.5–0.9: the residual can carry the index, but the flat snap competes with every leaf, and the linear write Ct[σt]−Ct[t] must be learned.
+  - V2 PASS, at ~60% confidence.
