@@ -53176,3 +53176,26 @@ Macro gears are not used, because the facts carry no story time. That is a scope
 - **Amendment 2, unit-norm micro-gear stamp** (pre/post knob law). The stamp was randn/√2, norm ~8 against a unit state, so it outweighed the state 8×. With the fix, at 2000 steps: MICRO 0.323, ROT60_Q 0.255, FULL 0.238 (FULL at h3 0.98, other hops near chance). The shared-weight arms are still mid-learning.
 - **Amendment 3, STEPS 6000 → 12000** (~1 h on CPU) because the shared-weight arms are slow. The bars and predictions above stand as written.
 - Fired at 09:37 as systemd unit t2s.
+
+### 2026-10-25 (10:24) — T2s VERDICTS: PLACEBO OK, CEILING OK; R1 FAIL (rotation alone 0.918), R2 FAIL (+0.000), R3 PASS; the breath LABEL orients, the rotation adds nothing on top of it
+
+Source: .cache/breath_rotor.txt (12000 steps, seeds 0–2, 2761 s). Columns h1–h6 are accuracy by hop count.
+
+| arm | acc (seeds) | h1 | h2 | h3 | h4 | h5 | h6 |
+|---|---|---|---|---|---|---|---|
+| NO_ROT | 0.307 (0.316/0.304/0.303) | 0.18 | 0.26 | 0.15 | 0.18 | 0.06 | 1.00 |
+| ROT_QK (placebo) | 0.308, matching NO_ROT seed for seed | | | | | | |
+| MICRO (label) | **1.000** (1.0/1.0/1.0) | 1 | 1 | 1 | 1 | 1 | 1 |
+| ROT60_Q (rotation) | 0.918 (0.959/0.926/0.869) | **0.65** (seed 2: 0.26) | 0.94 | 0.99 | 0.97 | 0.99 | 0.98 |
+| FULL | 1.000 | 1 | 1 | 1 | 1 | 1 | 1 |
+| UNTIED (ceiling) | 0.997 | | | | | | |
+| FULL_NOSNAP | 1.000 | 1 | 1 | 1 | 1 | 1 | 1 |
+
+- PLACEBO OK (Δ 0.000): rotating q and k together cancels, as Bryce said. CEILING OK.
+- **R1 FAIL:** the query rotation alone DOES orient the loop (+0.61 over NO_ROT, h2–h6 at 0.94–0.99), but it misses the ceiling by 0.079. Its weak cell is h=1 (stop after the first breath), and seed spread is 0.09.
+- **R2 FAIL:** the micro-gear label alone hits 1.000 on every seed, so the rotation adds nothing beyond it (FULL − MICRO = 0.000).
+- **R3 PASS:** FULL holds 1.000 from h1 to h6.
+- **READ, NOSNAP 1.000 — this does NOT refute snap-to-centroid.** Per-breath trace supervision (amendment 1) is itself a per-breath anchor to the centroids, and six hops sit inside the training length. A clean test of the snap needs no per-breath anchor and chains longer than training.
+- **Scope:** every breath here does the SAME operation (follow). The rotation's case — different breaths asking different questions of a fixed memory — is not exercised. On this task the rotation and the label carry the same information, and the label carries it more easily.
+- **PREDICTIONS SCORED:** PLACEBO ✓; CEILING ✓; NO_ROT 0.25–0.35 ✓ (0.307); R1 PASS ✗ (0.918); MICRO ≈ ROT60_Q ✗ (label 1.000 vs rotation 0.918); R2 FAIL ✓; R3 PASS ✓; NOSNAP degrades ✗ (1.000, confounded by trace supervision).
+- **CARRIED (needs the word):** (a) a task where breaths must do DIFFERENT operations (e.g. relation A on some breaths, B on others), the rotation's home turf; (b) the snap test: final-answer or sparse supervision, a longer loop (e.g. 12 breaths, train h ≤ 6, test h 7–12), SNAP vs NOSNAP.
