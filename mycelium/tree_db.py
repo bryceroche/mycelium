@@ -10,6 +10,11 @@ The rulings it encodes (ledger 2026-10-25, T2p/T2q/T2r):
   - CENTROIDS ARE REBUILT PER RUN (never mix generations' coordinates): interior BIRCH cluster features may be cached
     tagged by generation, and a load for any other generation raises.
   - TREE SHAPE persists only with provenance: a node row names the batch that certified it.
+  - THE SPACE GUARD (Bryce's word, 10-25): THE PERMANENT TREE SPEAKS ONLY IN SYMBOLS. Every batch declares a registered
+    SPACE (e.g. 'node-evidence': a distribution over the tree's own node ids) with a fixed dim; only kind='symbolic'
+    spaces may hold events. Model-space vectors (hidden states, head coordinates) never enter the events or leaves --
+    only the generation-tagged CENTROIDS table, which is derived and disposable. So a new model needs no translator:
+    it reads the symbols, re-anchors its own centroids, and writes on probation (provisional -> audition -> promote).
 The breath never queries SQLite: a run loads the leaves into memory (`load_leaves`) and snaps against in-memory centroids."""
 import os, sqlite3, time
 import numpy as np
@@ -18,8 +23,11 @@ DB = os.path.join(os.path.dirname(__file__), "..", ".cache", "tree.db")
 TIERS = ("permanent", "provisional")
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS spaces(
+  name TEXT PRIMARY KEY, kind TEXT NOT NULL, dim INTEGER NOT NULL, meaning TEXT NOT NULL, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS batches(
   batch TEXT PRIMARY KEY, tier TEXT NOT NULL, certifier TEXT NOT NULL, generation TEXT NOT NULL,
+  space TEXT NOT NULL REFERENCES spaces(name),
   note TEXT, created TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'live');      -- live | rolled_back
 CREATE TABLE IF NOT EXISTS events(
   id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT NOT NULL, vec BLOB NOT NULL, source TEXT NOT NULL,
@@ -60,14 +68,42 @@ class TreeDB:
     def close(self):
         self.c.close()
 
+    # ---- spaces (the guard) ----------------------------------------------------------------------------------------
+    def register_space(self, name, kind, dim, meaning):
+        """Declare a value space. Re-registering must match exactly. Only kind='symbolic' spaces may hold events."""
+        assert kind in ("symbolic", "model"), kind
+        with self.c:
+            r = self.c.execute("SELECT kind, dim FROM spaces WHERE name=?", (name,)).fetchone()
+            if r is None:
+                self.c.execute("INSERT INTO spaces VALUES (?,?,?,?,?)", (name, kind, int(dim), meaning, _now()))
+            elif r != (kind, int(dim)):
+                raise ValueError(f"space {name!r} is registered as {r}, not {(kind, int(dim))}")
+
+    def _check_space(self, space, rows):
+        r = self.c.execute("SELECT kind, dim FROM spaces WHERE name=?", (space,)).fetchone()
+        if r is None:
+            raise ValueError(f"space {space!r} is not registered")
+        if r[0] != "symbolic":
+            raise ValueError(f"space {space!r} is a {r[0]} space: the permanent tree speaks only in symbols")
+        bad = [k for k, v, _ in rows if v.shape != (r[1],)]
+        if bad:
+            raise ValueError(f"space {space!r} has dim {r[1]}; rows {bad[:3]} do not")
+
     # ---- evidence -------------------------------------------------------------------------------------------------
-    def add_evidence(self, batch, rows, tier, certifier, generation, note=None):
-        """rows: iterable of (key, vec, source). One batch = one transaction; a batch name is never reused."""
+    def add_evidence(self, batch, rows, tier, certifier, generation, space, note=None):
+        """rows: iterable of (key, vec, source) in a registered SYMBOLIC space. One batch = one transaction; a batch
+        name is never reused; a key lives in one space only."""
         assert tier in TIERS, tier
         rows = [(str(k), np.asarray(v, dtype=np.float64), str(s)) for k, v, s in rows]
+        self._check_space(space, rows)
         with self.c:
-            self.c.execute("INSERT INTO batches(batch, tier, certifier, generation, note, created) VALUES (?,?,?,?,?,?)",
-                           (batch, tier, certifier, generation, note, _now()))
+            clash = self.c.execute(f"""SELECT DISTINCT e.key, b.space FROM events e JOIN batches b ON e.batch=b.batch
+                                       WHERE b.space != ? AND e.key IN ({','.join('?' * len({r[0] for r in rows}))})""",
+                                   (space, *{r[0] for r in rows})).fetchall() if rows else []
+            if clash:
+                raise ValueError(f"keys already live in another space: {clash[:3]}")
+            self.c.execute("INSERT INTO batches(batch, tier, certifier, generation, space, note, created) VALUES (?,?,?,?,?,?,?)",
+                           (batch, tier, certifier, generation, space, note, _now()))
             now = _now()
             self.c.executemany("INSERT INTO events(key, vec, source, batch, recorded) VALUES (?,?,?,?,?)",
                                [(k, _blob(v), s, batch, now) for k, v, s in rows])
@@ -146,6 +182,13 @@ class TreeDB:
     def load_leaves(self):
         """The run's working set: {key: (n, mean)} for every leaf (one query; the breath never touches SQLite)."""
         return {k: (n, _arr(m)) for k, n, m in self.c.execute("SELECT key, n, mean FROM leaves")}
+
+    def batch_rows(self, batch):
+        """[(key, vec, source)] of one batch (e.g. a provisional batch under audition)."""
+        return [(k, _arr(v), s) for k, v, s in self.c.execute("SELECT key, vec, source FROM events WHERE batch=? ORDER BY id", (batch,))]
+
+    def batches(self):
+        return self.c.execute("SELECT batch, tier, certifier, generation, space, status FROM batches ORDER BY created, batch").fetchall()
 
     def provenance(self, key):
         return self.c.execute("""SELECT e.source, e.batch, b.tier, b.certifier, b.generation, e.recorded FROM events e

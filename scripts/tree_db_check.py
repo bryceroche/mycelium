@@ -22,17 +22,18 @@ def expect(db, raw):
 def main():
     rng = np.random.default_rng(0); path = os.path.join(tempfile.mkdtemp(), "tree_check.db")
     db = TreeDB(path); keys = [f"tok{i}" for i in range(12)]; raw = {}; per_batch = {}
+    db.register_space("vec5", "symbolic", 5, "test space: 5-way evidence")
     for b in range(6):                                                      # six permanent batches, overlapping keys
         rows = [(k, rng.normal(size=5) + i, f"ep{b}.m{j}") for j, (i, k) in
                 enumerate((int(i), keys[int(i)]) for i in rng.integers(0, 12, 40))]
-        db.add_evidence(f"B{b}", rows, "permanent", "answer_key", "gen1"); per_batch[f"B{b}"] = rows
+        db.add_evidence(f"B{b}", rows, "permanent", "answer_key", "gen1", "vec5"); per_batch[f"B{b}"] = rows
         for k, v, _ in rows:
             raw.setdefault(k, []).append(v)
     expect(db, raw); print("incremental Welford == numpy over raw events: OK")
     db.rebuild_all(); expect(db, raw); print("rebuild_all == incremental: OK")
 
     prov = [(keys[0], rng.normal(size=5), "test.q1"), (keys[1], rng.normal(size=5), "test.q2")]
-    db.add_evidence("P0", prov, "provisional", "titles", "gen1"); expect(db, raw); print("provisional stays out of the aggregates: OK")
+    db.add_evidence("P0", prov, "provisional", "titles", "gen1", "vec5"); expect(db, raw); print("provisional stays out of the aggregates: OK")
     db.promote("P0")
     for k, v, _ in prov:
         raw[k].append(v)
@@ -50,18 +51,38 @@ def main():
 
     n_ev = db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0]
     try:
-        db.add_evidence("B0", [(keys[0], np.zeros(5), "dup")], "permanent", "answer_key", "gen1"); raise AssertionError("reuse accepted")
+        db.add_evidence("B0", [(keys[0], np.zeros(5), "dup")], "permanent", "answer_key", "gen1", "vec5"); raise AssertionError("reuse accepted")
     except sqlite3.IntegrityError:
         pass
     assert db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0] == n_ev; expect(db, raw2)
     try:                                                                    # a bad row mid-batch must leave nothing behind
-        db.add_evidence("BAD", [(keys[2], np.zeros(5), "ok"), (keys[3], np.zeros(7), "wrong dim")], "permanent", "answer_key", "gen1")
+        db.add_evidence("BAD", [(keys[2], np.zeros(5), "ok"), (keys[3], np.zeros(7), "wrong dim")], "permanent", "answer_key", "gen1", "vec5")
         raise AssertionError("dim mismatch accepted")
-    except AssertionError as e:
-        assert "dim" in str(e), e
+    except (AssertionError, ValueError) as e:                              # the space guard catches it before any write
+        assert "dim" in str(e) and "accepted" not in str(e), e
     assert db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0] == n_ev
     assert db.c.execute("SELECT COUNT(*) FROM batches WHERE batch='BAD'").fetchone()[0] == 0; expect(db, raw2)
     print("reused batch name / bad row mid-batch fail atomically: OK")
+
+    db.register_space("model:gen1", "model", 32, "a model's head coordinates")
+    for args, why in ((("M0", [(keys[0], np.zeros(32), "h")], "permanent", "x", "gen1", "model:gen1"), "model space"),
+                      (("M1", [(keys[0], np.zeros(5), "h")], "permanent", "x", "gen1", "nope"), "unregistered"),
+                      (("M2", [(keys[0], np.zeros(4), "h")], "permanent", "x", "gen1", "vec5"), "wrong dim")):
+        try:
+            db.add_evidence(*args); raise AssertionError(f"{why} accepted")
+        except ValueError:
+            pass
+    db.register_space("vec4", "symbolic", 4, "another symbolic space")
+    try:
+        db.add_evidence("M3", [(keys[0], np.zeros(4), "h")], "permanent", "x", "gen1", "vec4"); raise AssertionError("key in two spaces")
+    except ValueError:
+        pass
+    try:
+        db.register_space("vec5", "symbolic", 6, "redefinition"); raise AssertionError("space redefined")
+    except ValueError:
+        pass
+    assert db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0] == n_ev; expect(db, raw2)
+    print("space guard (model space / unregistered / wrong dim / key in two spaces / redefinition refused): OK")
 
     db.save_centroids("gen1", np.ones(5), rng.normal(size=(5, 32)), np.ones(5))
     assert db.load_centroids("gen1", "gen1")[1].shape == (5, 32)
