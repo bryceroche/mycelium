@@ -53082,3 +53082,31 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - (2) Training a new model against inherited rows corrupts nothing (0 flips) and costs nothing in-distribution (−0.002).
   - (3) A tree with no row for a name falls back on the walk, and a fresh walk is the weakest link (0.70). Whatever rows don't cover still needs test-time hard evidence (TITLES mode restores the ceiling).
 - **CARRIED:** (a) Q1 clean re-read on a split without the true held-out names (~40 min CPU, needs the word); (b) T2r, the certification-volume test (gold resolution vs final-answer vs counterfactual-weighted vs soft/hard tiers), proposed 10-25, needs the word.
+
+### 2026-10-25 (07:46) — WORD GIVEN: T2r REGISTERED — THE VOLUME TEST: WHICH EVIDENCE MAY GROW THE TREE? (scripts/toys/tree_volume_toy.py; .cache/tree_volume.{txt,json}; CPU, alone on the box; predictions written BEFORE the smoke)
+- **Bryce (10-25), THE CORE THEORY under test:** "EVERY data point attached to a correct logic chain is saved to the tree"; "the welford stats should statistically drown out the noise." Also: "should we let the AI save its own internal hunches?"
+- **Method:** T2p's machinery (tree_train_toy, 3 seeds × 4000 steps). The tree is a mandatory road and starts EMPTY, so early nodes are the untrained walk's guesses and early resolver picks are biased by them (the self-confirmation risk is live). Only the training-time CERTIFIER varies:
+  - GOLD_RES — T2p (gold resolution; the clean ceiling; re-run).
+  - **ANSWER_ALL — the core theory:** every title / pronoun evidence event, resolved by the resolver's OWN pick, from every episode whose final answer (both query hops) is right.
+  - ANSWER_PATH — ANSWER_ALL restricted to the two answer records (a structural proxy for counterfactual weighting; disclosed, not the flip).
+  - ANY_ALL — resolver-picked evidence from every episode, no answer filter.
+  - TIERS — hard = gold resolution on a random 10 % of episodes; soft = ANSWER_ALL; a row decides by hard when it has any.
+  - HUNCH — ANSWER_ALL + the walk's posterior saved into the row as an event on every sighting.
+  - Test-time: T2p's TITLES (scored) and PRIOR (read) for every arm.
+- **Instruments:** evidence admitted and its PRECISION (event type = the slot's true node); wrong rows at steps 50 / 200 / 1000 / end; the wrong-node rate the resolver saw in training; final-answer accuracy; hunch disagreement rate.
+- **BARS (3-seed means):**
+  - CONTROL: GOLD_RES held-out role within 0.02 of T2p's 0.996, else VOID.
+  - **V1 FINAL-ANSWER VOLUME GROWS A CLEAN TREE:** ANSWER_ALL ends with 0 wrong rows on every seed AND held-out role ≥ GOLD_RES − 0.01 AND no in-dist cell below GOLD_RES − 0.01.
+  - Everything else is a read.
+- **DISCLOSED UP FRONT:** this toy is data-rich (12 names, thousands of events per row) and its titles are text-anchored with surname-overlap picks. It is a friendly world for volume. A PASS says unbiased volume is safe here; it cannot price volume on rare entities. If ANY_ALL also passes, the toy's resolver is too accurate for the answer filter to matter, and the filter's value stays unmeasured. The answer-path proxy is not a counterfactual flip.
+- **PREDICTIONS (coordinator, pre-smoke):**
+  - CONTROL OK.
+  - **V1 PASS** (titles are unbiased and outvote any early self-confirmed pronouns); precision ~0.97 vs GOLD_RES 1.000; volume ~0.9× GOLD_RES (most answers are right).
+  - ANY_ALL also ends clean (precision ~0.96).
+  - ANSWER_PATH clean with ~1/3 the evidence.
+  - TIERS clean.
+  - HUNCH: clean at the end, but slower to clear early wrong rows (step-50/200 counts ≥ ANSWER_ALL's), because hunches outnumber evidence and early hunches are guesses.
+- **SMOKE (1 seed, 150 steps, n 300; .cache/tree_volume_smoke.txt), read AFTER the predictions:**
+  - Evidence precision: GOLD_RES 1.000; ANSWER_ALL 0.992; ANSWER_PATH 0.999; ANY_ALL 0.977; TIERS 0.999. All five end with 0 wrong rows.
+  - **HUNCH COLLAPSED:** 14 of 18 rows wrong at the end; the resolver saw a wrong node 0.853 of the time; hunches disagree with the truth 0.853; held-out names PRIOR 0.000. Mechanism (coordinator's reading, unverified at full length): the untrained walk's posterior is structurally biased (an empty-centroid level-1 snap splits person mass across he/she, so its argmax is they/it). Hunches outnumber evidence ~5:1, the rows flip, the certified labels that train the walk come from those rows, and the loop closes on itself. The full run decides whether training escapes it.
+  - Role numbers are undertrained and not read. Fired.
