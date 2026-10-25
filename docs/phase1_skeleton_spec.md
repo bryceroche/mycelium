@@ -53222,3 +53222,4 @@ Source: .cache/breath_rotor.txt (12000 steps, seeds 0–2, 2761 s). Columns h1�
 - B: NO_ROT trace accuracy ≲ 0.05. MICRO and ROT60_Q partial (0.3–0.85), with a breath-dependent error pattern on the non-arc breaths; heads may compose arcs.
 - MICRO_MULTI ≈ ROT_MULTI ≈ 1.0, so M2 PASS and M3 FAIL (at matched frequencies the label and the action carry the same information).
 - Margin read: h1 lowest. h5 stays unexplained.
+- T2t smoke OK (10:35; 300 steps, all arms at floor as expected at that length; the T2s-init equality assert passed); fired as systemd unit t2t.
