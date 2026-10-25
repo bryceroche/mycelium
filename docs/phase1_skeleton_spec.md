@@ -53476,3 +53476,21 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - **THE SHARPEST READ, BIND_MLP 0.003:** the SAME phase-bound state read by a learned MLP memorizes completely. **The generalization lives in the unbinding OPERATION (z ⊙ conj(T̂)), not in the bound representation.** The rejoin must be a road (algebra), not a representation handed to a free reader: the mandatory-road law in its binding form.
 - **PREDICTIONS:** CONTROL ✓; X1 ✓; LEARNED held-out 0.3–0.8 ✗ (0.181, worse); X2 PASS ✓; BIND_MLP between BIND and LEARNED ✗ (0.003, the worst arm).
 - **CANDIDATE LAW (toy-scoped):** generalization to unseen combinations requires the composition to be done by fixed algebra (bind / unbind / snap to composed addresses). Any learned reader over the composite memorizes the cross join (T2v FLAT_FREE 0.094, T2x LEARNED 0.181, BIND_MLP 0.003).
+
+### 2026-10-25 (15:59) — T2y VERDICTS: Y1 PASS (snap tension flags honest errors: AUROC 0.953 / 0.816), Y2 PASS (blind to a private code: 0.588) — the orthodontist sees honest confusion and cannot see systematic bias
+
+Read: .cache/breath_tension.txt (12 breaths, 12000 steps, 3 seeds, 2449 s). Primary score = min margin over the breaths.
+
+| arm | acc vs truth | errors | AUROC(error \| −margin) (seeds) | dist | margin right / wrong |
+|---|---|---|---|---|---|
+| ROT_M | 0.909 | 547 (mostly the untrained h12 edge) | **0.953** (.966/.941/.953); held-only 0.983 | 0.956 | 0.312 / 0.069 |
+| MICRO_M | 0.760 | 1437 | **0.816** (.827/.788/.832) | 0.818 | 0.280 / 0.087 |
+| PRIVATE | 0.454 | 3275 | **0.588** (.566/.619/.578) | 0.585 | 0.276 / 0.236 |
+
+- **Y1 PASS:** honest errors arrive with tension; wrong answers sit at margin ~0.07–0.09 against ~0.30 for right ones.
+- **Y2 PASS:** the private code learned (coded episodes 0.384 vs truth; untouched 0.931), and its wrong answers sit at nearly the SAME margin as its right ones (coded 0.250 vs untouched 0.282). Tension cannot see systematic bias. This is the measured reason snap_tension may PRIORITIZE but never ADMIT.
+- **Textures (reads):**
+  - **SETTLE:** ROT_M's margins hold flat across the 12 breaths (0.55 → 0.47). MICRO_M's decay steadily (0.64 → 0.27): a loop that is losing its place shows rising tension breath by breath. The per-breath curve is itself a symptom.
+  - **CONSOLIDATION:** every arm's training-batch margin COLLAPSES first (≈0.02 at step 2000, the max distance peaks ~0.7–0.8), then rises (ROT_M 0.38 by the end). The teeth loosen before they settle.
+- **PREDICTIONS:** MICRO_M ~0.85 / Y1 PASS ✓ (0.816); ROT_M few errors ~✓ (most are the edge); PRIVATE learns the code ✓ (risk did not materialize); Y2 PASS ✓ (0.588); tension falls over training ✓ (after an early collapse I did not predict).
+- **The fence holds as written:** snap_tension stays loss-never and never an admission gate. Sanctioned use is now evidenced: AUROC 0.82–0.95 is good enough to rank audits, rank provisional-batch scrutiny, and trigger a beam at low-margin snaps (when to branch, never which branch wins).
