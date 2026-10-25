@@ -53350,3 +53350,4 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - W2 PASS: B's audition ~1.0 (precision of gold-resolution evidence ≈ 1), saboteur ~0.0.
 - W3 PASS.
 - Reserved role ≈ T2q B_INHERIT's 0.973.
+- T2w smoke OK (14:14; 300 steps, two processes, pids differ): W0 fidelity OK (30,324 events → 18 rows); guards both fire; reserved node 1.000, 0 flipped; audition 1.000 on 14 keys → promoted; saboteur 0.000 → rejected, store unchanged; rebuild == incremental. Queued as unit t2w to start when t2uv ends (CPU toys run alone).
