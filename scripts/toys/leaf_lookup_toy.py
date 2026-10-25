@@ -10,6 +10,8 @@ Codes: contentless fixed random unit phasors (P planes). The key arms differ ONL
   ADD_KEY      key = T_t + I_i (fact keys the same) -- fixed, linear
   ATTN_LINEAR  q = Wq [T_t, I_i], k = Wk [T_f, I_f] -- a plain learned attention (linear maps, bilinear score)
   MLP_KEY      q = MLP([T_t, I_i]), k = MLP([T_f, I_f]) (one shared MLP) -- learned NONLINEAR composition
+  MLP_SPLIT    q = MLPq([T_t, I_i]), k = MLPk([T_f, I_f]) (separate MLPs) -- AMENDMENT after the feasibility read: a SHARED
+               composer on both sides of a lookup is a hash (self-match needs only injectivity), so it cannot memorize
 The read: softmax over the 64 leaf facts -> the row's index code -> snap to the index codebook."""
 import json, math, os, sys, time
 import numpy as np
@@ -18,7 +20,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 SMOKE = "--smoke" in sys.argv
-ARMS = os.environ.get("TZ_ARMS", "BIND_KEY,ADD_KEY,ATTN_LINEAR,MLP_KEY").split(",")
+ARMS = os.environ.get("TZ_ARMS", "BIND_KEY,ADD_KEY,ATTN_LINEAR,MLP_KEY,MLP_SPLIT").split(",")
 NT, NI, P, D, NH, NB = 8, 8, 64, 64, 4, 2
 NL, DH = NT * NI, D // NH
 BATCH, LR = 128, 3e-3
@@ -63,8 +65,10 @@ class Net(nn.Module):
         self.ls = nn.Parameter(torch.tensor(math.log(10.0))); self.lk = nn.Parameter(torch.tensor(math.log(10.0)))
         if arm == "ATTN_LINEAR":
             self.wq, self.wk = nn.Linear(4 * P, D), nn.Linear(4 * P, D)
-        if arm == "MLP_KEY":
+        if arm in ("MLP_KEY", "MLP_SPLIT"):
             self.mk = nn.Sequential(nn.Linear(4 * P, 256), nn.GELU(), nn.Linear(256, 256), nn.GELU(), nn.Linear(256, D))
+        if arm == "MLP_SPLIT":
+            self.mq = nn.Sequential(nn.Linear(4 * P, 256), nn.GELU(), nn.Linear(256, 256), nn.GELU(), nn.Linear(256, D))
 
     def key(self, t, i):
         T, I = TC[t], IC[i]
@@ -73,7 +77,7 @@ class Net(nn.Module):
         if self.arm == "ADD_KEY":
             return ri(T + I) / math.sqrt(2 * P)
         x = torch.cat([ri(T), ri(I)], -1)
-        return self.mk(x) if self.arm == "MLP_KEY" else x
+        return self.mk(x) if self.arm in ("MLP_KEY", "MLP_SPLIT") else x
 
     @staticmethod
     def st(lg, C):
@@ -92,8 +96,8 @@ class Net(nn.Module):
             Tq = torch.einsum("bn,np->bp", ht.to(torch.complex64), TC)
             Iq = torch.einsum("bn,np->bp", hi.to(torch.complex64), IC)
             # bottleneck: the category rule over the type facts (learned attention), snapped to the type codebook
-            Q = self.rq(ri(Tq)).view(Bn, NH, DH); K = self.rk(ri(res)).view(Bn, NT, NH, DH).transpose(1, 2)
-            V = self.rv(ri(TC).expand(Bn, NT, 2 * P)).view(Bn, NT, NH, DH).transpose(1, 2)
+            Q = self.rq(ri(Tq)).view(Bn, NH, DH); K = self.rk(ri(TC).expand(Bn, NT, 2 * P)).view(Bn, NT, NH, DH).transpose(1, 2)
+            V = self.rv(ri(res)).view(Bn, NT, NH, DH).transpose(1, 2)    # fact t -> sigma(t): key the source, read the result
             a = torch.softmax(torch.einsum("bhd,bhld->bhl", Q, K) / math.sqrt(DH), -1)
             r = self.ro(torch.einsum("bhl,bhld->bhd", a, V).reshape(Bn, D))
             lt = F.normalize(r, dim=-1) @ F.normalize(ri(TC), dim=-1).T * self.ls.exp()
@@ -101,7 +105,8 @@ class Net(nn.Module):
             if self.arm in ("BIND_KEY", "ADD_KEY"):
                 q = ri(Tq * Iq) / math.sqrt(P) if self.arm == "BIND_KEY" else ri(Tq + Iq) / math.sqrt(2 * P)
             else:
-                x = torch.cat([ri(Tq), ri(Iq)], -1); q = self.mk(x) if self.arm == "MLP_KEY" else self.wq(x)
+                x = torch.cat([ri(Tq), ri(Iq)], -1)
+                q = self.mk(x) if self.arm == "MLP_KEY" else self.mq(x) if self.arm == "MLP_SPLIT" else self.wq(x)
             sc = q @ fk.T if self.arm in ("BIND_KEY", "ADD_KEY") else F.normalize(q, dim=-1) @ F.normalize(fk, dim=-1).T
             w = torch.softmax(sc * self.lk.exp(), -1)
             li = torch.log(torch.einsum("bl,bln->bn", w, fv) + 1e-6)
@@ -150,7 +155,10 @@ if __name__ == "__main__":
         say("VERDICTS (3-seed means)")
         say(f"CONTROL: BIND_KEY in-dist {bk['train_acc']:.3f} -> {'OK' if bk['train_acc'] >= 0.95 else 'VOID'}")
         say(f"Z1 THE TAG AS A KEY GENERALIZES (fixed binding): {'PASS' if bk['held_acc'] >= 0.95 else 'FAIL'} (BIND_KEY held-out {bk['held_acc']:.3f})")
-        for nm, z in (("ATTN_LINEAR", "Z2 FIXED ALGEBRA BEATS LINEAR LEARNED ATTENTION"), ("MLP_KEY", "Z3 FIXED ALGEBRA BEATS NONLINEAR LEARNED COMPOSITION")):
+        for nm, z in (("ATTN_LINEAR", "Z2 FIXED ALGEBRA BEATS LINEAR LEARNED ATTENTION"), ("MLP_KEY", "Z3 FIXED ALGEBRA BEATS NONLINEAR LEARNED COMPOSITION"),
+                      ("MLP_SPLIT", "Z4 (amendment) FIXED ALGEBRA BEATS SPLIT NONLINEAR COMPOSERS")):
+            if nm not in A:
+                continue
             d = [a - b for a, b in zip(sd("BIND_KEY"), sd(nm))]
             ok = bk["held_acc"] - A[nm]["held_acc"] >= 0.10 and all(x > 0 for x in d)
             say(f"{z}: {'PASS' if ok else 'FAIL'} (BIND_KEY - {nm} held-out {bk['held_acc'] - A[nm]['held_acc']:+.3f}; per seed {[round(x, 3) for x in d]}; "

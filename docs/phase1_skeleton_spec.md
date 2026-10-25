@@ -53529,3 +53529,9 @@ The specimens that memorized all used a learned NONLINEAR combiner over the comp
 - ATTN_LINEAR held-out ~0.9+, so **Z2 FAIL** (a bilinear score on concatenated codes decomposes into per-component terms, which is compositional).
 - MLP_KEY held-out ≤ 0.5, so **Z3 PASS**.
 - If so, the law sharpens to: COMBINE BY ALGEBRA OR LINEARLY; NEVER BY A FREE NONLINEAR READER OF THE COMPOSITE. In SUPERPOSITION (several pairs in one vector, T2x) only binding survives.
+- **T2z smoke + feasibility + AMENDMENT (16:44, before any full-length read; bars Z1–Z3 unchanged).**
+  - **(1) Bug fixed:** the rule step read the type facts in the INVERSE direction, keying the result instead of the source.
+  - **(2) Feasibility (1500 steps, seed 0):** all four registered arms score 1.000 held-out, MLP_KEY included. **Mechanism:** a SHARED composer on both sides of a lookup is a HASH. A held-out address matches its own row's key because both are made by the same function, which needs only injectivity, so it cannot memorize. Z3 will therefore FAIL as designed; it is banked as registered.
+  - **Amendment:** arm MLP_SPLIT, with separate query and key composers (the realistic case: Wq ≠ Wk). New bar **Z4:** BIND − MLP_SPLIT held-out ≥ +0.10, every seed positive. Its feasibility read is in-dist 1.000, held-out 0.102.
+  - **Revised prediction:** Z2 FAIL, Z3 FAIL, Z4 PASS.
+  - Fired as unit t2z.
