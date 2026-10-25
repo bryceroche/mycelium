@@ -52992,3 +52992,21 @@ After the fixes the smoke read 0.49. Nothing else changed.
   - S1 FAIL, low confidence (~0.85). The surface type read of unseen names failed at T2l; the reader is bidirectional and can see later titles and pronouns, which may or may not be enough.
   - S2 PASS (~0.99). The leaf's running mean turns any per-name walk better than chance into a correct node; with only 4 names, one systematically misread name would sink it.
   - NOHAND: GEARS_NOHAND beats SLOT_NOHAND on pron_gender by ≥ 0.05; pron_role ~0.8 in both (sentence ticks cannot order a subject before its same-sentence recipient; any recovery comes from the reader's positions).
+
+### 2026-10-24 (21:35) — T2o VERDICTS: G1 PASS (real gear stamps cost nothing), S1 FAIL (walk 0.834), S2 FAIL (held-out role 0.874; one unseen name confidently misplaced on 2 of 3 seeds, and the upsert locked it in) (.cache/tree_search.{txt,json}; unit t2o, Result=success, 2942 s alone on the box)
+- **CONTROL OK:** GOLD held-out role 0.995 (T2n 0.995), seeds 0.996 / 0.994 / 0.995.
+- **G1 REAL CLOCK IN THE KEY: PASS.** GEARS held-out role 0.995 (0.996 / 0.993 / 0.996); worst in-dist cell delta −0.000. Non-inferiority only, as registered.
+- **S1 THE WALK FINDS THE NODE: FAIL.** Held-out-name slots, per episode, no leaf: **0.834** (seeds 0.774 / 0.961 / 0.767; n 7892). In-dist walk 1.000.
+- **S2 THE UPSERTED TREE: FAIL.** SEARCH held-out role **0.874** (seeds 0.823 / 0.996 / 0.804) vs GEARS 0.995. Leaf node accuracy on held-out names 0.833. Names right per seed: 3/4, 4/4, 3/4.
+- **READS:**
+  - The same SEARCH net scored with the GOLD node: held-out role 0.996. The whole cost is the search.
+  - Walk alone, no leaf: 0.877. The upsert bought **nothing** (leaf 0.833 ≈ walk 0.834).
+  - Vigilance: τ 0.7 is identical to τ 0.5 (undecided 0.000), so the misplaced name sits ABOVE 0.7 confidence. τ 0.9 parks 0.332 of held-out-name slots as undecided and costs role (0.776). The threshold does not separate wrong from right here.
+  - NOHAND (hand rank + role flags removed): pron_gender gears 0.995 / 0.994 vs slot 0.925 / 0.918 (**+0.076**: the clock carries recency on its own). pron_role gears 0.631 / 0.613 vs slot 0.562 / 0.542; neither carries the subject-over-recipient rule.
+- **PREDICTIONS SCORED:** control ✓; G1 PASS ✓; S1 FAIL ~0.85 ✓ (0.834); **S2 PASS ✗**. It failed by the risk named at registration: one systematically misread name sinks it. NOHAND gender gap ≥ 0.05 ✓ (+0.076); role ~0.8 ✗ (0.61 / 0.54).
+- **READING:**
+  - (1) The T6 gear stamps are cleared for the key. They cost nothing where the flags carry time, and where the flags are removed they carry recency on their own (+0.076 on pron_gender). The subject-over-recipient rule is not a clock fact at sentence ticks; it stays with the role flag (the discourse-topic flag, per the port rule).
+  - (2) The search failed in the SAME place as T2l: an unseen name's surface. The walk is perfect on known names and, per seed, misplaces one of the 4 unseen names CONFIDENTLY (above τ 0.7). The reader's slot state reads the name's own embedding, not the later titles and pronouns it could attend to.
+  - (3) **The upsert lesson (the answer to "is growth driven entirely by Welford stats?"): averaging the same biased read N times is not evidence.** The leaf's running mean converged to the walk's own majority, so a systematic misread was locked in, not corrected. Welford is the right ACCUMULATOR, but what it accumulates must be INDEPENDENT, certified observations: a title MR/MS, a resolved pronoun's type, the answer key. Never the walk's re-read of the same surface. This is the custody law applied to tree growth: provisional leaves update from certified evidence only.
+- **SCOPE:** 4 held-out names, 3 seeds. Which name was misplaced was not logged (the nets are not saved). Slot kind stays structural. The certified-evidence upsert is untested.
+- **CARRIED (needs the word):** T2p = the same toy with the leaf UPDATE fed by independent evidence (title tokens and pronouns that the resolver attaches to the slot under certification) instead of the walk's re-read. Bar to be pinned; natural one = held-out role ≥ 0.95 with the walk still the first-sight prior.
