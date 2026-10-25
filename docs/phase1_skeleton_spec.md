@@ -53137,3 +53137,34 @@ Read: .cache/tree_volume.txt (full, 4000 steps, seeds 0-2, 3292 s). Scored mode 
 - **T2q Q1 clean re-read: dropped** ("no need to run T2q because we already know it works"). The registered verdict stays Q1 FAIL with the disclosed design confound; the supporting reads are reserved node 1.000 and TITLES role 0.995.
 - **The architecture, in Bryce's words (condensed):** storage is separate from reasoning. Storage is the permanent tree, a database maintained by Welford stats and BIRCH math. Every data point connected to a correct logic chain updates the running Welford stats (T2r V1, toy-scoped). As the tree matures, new branches are expected to plateau. MHA reads the problem and builds a composite key for each token (slot, T6 clock stamp, tree level). The MLP is discarded and the tree takes its place. Theory: conventional ML memorizes the cross join; this design's advantage is clean binding, unbinding and snap-to-centroid, which keep long chains from degrading the representation space.
 - **Open hunch, not yet registered:** six breaths, each rotating the attention space (not the T6 dims) by 60°, so six turns make one full circle, while the T6 clock lets the model orient across breaths. Design critique and a proposed toy (T2s) are pending Bryce's word.
+
+### 2026-10-25 (09:31) — WORD GIVEN ("wonderful. word given - Salute!"): T2s REGISTERED — THE 60-DEGREE BREATH (scripts/toys/breath_rotor_toy.py; .cache/breath_rotor.{txt,json}; CPU, alone on the box; predictions written BEFORE the smoke)
+
+**Bryce's design (10-25):** (1) rotate ONLY the query, because rotating q and k together cancels; (2) snap-to-centroid prevents degradation of the representation space; (3) the T6 clock tracks both macro and micro steps on SEPARATE gears.
+**Task:** pointer chasing. Each episode is a random permutation over 16 of 48 tree entities, and the query is (start x, hops h in 1..6). Six breaths always run. For h < 6 the loop must FOLLOW on h breaths and STAY on the rest, so it has to know which breath it is on.
+**Reader (every arm):** MHA only, no MLP, 4 heads, D=64. A one-shot reading layer builds the fact memory, which also holds a STAY token and the hop token H_h. Each breath computes state + Wo(attn), then a straight-through hard snap to the entity tree.
+**Arms (3 seeds, 6000 steps):**
+- NO_ROT: the floor; the snapped state cannot carry a counter.
+- ROT_QK: PLACEBO, Q and K rotated together.
+- MICRO: period-6 micro gear stamped on the query input; a LABEL.
+- ROT60_Q: the query alone rotated by 60°×b in every complex plane; an ACTION.
+- FULL: ROT60_Q + MICRO.
+- UNTIED: per-breath weights; the ceiling.
+- FULL_NOSNAP: read only.
+Macro gears are not used, because the facts carry no story time. That is a scope limit of this toy.
+**Bars (pinned):**
+- PLACEBO: |ROT_QK − NO_ROT| ≤ 0.01, else VOID (code).
+- CEILING: UNTIED ≥ 0.95, else VOID (task/regime).
+- **R1 THE ROTATION ORIENTS:** ROT60_Q ≥ UNTIED − 0.02 AND ≥ NO_ROT + 0.30.
+- **R2 ROTATION BEYOND THE LABEL:** FULL − MICRO ≥ +0.02 with every seed positive.
+- **R3 NO DEGRADATION:** FULL acc at h=6 ≥ acc at h=1 − 0.03.
+- READ: FULL_NOSNAP accuracy and its h1→h6 curve.
+**Predictions:**
+- PLACEBO OK.
+- CEILING OK (~0.98).
+- NO_ROT ~0.25–0.35 (it gets h=6 plus coincidences from cycles and self-loops).
+- R1 PASS (~0.97).
+- MICRO ≈ ROT60_Q, both near the ceiling, so R2 FAIL: either signal alone is enough to orient on this clean task.
+- R3 PASS.
+- NOSNAP: lower accuracy, with a downward slope across hops (Bryce's point 2).
+- Risk: shared-weight loops sometimes fail to learn at all (a texture to autopsy, not a verdict).
