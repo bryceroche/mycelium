@@ -53351,3 +53351,34 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - W3 PASS.
 - Reserved role ≈ T2q B_INHERIT's 0.973.
 - T2w smoke OK (14:14; 300 steps, two processes, pids differ): W0 fidelity OK (30,324 events → 18 rows); guards both fire; reserved node 1.000, 0 flipped; audition 1.000 on 14 keys → promoted; saboteur 0.000 → rejected, store unchanged; rebuild == incremental. Queued as unit t2w to start when t2uv ends (CPU toys run alone).
+
+### 2026-10-25 (14:30) — WORD GIVEN ("word given to make this adjustment"): T2x REGISTERED — THE NAZARE REJOIN: RULE AND ID TAG REJOIN IN PHASE (scripts/toys/phase_rejoin_toy.py; .cache/phase_rejoin.{txt,json}; CPU; predictions written BEFORE the smoke)
+
+**Bryce:** the rule (through the bottleneck) and the ID tag (through the skip) must rejoin in phase; aligned they stack, misaligned they cancel.
+- **Mechanism:** phasor binding, T ⊙ I (planewise complex product). Unbinding with the right type lines that pair's tag up in phase, so its planes sum coherently (~P); the other pair's planes have random phases and sum incoherently (~√P). The physics line is printed in the output.
+- **Where it matters (the binding problem):** SEVERAL (type, id) pairs held in ONE vector. Additive superposition T1+I1+T2+I2 is symmetric in the pairing, so no reader can recover who goes with whom.
+- **Prior art in our own ledger:** binding toy v1 found phase-bound q/k never leads a plain transformer on held-out combinations in attention-keyed lookup. That is why this toy tests the SUPERPOSED case, not attention keys.
+
+**Task.**
+- Two entities, distinct types, unordered, held as ONE state. Facts are TYPE-level (a permutation σ). The query is a type u = σ(t_q).
+- The RULE step (MHA over the type facts, then a hard snap to the type codebook) is shared by every arm. The EXPAND step rejoins the recovered type with the state to read i_q.
+- ID codes are contentless random unit phasors, P=64.
+- Held-out pairs (t+i)%4==0 never occur in training; the test queries a held-out pair. 6000 steps, 3 seeds.
+
+**Arms.**
+- ADD: additive state, learned MLP reader. The control: structurally ambiguous, ≤ ~0.53.
+- BIND: bound state; expand = z ⊙ conj(T̂) scored against the tag codes.
+- BIND_MLP: bound state, learned reader (read).
+- LEARNED: a DeepSets learned binding plus learned reader; the cross-join learner.
+
+**Bars.**
+- CONTROL: ADD in-dist (pairs with different indices) ≤ 0.6 AND BIND in-dist ≥ 0.95.
+- **X1:** BIND held-out ≥ 0.95.
+- **X2 PHASE BINDING BEATS LEARNED BINDING ON THE CROSS JOIN:** BIND − LEARNED held-out ≥ +0.10, every seed positive.
+- READ: BIND_MLP.
+
+**Predictions.**
+- CONTROL OK (ADD ≈ 0.5 on pairs with different indices).
+- X1 PASS (~1.0; with 2 pairs the crosstalk is ~1/√64 = 0.125).
+- LEARNED in-dist ~1.0, held-out 0.3–0.8, so X2 PASS (~60% confidence).
+- BIND_MLP between BIND and LEARNED.
