@@ -53494,3 +53494,38 @@ Read: .cache/breath_tension.txt (12 breaths, 12000 steps, 3 seeds, 2449 s). Prim
   - **CONSOLIDATION:** every arm's training-batch margin COLLAPSES first (≈0.02 at step 2000, the max distance peaks ~0.7–0.8), then rises (ROT_M 0.38 by the end). The teeth loosen before they settle.
 - **PREDICTIONS:** MICRO_M ~0.85 / Y1 PASS ✓ (0.816); ROT_M few errors ~✓ (most are the edge); PRIVATE learns the code ✓ (risk did not materialize); Y2 PASS ✓ (0.588); tension falls over training ✓ (after an early collapse I did not predict).
 - **The fence holds as written:** snap_tension stays loss-never and never an admission gate. Sanctioned use is now evidenced: AUROC 0.82–0.95 is good enough to rank audits, rank provisional-batch scrutiny, and trigger a beam at low-margin snaps (when to branch, never which branch wins).
+
+### 2026-10-25 (16:43) — WORD GIVEN ("word given"; read as the word for the carried leaf-specific lookup): T2z REGISTERED — THE ID TAG AS A KEY (scripts/toys/leaf_lookup_toy.py; .cache/leaf_lookup.{txt,json}; CPU; predictions written BEFORE the smoke)
+
+**Bryce's question:** must phase binding be hard-coded, with no freedom for the model?
+
+**Scoping note, before the test:** the candidate law (T2x) is about how things are COMBINED, not about freedom everywhere. Learned parts were present in every winning arm:
+- T2x's rule step was learned attention;
+- T2v FLAT_FACTORED's codebook geometry (Ct, Ci) was learned, under a fixed composition (Ct + Ci);
+- T2u's winner was a fixed relative-phase rotation over learned projections.
+
+The specimens that memorized all used a learned NONLINEAR combiner over the composite: T2v FLAT_FREE 0.094, T2x LEARNED 0.181, BIND_MLP 0.003.
+
+**Open question:** does a learned LINEAR combiner (plain attention, bilinear score) also memorize? Binding toy v1 (attention-keyed lookup) says no, and that is what T2z tests.
+
+**Task.**
+- Each hop maps (t, i) → (σ(t), f(t, i)). The type moves by an episode category rule (learned MHA, snapped: the bottleneck). The index moves by a LEAF fact keyed by the full source address (64 rows per episode, f random per episode).
+- The expand step composes a key from (type from the bottleneck, tag from the skip) and looks up the row.
+- Two hops, trace supervision, contentless phasor codes P=64.
+- Held-out leaves ((t+i)%4==0) are never a hop's source in training (asserted).
+
+**Arms:** BIND_KEY (T⊙I), ADD_KEY (T+I), ATTN_LINEAR (learned Wq/Wk on [T, I]), MLP_KEY (shared learned MLP composer). 6000 steps, 3 seeds.
+
+**Bars.**
+- CONTROL: BIND_KEY in-dist ≥ 0.95.
+- **Z1:** BIND_KEY held-out ≥ 0.95.
+- **Z2 FIXED ALGEBRA BEATS LINEAR LEARNED ATTENTION:** BIND − ATTN_LINEAR held-out ≥ +0.10, every seed positive.
+- **Z3 FIXED ALGEBRA BEATS NONLINEAR LEARNED COMPOSITION:** BIND − MLP_KEY ≥ +0.10, every seed positive.
+- READ: ADD_KEY.
+
+**Predictions.**
+- CONTROL OK; Z1 PASS (~1.0).
+- ADD_KEY ~1.0: with explicit per-row keys, an exact match scores 1 against 0.5 for a shared component, so a sharp softmax resolves it.
+- ATTN_LINEAR held-out ~0.9+, so **Z2 FAIL** (a bilinear score on concatenated codes decomposes into per-component terms, which is compositional).
+- MLP_KEY held-out ≤ 0.5, so **Z3 PASS**.
+- If so, the law sharpens to: COMBINE BY ALGEBRA OR LINEARLY; NEVER BY A FREE NONLINEAR READER OF THE COMPOSITE. In SUPERPOSITION (several pairs in one vector, T2x) only binding survives.
