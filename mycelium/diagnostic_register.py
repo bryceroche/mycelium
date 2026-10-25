@@ -232,6 +232,24 @@ DIAGNOSTICS = {
             "target."
         ),
     },
+    # --- registered 2026-10-25, THE ORTHODONTIST (Bryce's word: "word given for T2y and the
+    # diagnostic"; ledger T2y) ---
+    "snap_tension": {
+        "coupling": "loss-never",
+        "why": (
+            "THE ORTHODONTIST'S READ: how far each breath's snap drags the state -- pre-snap "
+            "distance 1 - cos(state, snapped centroid) and the top1 - top2 centroid margin -- per "
+            "breath (settle), across training (consolidation), across generations (handshake "
+            "readiness). TEMPERATURE-PERPENDICULAR-TO-TRUTH: tension reads basin residency, not "
+            "correctness -- T2r's HUNCH arm built a self-consistent PRIVATE CODE (wrong node 0.866, "
+            "own-terms role 0.988) that a low-tension gate would have ADMITTED. So: never a "
+            "loss/reward term (it would teach confident landing on any centroid), and NEVER an "
+            "admission gate for the permanent tree (the answer key is the only gate; the custody "
+            "law). Sanctioned selection uses (declared at the call site): audit priority, closer "
+            "scrutiny of provisional batches before promotion, rehearsal targeting of "
+            "correct-but-shallow items."
+        ),
+    },
 }
 
 

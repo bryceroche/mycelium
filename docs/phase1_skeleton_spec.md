@@ -53419,3 +53419,31 @@ Read: .cache/breath_multi.txt (12000 steps, seeds 0–2, 4223 s).
 - **FLAT_FREE = the cross-join memorizer:** type 0.758 but index 0.138 on unseen leaves, below even the 0.24 stay floor. Per-leaf free centroids cannot address a leaf they never saw.
 - **READING:** what generalizes is the tree's ADDRESS STRUCTURE (leaf = composition of node + position), not the U-Net shape. The U-Net's skip discipline should matter when several entities share one vector, which is the T2x question (queued).
 - **PREDICTIONS:** CONTROL ✓; V1 ✓; FLAT_FREE ~0 ✓ (0.094); FLAT_FACTORED 0.5–0.9 ✗ (1.000); V2 PASS ✗.
+
+### 2026-10-25 (14:53) — WORD GIVEN ("word given for T2y and the diagnostic -- salute!"): "snap_tension" REGISTERED IN THE GOODHART FENCE; T2y REGISTERED — THE ORTHODONTIST (scripts/toys/breath_tension_toy.py; .cache/breath_tension.{txt,json}; CPU; predictions written BEFORE the smoke)
+
+**The diagnostic** (mycelium/diagnostic_register.py, "snap_tension", coupling loss-never). It reads two things at each breath: the top1−top2 centroid margin and the pre-snap distance.
+- **Never** a loss or reward term.
+- **Never** an admission gate for the permanent tree. The specimen is T2r's HUNCH private code; the answer key is the only gate.
+- **Sanctioned selection uses, declared at the call site:** audit priority, scrutiny of provisional batches, rehearsal of correct-but-shallow items.
+- Verified: the fence fires on loss use, and a declared selection passes.
+
+**T2y.** A read-only instrument on T2u's 12-breath loop.
+- **Primary score (pinned):** episode tension = the MIN margin over the breaths. Read with AUROC(error | −margin).
+- **Secondary:** the max pre-snap distance.
+- **Also logged:** the settle curve per breath, and the consolidation curve on the training batch every 500 steps.
+
+**Arms** (12000 steps, 3 seeds, trace supervision):
+- ROT_M: honest.
+- MICRO_M: honest; fails on held hop counts, so it supplies many honest errors.
+- PRIVATE: ROT_M trained on a systematically relabeled trace. Low-half entities are replaced through a fixed derangement π, a consistent private code in T2r's HUNCH shape. It is judged against the truth.
+
+**Bars:**
+- **Y1 TENSION DETECTS HONEST ERRORS:** MICRO_M AUROC ≥ 0.80, AND ROT_M AUROC ≥ 0.80 or fewer than 30 errors.
+- **Y2 TENSION IS BLIND TO A PRIVATE CODE:** PRIVATE AUROC ≤ 0.65.
+
+**Predictions:**
+- MICRO_M AUROC ~0.85: Y1 PASS (~65%).
+- ROT_M: few errors.
+- PRIVATE: coded episodes wrong against the truth at similar tension, AUROC ~0.5, so Y2 PASS (~80%). Risk: PRIVATE may fail to learn the code (snapping onto π(e) breaks the chain unless the reader learns to invert π).
+- Consolidation: tension falls over training (margins grow).
