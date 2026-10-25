@@ -53535,3 +53535,31 @@ The specimens that memorized all used a learned NONLINEAR combiner over the comp
   - **Amendment:** arm MLP_SPLIT, with separate query and key composers (the realistic case: Wq ≠ Wk). New bar **Z4:** BIND − MLP_SPLIT held-out ≥ +0.10, every seed positive. Its feasibility read is in-dist 1.000, held-out 0.102.
   - **Revised prediction:** Z2 FAIL, Z3 FAIL, Z4 PASS.
   - Fired as unit t2z.
+
+### 2026-10-25 (16:55) — T2z VERDICTS: CONTROL OK, Z1 PASS, Z2 FAIL (linear attention generalizes, 1.000), Z3 PASS (+0.248), Z4 PASS (+0.887) — THE COMPOSITION LAW
+
+Read: .cache/leaf_lookup.txt (6000 steps, 3 seeds, 554 s).
+
+| key composition | in-dist | HELD-OUT SOURCE (seeds) |
+|---|---|---|
+| BIND_KEY (T⊙I, fixed) | 1.000 | **1.000** |
+| ADD_KEY (T+I, fixed) | 1.000 | **1.000** |
+| ATTN_LINEAR (learned Wq ≠ Wk, linear) | 1.000 | **1.000** |
+| MLP_KEY (one shared learned nonlinear composer) | 1.000 | **0.752** (.959/.739/.559) |
+| MLP_SPLIT (separate learned nonlinear composers) | 1.000 | **0.113** (.116/.110/.112) |
+
+- **Z1 PASS:** the ID tag works as a key into leaf-specific rows, on unseen addresses.
+- **Z2 FAIL (+0.000), as predicted:** in an explicit-key lookup, LINEAR learned attention is compositional. The bilinear score decomposes into per-component terms.
+- **Z3 PASS (+0.248).** **My feasibility claim was WRONG at length:** the shared composer was not a safe hash. At 1500 steps it scored 1.000; at 6000 steps it erodes, with wide seed spread. Trained only on seen addresses, it loses injectivity on the unseen ones (collisions). Correction banked.
+- **Z4 PASS (+0.887):** split nonlinear composers memorize the cross join completely.
+- **PREDICTIONS (revised before the run):** CONTROL ✓; Z1 ✓; ADD ~1.0 ✓; Z2 FAIL ✓; Z3 FAIL ✗ (PASS: the hash erodes); Z4 PASS ✓.
+
+**LAW — THE COMPOSITION LAW (2026-10-25; toy-scoped, five toys: T2u, T2v, T2x, T2z, with binding toy v1 concordant).** Generalization to unseen combinations survives only when the combination is done by FIXED ALGEBRA (bind / unbind / relative-phase rotation / composed addresses) or by LINEAR maps whose score decomposes into per-component terms. A learned NONLINEAR combiner that reads, translates or keys the composite memorizes the cross join:
+- split composers 0.113, a shared composer 0.752 (eroding);
+- a learned decoder of a bound vector 0.003;
+- a learned binder 0.181;
+- free per-leaf centroids 0.094.
+
+**In SUPERPOSITION** (several pairs in one vector) **only BINDING survives**; additive falls to chance (T2x 0.507).
+
+**What learning may do:** choose which fact and which rule, shape codebook geometry under a fixed composition, and project linearly into the algebra. **Architectural form:** composition is a road with no learned nonlinear bypass (the mandatory-road law in its binding form).
