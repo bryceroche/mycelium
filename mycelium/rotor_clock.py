@@ -1,5 +1,16 @@
 """rotor_clock.py — THE MASTER CLOCK (2026-08-29; SEXTET CLOCK, word given).
 
+THE T6 CLOCK RULING (2026-10-26, Bryce: "lets make T6 clock the project
+standard"): the breath rotor's STANDARD is the T6 GEAR CLOCK below
+(T6_SPEEDS: six continuous gears, periods 2/6/12/24/48/96 ticks = T^6,
+every gear turning every tick) with the CLOCK-RANGE RULE (check_range: >= 2
+gears whose period exceeds the relative-phase span). New builds take their
+clock from here. The SEXTET tables (phase_of / wheel_table / cycle_*) are
+the LEGACY form, kept bit-identical because banked bodies were trained on
+them (ALG_SIXWAVE door #62 = a period-6 slot<->sentence resonance; the
+research chassis K3/CLK3/SRK3/CRK3 carry it). Evidence: T2m FLAT6 0.906 vs
+GEARS 1.000; T3b six gears landed 10/10 vs four gears 4/8 (ledger).
+
 ONE CLOCK, THREE GEARS, SEPARATE BANDS. This module is the single source
 of truth for every phase table in the three-rotor stack (CLAUDE.md S4;
 docs/rotational_bus.md S0/S5). S2 (recurrent bus) imports its cycle keys
@@ -161,6 +172,42 @@ def aliasing_confusion(P, seed=CYCLE_SEED, trials=64, rng_seed=7):
     return M / trials
 
 
+# ------------------------------------------------- THE T6 GEAR CLOCK (standard)
+T6_SPEEDS = (180.0, 60.0, 30.0, 15.0, 7.5, 3.75)   # deg per tick; periods 2..96
+MIN_ALIAS_FREE = 2      # T3a-AUTOPSY/T3b: one free gear gets out-voted
+
+
+def t6_periods(speeds=T6_SPEEDS):
+    return [360.0 / s for s in speeds]
+
+
+def alias_free(speeds, span):
+    """Gears whose period exceeds the largest |d1 - d2| over `span` distinct
+    relative phases (a gear with period <= span - 1 maps two of them together)."""
+    return [s for s in speeds if 360.0 / s > span - 1]
+
+
+def check_range(speeds, span, minimum=MIN_ALIAS_FREE):
+    """THE CLOCK-RANGE RULE: refuse a clock with < `minimum` alias-free gears."""
+    free = alias_free(speeds, span)
+    if len(free) < minimum:
+        raise ValueError(f"clock-range rule: span {span} needs >= {minimum} "
+                         f"alias-free gears (period > {span - 1}); speeds "
+                         f"{tuple(speeds)} have {len(free)}: {free}")
+    return free
+
+
+def t6_plane_speeds(n_planes, speeds=T6_SPEEDS):
+    """Gears onto rotation planes cyclically (plane p turns at speeds[p % 6])."""
+    return [speeds[p % len(speeds)] for p in range(n_planes)]
+
+
+def t6_phases(tick, n_planes, speeds=T6_SPEEDS):
+    """Per-plane angles (radians) at an integer tick; relative time is
+    t6_phases(s) - t6_phases(now) = t6_phases(s - now) (a rotation)."""
+    return np.radians(np.asarray(t6_plane_speeds(n_planes, speeds)) * tick)
+
+
 # ------------------------------------------------------------- self-tests
 def _selftest():
     # 1. the breath hand is unique across the six loop breaths
@@ -186,6 +233,17 @@ def _selftest():
     assert float(np.trace(M)) / N_LOOP > 0.99, "odometer misreads clean writes"
     # 6. scramble differs from the true table
     assert not np.allclose(scrambled_wheel_table(), wheel_table()), "scramble no-op"
+    # 6b. T6: the four-wave form fails the range rule at NB 12, T6 passes at 12 and 24
+    assert len(alias_free(T6_SPEEDS[:4], 24)) == 1 and len(alias_free(T6_SPEEDS, 24)) == 3
+    check_range(T6_SPEEDS, 48)
+    try:
+        check_range(T6_SPEEDS[:4], 24); raise AssertionError("four-wave passed the range rule")
+    except ValueError:
+        pass
+    # 6c. T6 relative time is a rotation, and the 96-tick loop is unique (no tick repeats)
+    assert np.allclose(np.exp(1j * (t6_phases(9, 8) - t6_phases(4, 8))), np.exp(1j * t6_phases(5, 8)))
+    loop = {tuple(np.round(np.exp(1j * t6_phases(t, 6)), 6)) for t in range(96)}
+    assert len(loop) == 96, "T6 loop repeats inside 96 ticks"
     # 7. the pass wheel advances across passes, wheels 0-1 unmoved
     a, b = phase_of(3, pass_idx=0), phase_of(3, pass_idx=1)
     assert np.allclose(a[:2], b[:2]) and not np.isclose(a[2], b[2]), \

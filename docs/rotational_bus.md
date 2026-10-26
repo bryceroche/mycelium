@@ -17,8 +17,8 @@ by fit with the target:
 **THE THREE-ROTOR STACK (the canon):**
 1. **TOKEN ROTOR** — base trunk RoPE (frozen, vanilla): text-space
    coordinates.
-2. **BREATH ROTOR** — the T^6 GEAR CLOCK (ruling 2026-10-26, `mycelium/clock.py`; supersedes
-   "the T^3 torus clock", a single period-6 wheel read at six phases): six gears AS THE
+2. **BREATH ROTOR** — the T^6 GEAR CLOCK (ruling 2026-10-26, `mycelium/rotor_clock.py` T6_SPEEDS;
+   supersedes the SEXTET "T^3 torus clock": breath hand period 6 + parity + pass wheel): six gears AS THE
    CLOCK, with pi-cycled rotation turning the head's attention space in
    sync with it (multiplicative — geometry, not bias).
 3. **BUS ROTOR** — the T^256-rotation bus (256 planes, D_real=512),

@@ -91,18 +91,22 @@ pure prose at 340 epochs is poison −243 — tune between).
 - **THE COMPATIBILITY RULING (2026-08-29)**: select the most COMPATIBLE
   component family, never the highest per-run scorer. Target = the
   THREE-ROTOR STACK (token rotor: frozen trunk RoPE / breath rotor: the T6
-  GEAR CLOCK (`mycelium/clock.py`; ruling 2026-10-26) + pi-cycled attention
+  GEAR CLOCK (`mycelium/rotor_clock.py`; ruling 2026-10-26) + pi-cycled attention
   rotation in sync / bus rotor: T^256
   phasor binding as an ACTIVE RECURRENT LOOP). Full form:
   `docs/rotational_bus.md` §0. Bars/kills still govern claims; fit governs
   what gets built forward.
 - **THE T6 CLOCK RULING (2026-10-26)**: the breath rotor is six continuous
   gears, 180/60/30/15/7.5/3.75 deg per tick (periods 2..96) = T^6, every gear
-  turning every tick. It replaces the "T^3 six-wave" (one period-6 wheel at
-  six 60-deg phases: T2m FLAT6 0.906 vs GEARS 1.000). CLOCK-RANGE RULE: >= 2
-  gears whose period exceeds the relative-phase span (one free gear gets
-  out-voted: T3a seed 1; T6 landed 10/10 in T3b). The deployed head's
-  ALG_SIXWAVE is non-conforming until a registered run replaces it.
+  turning every tick; single source `mycelium/rotor_clock.py` (T6_SPEEDS,
+  check_range). It supersedes the SEXTET T^3 (breath hand period 6, parity,
+  pass wheel; kept bit-identical as LEGACY for banked bodies). CLOCK-RANGE
+  RULE: >= 2 gears whose period exceeds the relative-phase span (one free
+  gear gets out-voted: T3a seed 1; T6 landed 10/10 in T3b; T2m FLAT6 0.906
+  vs GEARS 1.000). The deployed gen carries NO clock; the research chassis
+  (K3/CLK3/SRK3/CRK3) carries ALG_SIXWAVE (a period-6 slot<->sentence
+  resonance, sw_g ~0.08-0.15): non-conforming, replacement gated on its
+  sever read (headroom corollary).
 - **The binding theorem**: concepts are bindings — not classifiable from surface
   (C2), not recoverable from wiring (Brick-M). Schema recognition is parse-side;
   the graph is frame-free.
