@@ -53689,3 +53689,10 @@ As-printed M reads (3-seed means): M1 held_leaf 0.898 / held_h 0.995 / joint 0.9
 3. **The snap's axis is EDGE, not LONG:** landed NO_SNAP seeds hit 1.000 on every trained-length split and LONG, but EDGE (h=12, beyond training) 0.367 / 0.000 vs MEGAZORD 1.000 on all three seeds. A read, not a bar; it relocates the snap's load to extrapolation.
 
 **Banked:** T3a = CONTROL VOID (seed instability), M3 PASS. Next form (needs the word): the short-hop stop autopsy on a seed-1 re-run (per-breath p_go at h=1..3) before any re-registration; seed-robustness is the bar MEGAZORD must clear next.
+
+### 2026-10-26 (11:09) — WORD GIVEN ("word given for your choice -- Salute!"): T3a-AUTOPSY registered (diagnostic, zero bars bend; predictions pinned before the read)
+
+**T3a-AUTOPSY (scripts/toys/megazord_autopsy.py; CPU).** MEGAZORD re-trained exactly as T3a (same code path, trees read from the banked .cache/megazord_world{A,B}.db), seeds 0, 1, 2; state dicts saved. Read: the clock gate's p_go over the full (h ∈ 1..12, b ∈ 0..11) grid, scored against the rule go ⇔ b < h; the gate as a function of d = h − b; per-speed plane amplitudes |ck_p||cq_p|; the per-h accuracy (does seed 1 reproduce on this box?).
+- **Hypothesis (WRAP):** the clock's slowest plane (15°/breath) has period 24 while d spans −10..+11 (22 values, 2 spare). Seed 1's go region wraps: p_go > 0.5 on stay cells at d ≤ −8 (exactly the cells only h ≤ 3 visit: h=1 reaches d=−10, h=3 reaches d=−8, h=4 only −7).
+- **Predictions:** seed 1 reproduces (h1-3 ≤ 0.3, h ≥ 4 ≥ 0.95); its wrong gate cells are ALL stay cells with d ≤ −8 (go cells all right); seeds 0 and 2 have zero wrong cells. If confirmed, the remedy is the clock's range, not the optimizer: a slower plane (period ≥ 2·NB) gives the step function an unambiguous circle; the remedy run is registered separately with a 5-seed bar.
+- **Kill for WRAP:** seed 1's wrong cells sit elsewhere (go cells, or d > −8), or seed 1 fails for a non-gate reason (gate grid perfect yet accuracy low → the fault is in the content/tree path).
