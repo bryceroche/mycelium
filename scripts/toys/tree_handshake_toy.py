@@ -13,7 +13,7 @@ Two PROCESSES (TW_PHASE=A, then TW_PHASE=B): nothing passes between them but the
   B: a fresh process; per seed, connect; the GUARD must refuse A's centroids and a model-space write; T2q's B_INHERIT run
      with the rows read from the store; B's training evidence -> provisional batch -> audition; a SABOTEUR batch (B's
      events with every node shifted k -> k+1 mod 4) must fail the audition and roll back leaving the store unchanged."""
-import json, os, sys, time
+import json, os, shutil, sys, time
 import numpy as np
 
 _argv = sys.argv[:]
@@ -25,7 +25,7 @@ from mycelium.tree_db import TreeDB
 
 T, O, K = Q.T, Q.O, Q.K
 PHASE = os.environ["TW_PHASE"]
-SUF = "_smoke" if K.mode == "smoke" else ""
+SUF = ("_smoke" if K.mode == "smoke" else "") + os.environ.get("TW_TAG", "")   # TW_TAG=_v2: the tree_db v2 re-run (D4)
 OUT = f".cache/tree_handshake{SUF}.txt"
 DBP = ".cache/tree_handshake{}_s{}.db"
 AJSON = f".cache/tree_handshake{SUF}_A.json"
@@ -59,9 +59,12 @@ def onehot(k):
 def open_db(seed, fresh):
     p = DBP.format(SUF, seed)
     if fresh:
-        assert K.mode == "smoke" or not os.path.exists(p), f"refusing to overwrite {p}"
-        if os.path.exists(p):
-            os.remove(p)
+        assert K.mode == "smoke" or not (os.path.exists(p) or os.path.exists(p + ".events")), f"refusing to overwrite {p}"
+        for q in (p, p + "-wal", p + "-shm"):
+            if os.path.exists(q):
+                os.remove(q)
+        if os.path.isdir(p + ".events"):
+            shutil.rmtree(p + ".events")
     db = TreeDB(p)
     db.register_space(SPACE, "symbolic", 4, "Welford evidence over the tree's 4 leaf-level nodes (he/she/they/it)")
     return db

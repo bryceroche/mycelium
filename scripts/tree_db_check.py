@@ -49,18 +49,18 @@ def main():
         raw2.setdefault(k, []).append(v)
     expect(db, raw2); print("rollback == the batch never existed: OK")
 
-    n_ev = db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+    n_ev = db.n_events()
     try:
         db.add_evidence("B0", [(keys[0], np.zeros(5), "dup")], "permanent", "answer_key", "gen1", "vec5"); raise AssertionError("reuse accepted")
     except sqlite3.IntegrityError:
         pass
-    assert db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0] == n_ev; expect(db, raw2)
+    assert db.n_events() == n_ev; expect(db, raw2)
     try:                                                                    # a bad row mid-batch must leave nothing behind
         db.add_evidence("BAD", [(keys[2], np.zeros(5), "ok"), (keys[3], np.zeros(7), "wrong dim")], "permanent", "answer_key", "gen1", "vec5")
         raise AssertionError("dim mismatch accepted")
     except (AssertionError, ValueError) as e:                              # the space guard catches it before any write
         assert "dim" in str(e) and "accepted" not in str(e), e
-    assert db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0] == n_ev
+    assert db.n_events() == n_ev
     assert db.c.execute("SELECT COUNT(*) FROM batches WHERE batch='BAD'").fetchone()[0] == 0; expect(db, raw2)
     print("reused batch name / bad row mid-batch fail atomically: OK")
 
@@ -81,7 +81,7 @@ def main():
         db.register_space("vec5", "symbolic", 6, "redefinition"); raise AssertionError("space redefined")
     except ValueError:
         pass
-    assert db.c.execute("SELECT COUNT(*) FROM events").fetchone()[0] == n_ev; expect(db, raw2)
+    assert db.n_events() == n_ev; expect(db, raw2)
     print("space guard (model space / unregistered / wrong dim / key in two spaces / redefinition refused): OK")
 
     db.save_centroids("gen1", np.ones(5), rng.normal(size=(5, 32)), np.ones(5))
@@ -96,7 +96,18 @@ def main():
     assert [r[3] for r in db.nodes()] == ["root", "person"]
     pv = db.provenance(keys[0]); assert pv and all(len(r) == 6 for r in pv)
     print(f"shape + provenance: OK ({len(pv)} events behind {keys[0]}; e.g. {pv[0]})")
-    db.close(); os.remove(path); print("ALL CHECKS PASS")
+    snap = {k: (db.c.execute("SELECT mean, m2 FROM leaves WHERE key=?", (k,)).fetchone()) for k in db.load_leaves()}
+    db.rebuild_all()
+    assert snap == {k: (db.c.execute("SELECT mean, m2 FROM leaves WHERE key=?", (k,)).fetchone()) for k in db.load_leaves()}
+    print("rebuild_all from the cold events == incremental, bit-exact: OK")
+    bid = db.c.execute("SELECT bid FROM batches WHERE batch='B0'").fetchone()[0]; p = db._cold_path(bid)
+    good = open(p, "rb").read(); open(p, "wb").write(good[:-9] + bytes(9))  # tamper with one live batch's cold file
+    try:
+        db.rebuild_all(); raise AssertionError("tampered cold file accepted")
+    except ValueError as e:
+        assert "SHA-256" in str(e), e
+    open(p, "wb").write(good); db.rebuild_all(); print("a tampered cold file fails the audit loudly: OK")
+    db.close(); print("ALL CHECKS PASS")
 
 
 if __name__ == "__main__":
