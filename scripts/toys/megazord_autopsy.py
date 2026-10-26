@@ -8,6 +8,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+os.environ.setdefault("TM_CLOCK", "180,60,30,15")                        # T3a's four-wave clock (the toy's default is now T6)
 import megazord_toy as M
 from mycelium import tree_db as TDB
 

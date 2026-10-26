@@ -22,6 +22,7 @@ from multiprocessing import get_context
 import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+from mycelium import clock as CK
 from mycelium import tree_db as TDB
 
 SMOKE = "--smoke" in sys.argv
@@ -39,7 +40,9 @@ if NB == 24:                                                                # T3
 assert NB in (12, 24)
 SPEEDS = (180.0, 60.0, 30.0, 15.0)
 SUF = ("_smoke" if SMOKE else "") + os.environ.get("TM_TAG", "")
-CLOCK = tuple(float(x) for x in os.environ.get("TM_CLOCK", ",".join(map(str, SPEEDS))).split(","))   # the clock head's planes (T3b)
+CLOCK = tuple(float(x) for x in os.environ["TM_CLOCK"].split(",")) if "TM_CLOCK" in os.environ else CK.T6_SPEEDS   # the clock head's planes
+if "TM_CLOCK" not in os.environ:                                            # THE T6 CLOCK RULING (2026-10-26): the standard, range-checked
+    CK.check_range(CLOCK, 2 * NB)                                           # (T3a replays pass TM_CLOCK=180,60,30,15 explicitly)
 OUT = f".cache/megazord{SUF}.txt"
 DBP = ".cache/megazord{}_world{}.db"
 SPACE, NOISE, N_HARVEST, SHARDS, AUDIT = "leaf-fact", 0.2, (4000 if SMOKE else 20000), 8, 0.99
