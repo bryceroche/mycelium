@@ -53606,3 +53606,32 @@ Read: .cache/tree_db_v2_bench.txt (36 s, pid 54967) + scripts/tree_db_check.py.
 - W0 fidelity [True ×3] (~406k events, 82 permanent batches → 18 rows per seed); W1 reserved node 1.000 ×3, 0 rows flipped; W2 B audition 1.000 ×3 → promoted, saboteur 0.000 ×3 → rejected, store unchanged, rebuild == incremental; W3 guards fire ×3.
 - Store per seed after both phases: 0.22 MB working DB + 2.5 MB cold events (v1: ~152 MB).
 - **TREE_DB v2 STANDS: D0 D1 D3 D4 PASS, D2 FAIL (banked; compaction = fix 5, held, now motivated by the measured rollback slope in batches-per-key).** The banked v1 T2w read and stores are untouched; v1 stores open only through migrate_v1 (TreeDB refuses a v1 file).
+
+### 2026-10-26 (07:38) — WORD GIVEN ("word given for the compaction fix and Megazord integrated test -- salute!"): COMPACTION (tree_db fix 5) and T3a MEGAZORD registered (bars pinned BEFORE any measurement)
+
+**COMPACTION.** checkpoints(key → upto_bid, n, mean, m2, first_seen): the Chan accumulator of a key's live permanent summaries with bid ≤ upto. A leaf = checkpoint ⊕ the tail (summaries with bid > upto), folded in bid order. A left fold resumed from its intermediate accumulator is the same arithmetic, so it is BIT-EXACT to the full fold, not merely close. Auto-compaction: when a key's tail exceeds TAIL_MAX = 32, its checkpoint advances to leave the newest TAIL_KEEP = 16 in the tail. A write that reaches INTO a checkpoint (rolling back a compacted batch, or promoting a provisional batch whose bid ≤ upto) drops the checkpoint for the keys it touches and refolds them in full (the slow path: rare, correct). Events and summaries are never deleted. rebuild_all drops every checkpoint, refolds in full, and must reproduce the stored leaves bit-exactly.
+- **C1 SCALING (D2 re-scored on v2+compaction):** the D2 grid (10k → 100k → 1M events in batches of 10k): rolling back the newest 1-event batch and adding a 1-event batch, t(1M) / t(10k) ≤ 3 each.
+- **C2 EQUIVALENCE:** 400 random operations (add permanent / add provisional / promote / roll back, including rollbacks of COMPACTED batches and promotions of old provisionals) on a store with compaction and a twin without it (TAIL_MAX = ∞): the leaves are bit-identical after every operation, and rebuild_all agrees.
+- **C3 REGRESSION:** tree_db_check passes; the bench's D1 and D3 still pass.
+- Prediction: C1 PASS (tail ≤ 32 regardless of history), C2 PASS, C3 PASS.
+
+**T3a MEGAZORD — THE INTEGRATED MACHINE (scripts/toys/megazord_toy.py; CPU).** One loop with every organ the day's toys passed, each with its own held-out axis.
+- **World:** a tree of 8 types × 8 indices = 64 leaves. A leaf's FACT f(t, i) ∈ indices is PERMANENT world knowledge. It lives ONLY in the tree (tree_db v2, key "t:i" → Welford evidence over the 8 indices); no model ever sees f except through the rows.
+- **Episode:** an in-context type RULE σ (a random derangement of the 8 types: type-level facts, read by MHA), a start leaf (t, i), a hop count h ∈ 1..12; 12 breaths; breath b < h moves (t, i) → (σ(t), f(t, i)), else stays. Per-breath trace supervision on (type, index).
+- **Organs (MEGAZORD arm):**
+  - the BOTTLENECK: MHA over [type facts, stay, hop] at the TYPE level, the query rotated at speeds (180, 60, 30, 15)°/breath and the hop token's key rotated by its count h (T2u relative phase), snapped to the type codebook every breath (hard straight-through);
+  - the SKIP carries only the ID tag (the index code);
+  - the EXPAND: the source address composed by FIXED BINDING (type code ⊙ tag code, planewise phasors, P = 64) keys the tree's 64 leaf rows (keys composed the same way); the row's mean is read and snapped to the index codebook (T2z BIND_KEY);
+  - the GATE is algebra, not learned: σ has no fixed points, so the tag moves iff the type moved (g = 1 − p(type unchanged));
+  - the TREE is grown only on judged evidence (below), read once per run (load_leaves), never in a loss;
+  - the PERCEIVER logs snap tension per breath (registered loss-never; assert_not_supervised at the door).
+- **The tree's harvest (tree_db v2, MapReduce shape):** 20,000 episodes observed by a NOISY reader (each hop's observed target is wrong with probability 0.2); an episode's facts are written ONLY if its observed final answer matches the answer key (Bryce: "every data point connected to a correct logic chain updates Welford"). 8 shards are prepared in 8 processes (prepare_shard) and committed as permanent batches; then a SABOTEUR shard (every target shifted j → j+1) enters provisional and must fail its audition.
+- **Splits (generated from the world's truth):** in-dist (trained h, no held source); HELD_LEAF (trained h, ≥1 hop SOURCE in the held leaves (t + i) % 4 == 0, which never source a hop in training; their rows ARE in the tree); HELD_H (h ∈ {4, 8}); JOINT (both); SWAP (a SECOND world f' with its own harvested tree, all h ∈ 1..11: the same trained weights, a new tree); LONG = in-dist h ∈ {9, 10, 11}; EDGE h = 12 (read).
+- **Arms (12,000 steps, 3 seeds):** MEGAZORD; NO_ROT (gear LABELS on the query and hop token instead of rotations: T2u MICRO_M); NO_SNAP (the soft state passes; no snap); MLP_SPLIT (the address composed by separate learned nonlinear composers for query and key: T2z Z4); MLP_MEM (NO TREE: an MLP maps (type code, tag code) → index distribution and must memorize the facts in its weights: the traditional FFN).
+- **Bars (pinned):**
+  - CONTROL: MEGAZORD in-dist ≥ 0.95.
+  - **M1 THE MACHINE COMPOSES:** MEGAZORD ≥ 0.95 on each of HELD_LEAF, HELD_H, JOINT and SWAP.
+  - **M2 EVERY ORGAN IS LOAD-BEARING ON ITS AXIS** (MEGAZORD − arm ≥ 0.10, every seed positive): NO_ROT on HELD_H; MLP_SPLIT on HELD_LEAF; MLP_MEM on SWAP; NO_SNAP on LONG (bar ≥ 0.05, every seed positive; T2u measured 0.20).
+  - **M3 THE TREE'S CUSTODY:** the answer-filtered tree's argmax is right on ≥ 63/64 keys in both worlds; the saboteur shard is rejected and the store is unchanged; the 8-shard build is bit-identical to a serial build.
+  - READS: the admit-all tree's accuracy (random reader noise should average out, T2r); admitted fraction; tension AUROC on MEGAZORD's errors; EDGE.
+- **Predictions:** CONTROL ✓; M1 PASS on HELD_LEAF, HELD_H, SWAP; JOINT the riskiest, PASS; M2 PASS on NO_ROT, MLP_SPLIT and MLP_MEM; NO_SNAP the most uncertain (12 breaths with a coupled two-path state may need the snap more, not less: PASS); M3 PASS. The headline read: MLP_MEM matches MEGAZORD in-dist and collapses on SWAP and HELD_LEAF. That is "the MLP is discarded in favour of the tree" measured.
