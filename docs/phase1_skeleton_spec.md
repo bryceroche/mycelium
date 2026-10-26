@@ -53563,3 +53563,8 @@ Read: .cache/leaf_lookup.txt (6000 steps, 3 seeds, 554 s).
 **In SUPERPOSITION** (several pairs in one vector) **only BINDING survives**; additive falls to chance (T2x 0.507).
 
 **What learning may do:** choose which fact and which rule, shape codebook geometry under a fixed composition, and project linearly into the algebra. **Architectural form:** composition is a road with no learned nonlinear bypass (the mandatory-road law in its binding form).
+
+### 2026-10-25 (17:08) — CHAPTER BOUNDARY: blog post LIVE; binding-comprehension fast-forwarded into main
+
+- **Post:** "Where the Freedom Ends" (site/blog/2026-10-25-where-the-freedom-ends.md), deployed with the recipe (build_site → wrangler pages deploy --branch=main). Verified HTTP 200 at theshapeofthought.ai/blog/2026-10-25-where-the-freedom-ends/ and listed on /blog/.
+- **Main:** a fast-forward of binding-comprehension (main was a strict ancestor; 388 commits, mostly additive scripts, toys and docs; the mycelium/ core changes are tree_db, diagnostic_register, sibling_fence and small edits). Pushed. Bryce: "merge into main if you think that is correct."
