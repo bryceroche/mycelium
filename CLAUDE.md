@@ -105,8 +105,11 @@ pure prose at 340 epochs is poison −243 — tune between).
   gear gets out-voted: T3a seed 1; T6 landed 10/10 in T3b; T2m FLAT6 0.906
   vs GEARS 1.000). The deployed gen carries NO clock; the research chassis
   (K3/CLK3/SRK3/CRK3) carries ALG_SIXWAVE (a period-6 slot<->sentence
-  resonance, sw_g ~0.08-0.15): non-conforming, replacement gated on its
-  sever read (headroom corollary).
+  resonance, sw_g ~0.08-0.15): non-conforming but a PASSENGER (sever
+  read 10-26: sw_g->0 and the sextet clock-band sever both < 0.010 paired
+  on SRK3/CLK3), so NO replacement run; T6 enters the head with a job
+  that needs range (loop > 6 breaths, multi-pass; T3d: the snap/clock's
+  job grows with depth).
 - **The binding theorem**: concepts are bindings — not classifiable from surface
   (C2), not recoverable from wiring (Brick-M). Schema recognition is parse-side;
   the graph is frame-free.

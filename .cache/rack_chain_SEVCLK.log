@@ -1,0 +1,14 @@
+== start 15:35 ==
+masked wild open_SRK3_241: fac-exact=0.3774 | [fields] pres=0.920(2051) ftype=0.861(2051) res=0.819(2051) dig=0.518(1009) exact=0.377(2051) op=0.734(1042) args=0.443(1042) [15:36]
+masked wild sw0_SRK3_241: fac-exact=0.3784 | [fields] pres=0.919(2051) ftype=0.861(2051) res=0.819(2051) dig=0.522(1009) exact=0.378(2051) op=0.730(1042) args=0.440(1042) [15:36]
+masked wild clockband_SRK3_241: fac-exact=0.3749 | [fields] pres=0.923(2051) ftype=0.857(2051) res=0.811(2051) dig=0.522(1009) exact=0.375(2051) op=0.735(1042) args=0.421(1042) [15:36]
+PAIRED SRK3_241 open vs banked 10-15: [paired-read] n=2051 slots | today 0.3774 | banked 0.3774 | diff +0.0000 | discordant: right only under today = 0, only under banked = 0, both 774 | paired SE 0.0000 | McNemar z +0.00
+PAIRED SRK3_241 SW0: [paired-read] n=2051 slots | open 0.3774 | sw0 0.3784 | diff -0.0010 | discordant: right only under open = 4, only under sw0 = 6, both 770 | paired SE 0.0015 | McNemar z -0.63
+PAIRED SRK3_241 CLOCKBAND: [paired-read] n=2051 slots | open 0.3774 | clockband 0.3749 | diff +0.0024 | discordant: right only under open = 32, only under clockband = 27, both 742 | paired SE 0.0037 | McNemar z +0.65
+masked wild open_CLK3_241: fac-exact=0.3793 | [fields] pres=0.914(2051) ftype=0.860(2051) res=0.806(2051) dig=0.515(1009) exact=0.379(2051) op=0.744(1042) args=0.435(1042) [15:36]
+masked wild sw0_CLK3_241: fac-exact=0.3788 | [fields] pres=0.913(2051) ftype=0.859(2051) res=0.804(2051) dig=0.515(1009) exact=0.379(2051) op=0.744(1042) args=0.434(1042) [15:36]
+masked wild clockband_CLK3_241: fac-exact=0.3735 | [fields] pres=0.908(2051) ftype=0.857(2051) res=0.804(2051) dig=0.510(1009) exact=0.373(2051) op=0.740(1042) args=0.428(1042) [15:37]
+PAIRED CLK3_241 open vs banked 10-15: [paired-read] n=2051 slots | today 0.3793 | banked 0.3793 | diff +0.0000 | discordant: right only under today = 0, only under banked = 0, both 778 | paired SE 0.0000 | McNemar z +0.00
+PAIRED CLK3_241 SW0: [paired-read] n=2051 slots | open 0.3793 | sw0 0.3788 | diff +0.0005 | discordant: right only under open = 3, only under sw0 = 2, both 775 | paired SE 0.0011 | McNemar z +0.45
+PAIRED CLK3_241 CLOCKBAND: [paired-read] n=2051 slots | open 0.3793 | clockband 0.3735 | diff +0.0059 | discordant: right only under open = 35, only under clockband = 23, both 743 | paired SE 0.0037 | McNemar z +1.58
+== done 15:37 ==

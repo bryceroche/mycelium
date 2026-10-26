@@ -53790,3 +53790,21 @@ The organ effect survives on landed seeds, so M2c's PASS is not only learnabilit
 
 **READ:** NO_SNAP lands **0/5** at NB = 24 (in-dist 0.047–0.091; its gates scrambled, stays max up to 0.895). So at depth the snap is load-bearing for LEARNING the 24-breath loop at all, not specifically for LONG extrapolation; the S1 margin is mostly an in-dist failure. That reverses T3b's NB = 12 reading ("snap not load-bearing", E1 FAIL) by regime: **the snap's job grows with loop depth** (regime tag: toy, MHA breathing loop, NB 12 → 24).
 **MIN_ALIAS_FREE = 2 holds:** T6 at its floor gives clean gates on all 5 seeds.
+
+### 2026-10-26 (15:38) — THE CLOCK SEVER READS: VERDICTS (masked wild, n = 2051 slots, paired; .cache/rack_chain_SEVCLK.log, .cache/ps_sevclk_*.npz)
+
+**Drift check:** today's OPEN reads equal the banked 10-15 reads slot-for-slot on both bodies (SRK3_241 0.3774, CLK3_241 0.3793; diff +0.0000, 0 discordant), so the read is straight-to-straight.
+
+| Body | SW0 (open − sever) | CLOCKBAND (open − sever) |
+|---|---|---|
+| SRK3_241 | −0.0010 (paired SE 0.0015; 4 vs 6 discordant) | +0.0024 (SE 0.0037; 32 vs 27) |
+| CLK3_241 | +0.0005 (SE 0.0011; 3 vs 2) | +0.0059 (SE 0.0037, z +1.58; 35 vs 23) |
+
+**SW0: PASSENGER on both** (< 0.010). Prediction ✓. ALG_SIXWAVE's slot↔sentence resonance moves 5–10 slots out of 2051.
+**CLOCKBAND: PASSENGER on both** (< 0.010). Prediction BETWEEN ✗. The CLK3 sign leans positive (z 1.58) but is inside the line; at K3's 3 loop breaths the sextet clock carries almost nothing (PMS8_241 at 7 breaths read 0.011).
+**Decisions (pinned 14:13, applied):**
+- No replacement run for door #62.
+- The breath rotor's T6 port waits for a loop > 6 breaths or multi-pass.
+- CLAUDE.md §4 updated in this transaction (the old clock is a non-conforming PASSENGER; T6 enters with a job that needs range).
+
+**Tie to T3d (15:36):** in the toy, the snap/clock became load-bearing only at depth (NB 24). The chassis at K3 has no depth for a clock to serve. Both reads point the same way: the clock earns its keep when the loop is long.
