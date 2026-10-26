@@ -1,0 +1,35 @@
+MEGAZORD  s0: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.022, go min 0.681
+MEGAZORD  s1: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.019, go min 0.688
+MEGAZORD  s2: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.016, go min 0.660
+MEGAZORD  s3: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.018, go min 0.714
+MEGAZORD  s4: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.018, go min 0.641
+NO_SNAP   s0: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.019, go min 0.799
+NO_SNAP   s1: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.022, go min 0.775
+NO_SNAP   s2: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.020, go min 0.835
+NO_SNAP   s3: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.020, go min 0.834
+NO_SNAP   s4: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.018, go min 0.849
+NO_ROT    s0: indist 0.378 held_leaf 0.329 held_h 0.193 joint 0.092 swap 0.294 long 0.224 edge 1.000 | tension AUROC 0.639 | gate: stays max 0.999, go min 0.516
+NO_ROT    s1: indist 0.668 held_leaf 0.658 held_h 0.090 joint 0.062 swap 0.553 long 0.950 edge 1.000 | tension AUROC 0.578 | gate: stays max 1.000, go min 0.000
+NO_ROT    s2: indist 0.448 held_leaf 0.425 held_h 0.153 joint 0.092 swap 0.380 long 0.242 edge 1.000 | tension AUROC 0.492 | gate: stays max 0.975, go min 0.438
+NO_ROT    s3: indist 0.906 held_leaf 0.895 held_h 0.500 joint 0.500 swap 0.827 long 0.717 edge 0.000 | tension AUROC 0.780 | gate: stays max 0.989, go min 0.029
+NO_ROT    s4: indist 0.377 held_leaf 0.349 held_h 0.220 joint 0.108 swap 0.313 long 0.211 edge 1.000 | tension AUROC 0.623 | gate: stays max 0.973, go min 0.069
+MLP_SPLIT s0: indist 0.302 held_leaf 0.064 held_h 0.223 joint 0.053 swap 0.075 long 0.293 edge 0.307 | tension AUROC 0.711 | gate: stays max 0.035, go min 0.245
+MLP_SPLIT s1: indist 1.000 held_leaf 0.277 held_h 1.000 joint 0.307 swap 0.106 long 1.000 edge 1.000 | tension AUROC 0.765 | gate: stays max 0.009, go min 0.570
+MLP_SPLIT s2: indist 1.000 held_leaf 0.313 held_h 1.000 joint 0.333 swap 0.119 long 1.000 edge 1.000 | tension AUROC 0.652 | gate: stays max 0.017, go min 0.555
+MLP_SPLIT s3: indist 0.267 held_leaf 0.037 held_h 0.210 joint 0.038 swap 0.065 long 0.260 edge 0.300 | tension AUROC 0.812 | gate: stays max 0.046, go min 0.368
+MLP_SPLIT s4: indist 0.688 held_leaf 0.156 held_h 0.662 joint 0.145 swap 0.122 long 0.679 edge 0.757 | tension AUROC 0.740 | gate: stays max 0.025, go min 0.306
+MLP_MEM   s0: indist 0.664 held_leaf 0.133 held_h 0.605 joint 0.155 swap 0.098 long 0.654 edge 0.670 | tension AUROC 0.792 | gate: stays max 0.023, go min 0.437
+MLP_MEM   s1: indist 0.019 held_leaf 0.014 held_h 0.017 joint 0.023 swap 0.016 long 0.027 edge 0.053 | tension AUROC 0.616 | gate: stays max 0.934, go min 0.303
+MLP_MEM   s2: indist 0.280 held_leaf 0.097 held_h 0.075 joint 0.013 swap 0.048 long 0.622 edge 0.000 | tension AUROC 0.513 | gate: stays max 0.935, go min 0.047
+MLP_MEM   s3: indist 0.405 held_leaf 0.084 held_h 0.335 joint 0.082 swap 0.056 long 0.377 edge 0.517 | tension AUROC 0.775 | gate: stays max 0.035, go min 0.279
+MLP_MEM   s4: indist 1.000 held_leaf 0.304 held_h 1.000 joint 0.347 swap 0.155 long 1.000 edge 1.000 | tension AUROC 0.616 | gate: stays max 0.023, go min 0.684
+VERDICTS (T3c; CONTROL = T3b C6 PASS, M1 = T3b K1 PASS, reused)
+   M2c NO_ROT    on held_h   : MEGAZORD - arm +0.769 (bar 0.10; per seed [0.807, 0.91, 0.847, 0.5, 0.78]) -> PASS
+   M2c MLP_SPLIT on held_leaf: MEGAZORD - arm +0.831 (bar 0.10; per seed [0.936, 0.723, 0.687, 0.963, 0.844]) -> PASS
+   M2c MLP_MEM   on swap     : MEGAZORD - arm +0.925 (bar 0.10; per seed [0.902, 0.984, 0.952, 0.944, 0.845]) -> PASS
+M2c EVERY ORGAN IS LOAD-BEARING ON ITS AXIS: PASS
+READ MEGAZORD  landed 5/5 [0, 1, 2, 3, 4]; in-dist [1.0, 1.0, 1.0, 1.0, 1.0]
+READ NO_SNAP   landed 5/5 [0, 1, 2, 3, 4]; in-dist [1.0, 1.0, 1.0, 1.0, 1.0]
+READ NO_ROT    landed 0/5 []; in-dist [0.378, 0.668, 0.448, 0.906, 0.377]
+READ MLP_SPLIT landed 2/5 [1, 2]; in-dist [0.302, 1.0, 1.0, 0.267, 0.688]
+READ MLP_MEM   landed 1/5 [4]; in-dist [0.664, 0.019, 0.28, 0.405, 1.0] | landed: s4 in-dist 1.000 held_leaf 0.304 swap 0.155

@@ -1,0 +1,15 @@
+MEGAZORD  s0: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.031, go min 0.527
+MEGAZORD  s1: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.032, go min 0.665
+MEGAZORD  s2: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.025, go min 0.641
+MEGAZORD  s3: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.030, go min 0.583
+MEGAZORD  s4: indist 1.000 held_leaf 1.000 held_h 1.000 joint 1.000 swap 1.000 long 1.000 edge 1.000 | tension AUROC nan | gate: stays max 0.029, go min 0.554
+NO_SNAP   s0: indist 0.067 held_leaf 0.025 held_h 0.050 joint 0.022 swap 0.041 long 0.071 edge 0.257 | tension AUROC 0.585 | gate: stays max 0.706, go min 0.044
+NO_SNAP   s1: indist 0.047 held_leaf 0.023 held_h 0.058 joint 0.022 swap 0.037 long 0.057 edge 0.077 | tension AUROC 0.541 | gate: stays max 0.895, go min 0.860
+NO_SNAP   s2: indist 0.091 held_leaf 0.037 held_h 0.100 joint 0.038 swap 0.063 long 0.079 edge 0.273 | tension AUROC 0.687 | gate: stays max 0.003, go min 0.563
+NO_SNAP   s3: indist 0.053 held_leaf 0.018 held_h 0.117 joint 0.020 swap 0.040 long 0.058 edge 0.160 | tension AUROC 0.696 | gate: stays max 0.689, go min 0.326
+NO_SNAP   s4: indist 0.060 held_leaf 0.018 held_h 0.048 joint 0.020 swap 0.033 long 0.099 edge 0.127 | tension AUROC 0.670 | gate: stays max 0.690, go min 0.263
+VERDICTS (T3d, NB = 24)
+C24 CONTROL: PASS (in-dist [1.0, 1.0, 1.0, 1.0, 1.0])
+S1 THE SNAP AT DEPTH: PASS (MEGAZORD - NO_SNAP on LONG +0.927; per seed [0.929, 0.943, 0.921, 0.942, 0.901])
+READ MEGAZORD  landed 5/5; EDGE [1.0, 1.0, 1.0, 1.0, 1.0]; HELD_H [1.0, 1.0, 1.0, 1.0, 1.0]; SWAP [1.0, 1.0, 1.0, 1.0, 1.0]
+READ NO_SNAP   landed 0/5; EDGE [0.257, 0.077, 0.273, 0.16, 0.127]; HELD_H [0.05, 0.058, 0.1, 0.117, 0.048]; SWAP [0.041, 0.037, 0.063, 0.04, 0.033]

@@ -53768,3 +53768,25 @@ As-printed M reads (3-seed means): M1 held_leaf 0.898 / held_h 0.995 / joint 0.9
 **Decisions pinned now:** SW0 PASSENGER → no replacement run for door #62 (the T6 standard enters the head with a job that needs range); SW0 LOAD-BEARING → register the T6 slot↔sentence form (gears by sentence index, T2m GEARS) vs it. CLOCKBAND PASSENGER at K3 → the breath rotor's T6 port waits for a loop > 6 breaths or multi-pass; LOAD-BEARING → the T6 port of the 64 clocked planes becomes a registered training candidate (needs the word).
 **Predictions:** SW0 PASSENGER on both (a ±0.12 logit nudge). CLOCKBAND BETWEEN (PMS8_241 read 0.011 at 7 breaths; K3 has 3 loop breaths, where the sextet hand cannot alias).
 **Schedule:** one unit, waits for the CPU grid (t3cd) to finish, then 6 GPU reads under .cache/gpu.lock (CPU toys run alone).
+
+### 2026-10-26 (15:36) — T3c / T3d VERDICTS (CPU, 5 seeds each; scored by scripts/toys/megazord_t3cd_verdict.py against the 12:26 bars; banked .cache/megazord_t3{c,d}_verdict.txt)
+
+**Scoring fix (no bar touched):** mode c first crashed loading the reused T3b MEGAZORD/NO_SNAP state dicts. Those dicts carry the gear-label buffers Pq/Pk at the old four-wave size (8×64); the T6 default builds them at 12×64. Pq/Pk are fixed random buffers read ONLY by NO_ROT (the `not self.rotate` branch), so margin() now keeps the model's own Pq/Pk for a rotating arm (asserted) and loads every other key strict. The empty crashed verdict file was removed and mode c rescored.
+**T3c M2c EVERY ORGAN IS LOAD-BEARING ON ITS AXIS: PASS** (MEGAZORD − arm, 5-seed mean, every seed positive):
+- NO_ROT on HELD_H: +0.769 (per seed 0.807/0.910/0.847/0.500/0.780).
+- MLP_SPLIT on HELD_LEAF: +0.831.
+- MLP_MEM on SWAP: +0.925.
+
+**READS:** NO_ROT lands 0/5; MLP_SPLIT 2/5; MLP_MEM 1/5. **CAVEAT:** most of each margin is the arm failing to learn at all. The clean organ reads are the LANDED seeds:
+- MLP_SPLIT s1/s2: in-dist 1.000, HELD_LEAF 0.277/0.313, SWAP 0.106/0.119.
+- MLP_MEM s4: in-dist 1.000, HELD_LEAF 0.304, SWAP 0.155.
+- NO_ROT best (s3): in-dist 0.906, HELD_H 0.500.
+
+The organ effect survives on landed seeds, so M2c's PASS is not only learnability. **Predictions:** all PASS ✓; NO_ROT HELD_H ≤ 0.5 ✓ (max 0.500, at the line); MLP_MEM landed SWAP ≤ 0.3 ✓ (0.155), HELD_LEAF ≤ 0.6 ✓ (0.304).
+**T3d (NB = 24, T6 at the range floor = 2 alias-free gears):**
+- **C24 CONTROL: PASS** (MEGAZORD in-dist 1.000 × 5; every split 1.000; gate stays max ≤ 0.032, go min ≥ 0.527).
+- **S1 THE SNAP AT DEPTH: PASS** (MEGAZORD − NO_SNAP on LONG +0.927; per seed 0.929/0.943/0.921/0.942/0.901).
+- **Prediction S1 FAIL: WRONG.**
+
+**READ:** NO_SNAP lands **0/5** at NB = 24 (in-dist 0.047–0.091; its gates scrambled, stays max up to 0.895). So at depth the snap is load-bearing for LEARNING the 24-breath loop at all, not specifically for LONG extrapolation; the S1 margin is mostly an in-dist failure. That reverses T3b's NB = 12 reading ("snap not load-bearing", E1 FAIL) by regime: **the snap's job grows with loop depth** (regime tag: toy, MHA breathing loop, NB 12 → 24).
+**MIN_ALIAS_FREE = 2 holds:** T6 at its floor gives clean gates on all 5 seeds.

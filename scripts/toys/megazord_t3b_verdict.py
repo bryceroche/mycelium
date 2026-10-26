@@ -24,7 +24,11 @@ def seeds(path, arm):
 
 def margin(tag, arm, seed):
     import torch
-    Net, _ = M.build_net(); net = Net(arm); net.load_state_dict(torch.load(f".cache/megazord{tag}_{arm}_s{seed}.pt")); net.eval()
+    Net, _ = M.build_net(); net = Net(arm); sd = torch.load(f".cache/megazord{tag}_{arm}_s{seed}.pt")
+    for k in ("Pq", "Pk"):   # T3b dicts predate CLOCK-sized gear-label buffers; read only by NO_ROT, so a rotating arm keeps its own
+        if sd[k].shape != getattr(net, k).shape:
+            assert net.rotate, (arm, k, sd[k].shape); sd[k] = getattr(net, k)
+    net.load_state_dict(sd); net.eval()
     G, _ = gate_grid(net); H, B = np.meshgrid(np.arange(1, M.NB + 1), np.arange(M.NB), indexing="ij"); go = B < H
     return float(G[~go].max()), float(G[go].min())
 
