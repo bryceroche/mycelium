@@ -53568,3 +53568,25 @@ Read: .cache/leaf_lookup.txt (6000 steps, 3 seeds, 554 s).
 
 - **Post:** "Where the Freedom Ends" (site/blog/2026-10-25-where-the-freedom-ends.md), deployed with the recipe (build_site → wrangler pages deploy --branch=main). Verified HTTP 200 at theshapeofthought.ai/blog/2026-10-25-where-the-freedom-ends/ and listed on /blog/.
 - **Main:** a fast-forward of binding-comprehension (main was a strict ancestor; 388 commits, mostly additive scripts, toys and docs; the mycelium/ core changes are tree_db, diagnostic_register, sibling_fence and small edits). Pushed. Bryce: "merge into main if you think that is correct."
+
+### 2026-10-26 (06:25) — WORD GIVEN ("word given for the tree_db fixes -- salute!"): TREE_DB v2 REGISTERED — summaries per (batch, key), cold events, key→space table, WAL (mycelium/tree_db.py; scripts/tree_db_v2_bench.py; bars pinned BEFORE any measurement on v2)
+
+**Why (measured on v1, 10-26, a scratch copy of .cache/tree_handshake_s0.db: 811,211 events, 84 batches, 152 MB → 18 leaves).** Leaves scale with KEYS, but two writes scaled with a key's HISTORY: adding 1 event to the hottest key (n = 78,043) took 76 ms (the one-space check joins every event of the key); rolling back a 1-event batch took 158 ms (re-aggregation re-reads every event of the key). Neither is an engine problem; Postgres would scan the same history. Single writer stays: the probation gate serializes writes by design.
+
+**The change (fixes 1–4 of the 10-26 brainstorm; fix 5, compaction, NOT in scope).**
+1. WAL + synchronous=NORMAL; no per-event timestamps (an event's time is its batch's).
+2. key_space(key → space): the one-space check is a row lookup.
+3. summaries(batch, key → n, mean, M2): the MapReduce combiner, materialized. A leaf = the Chan left-fold of its key's LIVE PERMANENT summaries in batch order. Every write refolds only the keys it touches; no subtraction ever.
+4. Cold events: each batch's raw events go to a zstd Parquet file (key, vec, source) whose SHA-256 is recorded on the batch row. The events remain the source of truth: rebuild_all re-hashes every file, recomputes every summary from its events (must be bit-exact with the stored one) and refolds every leaf. A rolled-back batch keeps its file (forensics) and leaves the fold.
+- The map step is a pure function (prepare_shard: rows → cold file + summaries) so workers can run it in parallel; the single writer commits prepared shards (add_prepared). add_evidence = prepare + commit, one code path.
+- migrate_v1(src, dst): a v1 store re-written as v2, batch by batch in insertion order.
+
+**Bars (pinned).**
+- **D0 AUDIT:** scripts/tree_db_check.py passes on v2 (event counts read from the batch rows), plus two new checks: a tampered cold file fails rebuild_all loudly; rebuild_all == incremental bit-exact.
+- **D1 EQUIVALENCE:** (a) migrate_v1 on all three T2w stores: every leaf's n equal, mean and M2 within 1e-9 (relative) of the v1 leaves; (b) the s0 events split into 8 shards, prepared in 8 parallel processes and committed: leaves within 1e-9 of the serial (migrated) build.
+- **D2 SCALING:** a hot key's history grown 10k → 100k → 1M events (batches of 10k): median time to add a 1-event batch and to roll it back, each with t(1M) / t(10k) ≤ 3. (v1 timed on the same grid from its git version, reported, not barred.)
+- **D3 ISOLATION:** a permanent base plus 8 provisional shards of real s0 events, one a saboteur (node k → k+1): the saboteur fails the audition (≥ 0.99 agreement on shared keys) and is rolled back, the 7 clean shards promote, and the final leaves are within 1e-9 of a store built from the base + the 7 clean shards alone.
+- **D4 HANDSHAKE:** T2w re-run unchanged on v2 (TW_TAG=_v2, its own files; the banked v1 read untouched): W0–W3 all PASS.
+- READ (not barred): bytes on disk, v1 vs v2.
+
+**Predictions.** D0 PASS; D1 PASS (the Chan fold is exact up to rounding; differences ~1e-15); D2 PASS for v2 (it grows with batches-per-key, 1 → 100, which is cheap) and v1 ~linear in events (seconds at 1M); D3 PASS; D4 PASS; the working DB shrinks by > 10× (events leave it), the cold files compress well (one-hot vectors).
