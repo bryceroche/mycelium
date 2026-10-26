@@ -53642,3 +53642,25 @@ Read: .cache/tree_db_v2_bench.txt (36 s, pid 54967) + scripts/tree_db_check.py.
 - **C2 PASS:** 400 random operations at (32, 16) and at (4, 2): 50 and 65 rollbacks reached INTO a checkpoint (the slow path), plus promotions of old provisionals; leaves were bit-identical to the never-compacting twin after every one of the 800 operations; rebuild_all agrees on both stores.
 - **C3 PASS:** tree_db_check passes; D1 (all three migrations and the 8-shard build bit-exact) and D3 (saboteur isolated) re-pass.
 - **PREDICTIONS:** C1 ✓ C2 ✓ C3 ✓.
+
+### 2026-10-26 (08:07) — T3a MEGAZORD: FEASIBILITY + AMENDMENT (before any full-length read; bars CONTROL/M1/M2/M3 unchanged)
+
+**Feasibility (MEGAZORD arm alone, seed 0, world A, a smoke-size tree).**
+- **As registered** (the stop decision as stay/hop TOKENS competing in the rule MHA, every head's query rotated): NOT FEASIBLE.
+  - At 12,000 steps it plateaus: final-breath index accuracy 0.27, with collapses mid-run.
+  - lr 1e-3 still collapses, so the step size is not the cause.
+- **Diagnosis (three reads):**
+  - (1) Rotating the query in EVERY plane against unrotated fact keys makes the CONTENT match depend on the breath. Content-only heads fix the GO breaths: 1.000, stable.
+  - (2) But heads ADD. With the stop in separate tokens or heads, a content head that always fetches σ(t) cannot be cancelled. Breath-frame fact keys (co-rotating) still leave STAY at ~0.45.
+  - (3) Gear LABELS fail identically (P(move) ≈ 0.8–0.9 at every b ≥ h), so it is the stop's WIRING, not the rotation.
+  - Mechanism: the fact values must be large enough to flip the type, so any residual attention to a fact moves it. **An additive stop loses to the content match: the mandatory-road law in the bottleneck.**
+- **AMENDMENT (the stop becomes a road):**
+  - A dedicated CLOCK HEAD computes p_go = σ(s · ⟨rot(c_q, w·b), rot(c_k, w·h)⟩ + β), a learned Fourier series of (b − h) over the speeds (180, 60, 30, 15)° (relative phase; Bryce's "rotate only the query" holds in the sense that matters: the breath angle never cancels, because the hop key carries h, not b).
+  - The move enters ONLY through the gate: r = type + p_go · rule_move.
+  - Content heads read the rule unrotated (heads specialize, breaths never: twelve hills).
+  - The index gate (tag moves iff type moved) is unchanged.
+  - NO_ROT keeps its meaning: the clock head's query and hop key carry gear LABELS of b and h instead of rotations (T2u MICRO_M).
+  - Every other arm, the splits, the tree and the bars are unchanged.
+- **Feasibility of the amended machine:** type and index 1.000 on GO and STAY breaths by step 2,000. P(move) is an exact step: 1.0 for b − h < 0, 0.0 for b − h ≥ 0.
+- **Revised prediction:** unchanged (M1 PASS, M2 PASS, M3 PASS). The amended NO_ROT may now fit the trained hop counts and fail only on HELD_H (T2u's shape).
+- Fired as unit t3a (12,000 steps, 3 seeds, 5 arms).
