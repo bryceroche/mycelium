@@ -23,6 +23,9 @@ v2 LAYOUT (the v1 store re-scanned a key's whole event history on every add and 
   - COLD EVENTS: each batch's raw events live in a zstd Parquet file (key, vec, source) beside the DB, its SHA-256 on the
     batch row. rebuild_all re-hashes every file, recomputes every summary from its events (bit-exact) and refolds.
     A rolled-back batch keeps its file (forensics) and leaves the fold.
+  - CHECKPOINTS (compaction, 2026-10-26 word): a hot key's settled batches are folded into a checkpoint accumulator; a
+    leaf = checkpoint + the recent tail, bit-exact to the full fold. Writes that reach into a checkpoint drop it (slow,
+    rare, correct); events and summaries are never deleted.
   - KEY_SPACE(key -> space): the one-space check is a row lookup. WAL journal: readers never block the single writer.
   - THE MAP STEP IS PURE: prepare_shard(rows) -> (cold file, summaries) may run in any number of worker processes; the
     single writer commits prepared shards (add_prepared). One batch = one shard = one audition = one rollback unit.
@@ -50,6 +53,9 @@ CREATE TABLE IF NOT EXISTS summaries(
   m2 BLOB NOT NULL, PRIMARY KEY(key, bid)) WITHOUT ROWID;
 CREATE INDEX IF NOT EXISTS summaries_bid ON summaries(bid);
 CREATE TABLE IF NOT EXISTS key_space(key TEXT PRIMARY KEY, space TEXT NOT NULL REFERENCES spaces(name)) WITHOUT ROWID;
+CREATE TABLE IF NOT EXISTS checkpoints(
+  key TEXT PRIMARY KEY, upto INTEGER NOT NULL, n INTEGER NOT NULL, mean BLOB NOT NULL, m2 BLOB NOT NULL,
+  first_seen TEXT, last_seen TEXT) WITHOUT ROWID;                                -- compaction: the fold's accumulator at upto
 CREATE TABLE IF NOT EXISTS leaves(
   key TEXT PRIMARY KEY, dim INTEGER NOT NULL, n INTEGER NOT NULL, mean BLOB NOT NULL, m2 BLOB NOT NULL,
   first_seen TEXT, last_seen TEXT);                                              -- permanent-tier aggregates only
@@ -124,7 +130,11 @@ def prepare_shard(rows, tmpdir=None):
 
 
 class TreeDB:
-    def __init__(self, path=DB):
+    def __init__(self, path=DB, tail_max=32, tail_keep=16):
+        """tail_max: a key whose un-compacted tail exceeds this many live permanent batches gets its checkpoint advanced
+        to leave the newest tail_keep (None = never compact)."""
+        assert tail_max is None or 0 <= tail_keep < tail_max, (tail_max, tail_keep)
+        self.tail_max, self.tail_keep = tail_max, tail_keep
         self.path = os.path.abspath(path); self.cold = self.path + ".events"
         os.makedirs(os.path.dirname(self.path), exist_ok=True); os.makedirs(self.cold, exist_ok=True)
         self.c = sqlite3.connect(self.path)
@@ -206,21 +216,41 @@ class TreeDB:
         return prep["n"]
 
     def _refold(self, keys):
-        """Each key's leaf := the Chan left-fold of its live permanent summaries in batch order (inside the caller's
-        transaction). Deterministic: incremental writes and rebuild_all produce the same bits."""
+        """Each key's leaf := its checkpoint (if any) folded on with its live permanent summaries after the checkpoint,
+        in batch order (inside the caller's transaction). A left fold resumed from its own intermediate accumulator is
+        the same arithmetic, so compaction is BIT-EXACT: incremental writes and rebuild_all produce the same bits. When
+        the tail exceeds tail_max, the checkpoint advances to leave the newest tail_keep."""
         for i in range(0, len(keys), 500):
             ch = keys[i:i + 500]; q = ",".join("?" * len(ch))
             self.c.execute(f"DELETE FROM leaves WHERE key IN ({q})", ch)
-            acc = {}
-            for k, n, m, s, t in self.c.execute(f"""SELECT s.key, s.n, s.mean, s.m2, b.created FROM summaries s JOIN batches b
-                                                    ON s.bid=b.bid WHERE s.key IN ({q}) AND {LIVE} ORDER BY s.key, s.bid""", ch):
-                cur = (n, _arr(m), _arr(s))
-                if k in acc:
-                    a = acc[k]; acc[k] = (chan(a[0], cur), a[1], t)
+            cps = {k: (u, (n, _arr(m), _arr(s)), t0, t1) for k, u, n, m, s, t0, t1 in
+                   self.c.execute(f"SELECT key, upto, n, mean, m2, first_seen, last_seen FROM checkpoints WHERE key IN ({q})", ch)}
+            tails = {}
+            for k, bid, n, m, s, t in self.c.execute(f"""SELECT s.key, s.bid, s.n, s.mean, s.m2, b.created FROM summaries s
+                                                         JOIN batches b ON s.bid=b.bid LEFT JOIN checkpoints c ON c.key=s.key
+                                                         WHERE s.key IN ({q}) AND {LIVE} AND s.bid > COALESCE(c.upto, 0)
+                                                         ORDER BY s.key, s.bid""", ch):
+                tails.setdefault(k, []).append((bid, (n, _arr(m), _arr(s)), t))
+            leaves, newcp = [], []
+            for k in set(cps) | set(tails):
+                tail = tails.get(k, []); cut = len(tail) - self.tail_keep - 1 if self.tail_max is not None and len(tail) > self.tail_max else -1
+                if k in cps:
+                    _, f, t0, t1 = cps[k]
                 else:
-                    acc[k] = (cur, t, t)
-            self.c.executemany("INSERT INTO leaves VALUES (?,?,?,?,?,?,?)",
-                               [(k, len(f[1]), f[0], _blob(f[1]), _blob(f[2]), t0, t1) for k, (f, t0, t1) in acc.items()])
+                    f, t0, t1 = None, tail[0][2], None
+                for j, (bid, cur, t) in enumerate(tail):
+                    f = cur if f is None else chan(f, cur); t1 = t
+                    if j == cut:
+                        newcp.append((k, bid, f[0], _blob(f[1]), _blob(f[2]), t0, t1))
+                leaves.append((k, len(f[1]), f[0], _blob(f[1]), _blob(f[2]), t0, t1))
+            self.c.executemany("INSERT OR REPLACE INTO checkpoints VALUES (?,?,?,?,?,?,?)", newcp)
+            self.c.executemany("INSERT INTO leaves VALUES (?,?,?,?,?,?,?)", leaves)
+
+    def _drop_checkpoints(self, bid, keys):
+        """A write that reaches INTO a checkpoint (bid <= upto) invalidates it for the keys it touches: the slow path."""
+        for i in range(0, len(keys), 500):
+            ch = keys[i:i + 500]
+            self.c.execute(f"DELETE FROM checkpoints WHERE upto >= ? AND key IN ({','.join('?' * len(ch))})", (bid, *ch))
 
     def _batch(self, batch):
         r = self.c.execute("SELECT bid, tier, status FROM batches WHERE batch=?", (batch,)).fetchone()
@@ -236,15 +266,17 @@ class TreeDB:
         assert (tier, status) == ("provisional", "live"), f"cannot promote {batch}: {(tier, status)}"
         with self.c:
             self.c.execute("UPDATE batches SET tier='permanent' WHERE bid=?", (bid,))
-            self._refold(self._batch_keys(bid))
+            keys = self._batch_keys(bid); self._drop_checkpoints(bid, keys); self._refold(keys)
 
     def rollback(self, batch):
         """Drop a batch from the fold and refold every key it touched. The batch row and its cold file stay, marked
         rolled_back; a key no live batch still holds releases its space claim."""
-        bid, _, status = self._batch(batch)
+        bid, tier, status = self._batch(batch)
         assert status == "live", f"cannot roll back {batch}: {status}"
         keys = self._batch_keys(bid)
         with self.c:
+            if tier == "permanent":
+                self._drop_checkpoints(bid, keys)
             self.c.execute("UPDATE batches SET status='rolled_back' WHERE bid=?", (bid,))
             self.c.execute("DELETE FROM nodes WHERE batch=?", (batch,))
             for i in range(0, len(keys), 500):
@@ -256,7 +288,9 @@ class TreeDB:
 
     def rebuild_all(self):
         """THE AUDIT: every live batch's cold file re-hashed, every summary recomputed from its events (must be
-        bit-exact with the stored one), every leaf refolded. Raises on any mismatch. Returns the number of events read."""
+        bit-exact with the stored one), every checkpoint dropped and every leaf refolded in full from the summaries (the
+        refold must reproduce the stored leaves bit-exactly: compaction and incremental writes never drift). Raises on any
+        mismatch. Returns the number of events read."""
         n_ev = 0
         for bid, batch, sha, n in self.c.execute("SELECT bid, batch, sha256, n_events FROM batches WHERE status='live' ORDER BY bid").fetchall():
             p = self._cold_path(bid)
@@ -271,9 +305,12 @@ class TreeDB:
                                                 or fresh[k][2].tobytes() != stored[k][2].tobytes() for k in fresh):
                 raise ValueError(f"batch {batch!r}: summaries recomputed from its events differ from the stored ones")
             n_ev += len(keys)
+        before = self.c.execute("SELECT key, n, mean, m2 FROM leaves ORDER BY key").fetchall()
         with self.c:
             keys = [r[0] for r in self.c.execute("SELECT key FROM summaries UNION SELECT key FROM leaves")]
-            self._refold(sorted(keys))
+            self.c.execute("DELETE FROM checkpoints"); self._refold(sorted(keys))
+            if self.c.execute("SELECT key, n, mean, m2 FROM leaves ORDER BY key").fetchall() != before:
+                raise ValueError("the full refold differs from the stored leaves (materialization drift)")
         return n_ev
 
     # ---- reads ----------------------------------------------------------------------------------------------------
