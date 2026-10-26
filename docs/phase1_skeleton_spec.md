@@ -53635,3 +53635,10 @@ Read: .cache/tree_db_v2_bench.txt (36 s, pid 54967) + scripts/tree_db_check.py.
   - **M3 THE TREE'S CUSTODY:** the answer-filtered tree's argmax is right on ≥ 63/64 keys in both worlds; the saboteur shard is rejected and the store is unchanged; the 8-shard build is bit-identical to a serial build.
   - READS: the admit-all tree's accuracy (random reader noise should average out, T2r); admitted fraction; tension AUROC on MEGAZORD's errors; EDGE.
 - **Predictions:** CONTROL ✓; M1 PASS on HELD_LEAF, HELD_H, SWAP; JOINT the riskiest, PASS; M2 PASS on NO_ROT, MLP_SPLIT and MLP_MEM; NO_SNAP the most uncertain (12 breaths with a coupled two-path state may need the snap more, not less: PASS); M3 PASS. The headline read: MLP_MEM matches MEGAZORD in-dist and collapses on SWAP and HELD_LEAF. That is "the MLP is discarded in favour of the tree" measured.
+
+### 2026-10-26 (07:42) — COMPACTION VERDICTS: C1 PASS, C2 PASS, C3 PASS (.cache/tree_db_compaction.txt, 18 s)
+
+- **C1 PASS:** on the D2 grid with compaction, add 0.47 → 0.52 → 0.51 ms (ratio 1.08) and rollback of the newest batch 0.06 → 0.11 → 0.16 ms (ratio **2.58**, bar ≤ 3; without compaction 11.50). At 1M the hot key's checkpoint sits at batch 85 with a tail of 15. The ratio is near the bar because at 100k the key has only 10 batches, under TAIL_MAX = 32, so it is not yet compacted. D2's FAIL stands as banked; compaction is its registered remedy, and that remedy passes.
+- **C2 PASS:** 400 random operations at (32, 16) and at (4, 2): 50 and 65 rollbacks reached INTO a checkpoint (the slow path), plus promotions of old provisionals; leaves were bit-identical to the never-compacting twin after every one of the 800 operations; rebuild_all agrees on both stores.
+- **C3 PASS:** tree_db_check passes; D1 (all three migrations and the 8-shard build bit-exact) and D3 (saboteur isolated) re-pass.
+- **PREDICTIONS:** C1 ✓ C2 ✓ C3 ✓.
