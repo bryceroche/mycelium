@@ -53590,3 +53590,13 @@ Read: .cache/leaf_lookup.txt (6000 steps, 3 seeds, 554 s).
 - READ (not barred): bytes on disk, v1 vs v2.
 
 **Predictions.** D0 PASS; D1 PASS (the Chan fold is exact up to rounding; differences ~1e-15); D2 PASS for v2 (it grows with batches-per-key, 1 → 100, which is cheap) and v1 ~linear in events (seconds at 1M); D3 PASS; D4 PASS; the working DB shrinks by > 10× (events leave it), the cold files compress well (one-hot vectors).
+
+### 2026-10-26 (06:30) — TREE_DB v2 VERDICTS D0–D3: D0 PASS, D1 PASS (bit-exact), D2 FAIL (rollback 11.5× over 100× history; absolute 0.54 ms vs v1 1,376 ms), D3 PASS; D4 (T2w on v2) running
+
+Read: .cache/tree_db_v2_bench.txt (36 s, pid 54967) + scripts/tree_db_check.py.
+- **D0 PASS:** every v1 audit check on v2, plus rebuild_all from the cold events == incremental BIT-EXACT and a tampered cold file refused on its SHA-256.
+- **D1 PASS:** all three T2w stores migrated with every leaf BIT-EXACT to v1 (max rel diff 0); 811,211 events in 8 shards prepared in 8 processes (2.6 s) and committed (0.01 s): bit-exact to the serial build.
+- **D2 FAIL as registered.** v2, history 10k → 100k → 1M (1 → 10 → 100 batches of the key): add 0.41 → 0.45 → 0.91 ms (ratio 2.21, within 3); rollback 0.05 → 0.10 → 0.54 ms (ratio **11.5**, bar ≤ 3). v1 on the same grid: add 2.3 → 16 → 164 ms (72×), rollback 12 → 128 → 1,376 ms (115×). **Mechanism:** the bar grew history at a FIXED batch size, so batches-per-key also grew 100×, and the refold is linear in batches-per-key (the design said so: "cost ~ batches per key"). My prediction that this would stay within 3× was wrong; it is ~10× per 100× batches — sublinear, and 2,500× faster than v1 at 1M, but the bar is the bar. **The registered remedy for a hot key's batch count is fix 5 (compaction: settled batches folded into a checkpoint summary), held out of scope; it now has a measured reason.**
+- **D3 PASS:** shard 5 (the saboteur) audition 0.000 → rolled back; shards 0–4, 6, 7 audition 1.000 → promoted; final leaves bit-exact to base + the 7 clean shards; the audit re-read 760,510 events OK.
+- **READ — bytes:** 152.2 MB (v1) → 0.23 MB working DB + 1.94 MB cold Parquet (**~70× smaller**; one-hot vectors compress to almost nothing). Migration of an 811k-event store: 2 s.
+- **PREDICTIONS:** D0 ✓; D1 ✓ (better: bit-exact, not just 1e-15); D2 ✗ (rollback 11.5×); D3 ✓; >10× shrink ✓ (70×).
