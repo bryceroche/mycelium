@@ -53725,3 +53725,19 @@ As-printed M reads (3-seed means): M1 held_leaf 0.898 / held_h 0.995 / joint 0.9
 **Predictions scored:** C6 ✓, K1 ✓, E1 ✗ (wrong: the snap's EDGE effect was the clock), four-wave read ✗ (I said at least one of seeds 3–4 lands; neither did; the base rate is worse than 1 in 3).
 **LAW CANDIDATE (THE CLOCK-RANGE RULE):** a rotary clock that must decide on a relative phase d over a span S needs a plane whose period exceeds S without alias (period ≥ 2·NB here). Faster planes alias distant d onto near d, and the optimizer may build the decision from them; the seed lottery is the visible symptom. Two specimens: WRAP (d = −9, −10 → go) and EDGE (d = 12 → stay).
 **Seed-bimodality explained for MEGAZORD/NO_SNAP:** the bimodal texture was the alias lottery (which planes the step got built from). MLP_SPLIT / MLP_MEM / NO_ROT were not re-run on the six-wave clock: their T3a seed spread is still unexplained.
+
+### 2026-10-26 (12:26) — WORD GIVEN ("word given for your choice - Salute!"): T3c THE ORGAN GRID ON THE SIX-WAVE CLOCK + T3d THE SNAP AT DEPTH registered (bars pinned BEFORE any measurement)
+
+**Code change (fairness, before any read):** NO_ROT's gear LABELS now use the clock's waves (gear / Pq / Pk sized by CLOCK, not SPEEDS), so the label arm gets the same six waves the rotation does. T3a's defaults are unchanged (CLOCK = SPEEDS when TM_CLOCK is unset). Pq/Pk come from their own generator, so the rotating arms' initialisation is untouched. TM_NB=24 gives the doubled shape: train h 1..23 minus {8, 16}, held h {8, 16}, EDGE 24, LONG 19..23.
+
+**T3c (six-wave clock, seeds 0–4):** run NO_ROT, MLP_SPLIT, MLP_MEM (tag _t3c). **MEGAZORD and NO_SNAP rows are REUSED from T3b** (identical code path for those arms; same-seed reproduction verified exactly by T3a-AUTOPSY, seed 1 per-h 0.03 / 0.03 / 0.21). CONTROL and M1 are already banked (T3b C6, K1 PASS).
+- **M2c EVERY ORGAN IS LOAD-BEARING ON ITS AXIS:** MEGAZORD − arm ≥ 0.10 (5-seed mean) AND every seed positive: NO_ROT on HELD_H; MLP_SPLIT on HELD_LEAF; MLP_MEM on SWAP. (NO_SNAP is struck from M2: T3b E1 measured it at 0.)
+- READS: each arm's landing count (in-dist ≥ 0.95) and seed spread; MLP_MEM on its landed seeds: in-dist vs HELD_LEAF vs SWAP (the "FFN memorizes" read); NO_ROT HELD_H on its landed seeds.
+- **Predictions:** M2c PASS on all three (T3a margins were ~0.8). NO_ROT with six-wave labels still cannot reach held h (HELD_H ≤ 0.5; T2u labels 0.398). MLP_MEM's landed seeds: SWAP ≤ 0.3 and HELD_LEAF ≤ 0.6.
+
+**T3d THE SNAP AT DEPTH (NB = 24, six-wave clock, period 48 = 2·NB; seeds 0–4; MEGAZORD and NO_SNAP; tag _t3d):**
+- **C24 CONTROL:** MEGAZORD in-dist ≥ 0.95 on every seed (else VOID).
+- **S1 THE SNAP AT DEPTH:** MEGAZORD − NO_SNAP ≥ 0.05 on LONG (5-seed mean) AND every seed positive.
+- READS: EDGE (h=24), HELD_H, SWAP, gate margins, tension AUROC per arm.
+- **Prediction: S1 FAIL** (the snap stays redundant: every breath re-reads a sharp tree row and cosine-scaled type logits, so the soft state is re-sharpened each breath and doesn't drift). C24 ✓. If S1 passes, the snap's job is depth, and T3b's null was a short-loop null.
+- (12:30) feasibility (not measurements): NO_ROT six-wave labels run (shape OK); MEGAZORD NB=24 seed 0, 3000 steps, smoke tree → 1.000 on every split. Fired t3cd: T3c (NO_ROT, MLP_SPLIT, MLP_MEM × seeds 0–4) then T3d (NB=24, MEGAZORD + NO_SNAP × seeds 0–4), sequential, one unit.

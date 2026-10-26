@@ -26,13 +26,17 @@ from mycelium import tree_db as TDB
 
 SMOKE = "--smoke" in sys.argv
 ARMS = os.environ.get("TM_ARMS", "MEGAZORD,NO_ROT,NO_SNAP,MLP_SPLIT,MLP_MEM").split(",")
-NT, NI, P, D, NH, NB = 8, 8, 64, 64, 4, 12
+NT, NI, P, D, NH = 8, 8, 64, 64, 4
+NB = int(os.environ.get("TM_NB", 12))                                      # breaths (T3d: 24)
 NL, DH = NT * NI, D // NH
 BATCH, LR = 128, 3e-3
 STEPS = int(os.environ.get("TM_STEPS", 300 if SMOKE else 12000))
 SEEDS = [0] if SMOKE else [int(x) for x in os.environ.get("TM_SEEDS", "0,1,2").split(",")]
 N_EV = 60 if SMOKE else 300
 TRAIN_H, HELD_H, EDGE_H, LONG_H = [1, 2, 3, 5, 6, 7, 9, 10, 11], [4, 8], [12], [9, 10, 11]
+if NB == 24:                                                                # T3d: the same shape, doubled
+    TRAIN_H, HELD_H, EDGE_H, LONG_H = [h for h in range(1, 24) if h not in (8, 16)], [8, 16], [24], list(range(19, 24))
+assert NB in (12, 24)
 SPEEDS = (180.0, 60.0, 30.0, 15.0)
 SUF = ("_smoke" if SMOKE else "") + os.environ.get("TM_TAG", "")
 CLOCK = tuple(float(x) for x in os.environ.get("TM_CLOCK", ",".join(map(str, SPEEDS))).split(","))   # the clock head's planes (T3b)
@@ -162,7 +166,7 @@ def build_net():
     ri = lambda z: torch.cat([z.real, z.imag], -1)
 
     def gear(n):
-        a = n[..., None].float() * torch.tensor(SPEEDS) * math.pi / 180
+        a = n[..., None].float() * torch.tensor(CLOCK) * math.pi / 180
         return torch.cat([a.cos(), a.sin()], -1)
 
     def rot(z, th):
@@ -186,8 +190,8 @@ def build_net():
             self.ls = nn.Parameter(torch.tensor(math.log(10.0))); self.lk = nn.Parameter(torch.tensor(math.log(10.0)))
             self.register_buffer("w", torch.tensor([CLOCK[p % len(CLOCK)] for p in range(DH // 2)]) * math.pi / 180)
             gg = torch.Generator().manual_seed(6)
-            self.register_buffer("Pq", F.normalize(torch.randn(2 * len(SPEEDS), D, generator=gg), dim=-1))
-            self.register_buffer("Pk", F.normalize(torch.randn(2 * len(SPEEDS), D, generator=gg), dim=-1))
+            self.register_buffer("Pq", F.normalize(torch.randn(2 * len(CLOCK), D, generator=gg), dim=-1))
+            self.register_buffer("Pk", F.normalize(torch.randn(2 * len(CLOCK), D, generator=gg), dim=-1))
             if arm == "MLP_SPLIT":
                 self.mq, self.mk = mlp(4 * P, D), mlp(4 * P, D)
             if arm == "MLP_MEM":
@@ -202,7 +206,7 @@ def build_net():
             if self.rotate:                                                 # the hop token's key at its own phase h
                 hopk = rot(self.ck.expand(Bn, D), wD[None] * h[:, None].float())
             else:                                                           # NO_ROT: a gear LABEL stamped on the hop key
-                hopk = self.ck + gear(h) @ self.Pk / math.sqrt(len(SPEEDS))
+                hopk = self.ck + gear(h) @ self.Pk / math.sqrt(len(CLOCK))
             if self.arm in ("MEGAZORD", "NO_ROT", "NO_SNAP"):
                 fk = ri(TC[ALL_T] * IC[ALL_I]) / math.sqrt(P)
             elif self.arm == "MLP_SPLIT":
@@ -211,7 +215,7 @@ def build_net():
             for b in range(NB):
                 Tq = ht.to(torch.complex64) @ TC; Iq = hi.to(torch.complex64) @ IC
                 # THE CLOCK HEAD: its query rotated by the breath, the hop key at phase h -> p_go = f(b - h) (relative phase)
-                cq = rot(self.cq, wD * b) if self.rotate else self.cq + gear(torch.tensor(b)) @ self.Pq / math.sqrt(len(SPEEDS))
+                cq = rot(self.cq, wD * b) if self.rotate else self.cq + gear(torch.tensor(b)) @ self.Pq / math.sqrt(len(CLOCK))
                 p_go = torch.sigmoid((hopk @ cq)[:, None] * self.cs.exp() + self.cb)
                 # THE BOTTLENECK: content heads read the type rule; the move enters ONLY through the gate (a road, not a sum)
                 Q = self.rq(ri(Tq)).view(Bn, NH, DH)
