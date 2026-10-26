@@ -53664,3 +53664,28 @@ Read: .cache/tree_db_v2_bench.txt (36 s, pid 54967) + scripts/tree_db_check.py.
 - **Feasibility of the amended machine:** type and index 1.000 on GO and STAY breaths by step 2,000. P(move) is an exact step: 1.0 for b − h < 0, 0.0 for b − h ≥ 0.
 - **Revised prediction:** unchanged (M1 PASS, M2 PASS, M3 PASS). The amended NO_ROT may now fit the trained hop counts and fail only on HELD_H (T2u's shape).
 - Fired as unit t3a (12,000 steps, 3 seeds, 5 arms).
+
+### 2026-10-26 (09:17) — T3a MEGAZORD VERDICTS (as pinned; .cache/megazord.txt / .json; 4129 s, 5 arms × 3 seeds × 12,000 steps)
+
+**CONTROL VOID:** MEGAZORD in-dist 0.899 (3-seed mean) < 0.95. Under the pinned frame M1 and M2 are therefore NOT CLAIMS; their numbers are banked as reads. **M3 THE TREE'S CUSTODY: PASS** (it does not depend on the net): argmax right 64/64 in both worlds (admit-all also 64/64); admitted 0.497 / 0.491; 8-shard == serial bit-exact; saboteur audition 0.000 → rejected, store unchanged, both worlds.
+
+Per seed (in-dist / HELD_LEAF / HELD_H / JOINT / SWAP / LONG / EDGE):
+
+| arm | s0 | s1 | s2 |
+|---|---|---|---|
+| MEGAZORD | 1.000 across the board | 0.696 / 0.695 / 0.985 / 0.985 / 0.750 / 1.000 / 1.000 (h1-3: 0.03 0.03 0.21; h≥4: 1.00) | 1.000 across the board |
+| NO_ROT | 0.400 / 0.363 / 0.167 / 0.062 / 0.307 / 0.139 / 1.000 | 0.101 / … collapsed | 0.387 / 0.358 / 0.028 / 0.015 / 0.299 / 0.106 / 1.000 |
+| NO_SNAP | 0.228 collapsed (EDGE 0.010) | 1.000 everywhere, EDGE **0.367** | 1.000 everywhere, EDGE **0.000** |
+| MLP_SPLIT | 0.322 / 0.051 / 0.238 / 0.053 / 0.078 | 0.739 / 0.158 / 0.697 / 0.157 / 0.162 | 0.155 / 0.033 / … |
+| MLP_MEM | **1.000** (loss 0.000) / **0.500** / 1.000 / 0.497 / **0.157** / 1.000 / 0.397 | 0.472 / 0.082 / … | 0.624 / 0.134 / … |
+
+As-printed M reads (3-seed means): M1 held_leaf 0.898 / held_h 0.995 / joint 0.995 / swap 0.917 (FAIL as printed: carried by seed 1). M2 NO_ROT on held_h +0.852, MLP_SPLIT on held_leaf +0.817, MLP_MEM on swap +0.812 (all every-seed positive: PASS as printed); NO_SNAP on long +0.160 with per seed [0.481, 0.0, 0.0] (FAIL: two seeds tie at 1.000). Tension AUROC on MEGAZORD's errors 0.893 (829 errors, all seed 1).
+
+**Predictions scored:** CONTROL ✓ WRONG (seed 1). M1 on the two landed seeds: 1.000 on every split ✓ in spirit, unclaimable. M2 NO_ROT / MLP_SPLIT / MLP_MEM ✓ as printed. NO_SNAP-on-LONG WRONG: at 12 breaths with the clock-head gate the soft state carries fine once landed. M3 ✓. The headline read MEASURED on MLP_MEM s0: in-dist 1.000 at loss 0.000, HELD_LEAF 0.500, SWAP 0.157 vs MEGAZORD 1.000 / 1.000 = the FFN memorizes the facts and cannot take a new tree; the tree arm swaps worlds at 1.000 with zero retraining.
+
+**Textures (the texture rule fires: two shapes):**
+1. **Every arm is seed-BIMODAL** — a seed either lands at 1.000 or collapses; nothing in between for MEGAZORD/NO_SNAP. The failure is a basin/optimization event, not a capacity edge (the instability noted at feasibility; lr 1e-3 was already ruled out as the cure).
+2. **MEGAZORD s1 fails exactly h ∈ {1,2,3} and passes h ≥ 4 including held h=4/8 and EDGE 12**: the short-hop stop (the clock-head gate closing within the first breaths) never formed in that seed; the long-hop machinery is intact. NO_ROT s0/s2 show a complementary hole (h=1 dead, h=2,3 alive).
+3. **The snap's axis is EDGE, not LONG:** landed NO_SNAP seeds hit 1.000 on every trained-length split and LONG, but EDGE (h=12, beyond training) 0.367 / 0.000 vs MEGAZORD 1.000 on all three seeds. A read, not a bar; it relocates the snap's load to extrapolation.
+
+**Banked:** T3a = CONTROL VOID (seed instability), M3 PASS. Next form (needs the word): the short-hop stop autopsy on a seed-1 re-run (per-breath p_go at h=1..3) before any re-registration; seed-robustness is the bar MEGAZORD must clear next.
