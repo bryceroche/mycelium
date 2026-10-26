@@ -30,11 +30,12 @@ NT, NI, P, D, NH, NB = 8, 8, 64, 64, 4, 12
 NL, DH = NT * NI, D // NH
 BATCH, LR = 128, 3e-3
 STEPS = int(os.environ.get("TM_STEPS", 300 if SMOKE else 12000))
-SEEDS = [0] if SMOKE else [0, 1, 2]
+SEEDS = [0] if SMOKE else [int(x) for x in os.environ.get("TM_SEEDS", "0,1,2").split(",")]
 N_EV = 60 if SMOKE else 300
 TRAIN_H, HELD_H, EDGE_H, LONG_H = [1, 2, 3, 5, 6, 7, 9, 10, 11], [4, 8], [12], [9, 10, 11]
 SPEEDS = (180.0, 60.0, 30.0, 15.0)
-SUF = "_smoke" if SMOKE else ""
+SUF = ("_smoke" if SMOKE else "") + os.environ.get("TM_TAG", "")
+CLOCK = tuple(float(x) for x in os.environ.get("TM_CLOCK", ",".join(map(str, SPEEDS))).split(","))   # the clock head's planes (T3b)
 OUT = f".cache/megazord{SUF}.txt"
 DBP = ".cache/megazord{}_world{}.db"
 SPACE, NOISE, N_HARVEST, SHARDS, AUDIT = "leaf-fact", 0.2, (4000 if SMOKE else 20000), 8, 0.99
@@ -183,7 +184,7 @@ def build_net():
             self.cq = nn.Parameter(torch.randn(D) / math.sqrt(D)); self.ck = nn.Parameter(torch.randn(D) / math.sqrt(D))    # the clock head
             self.cb = nn.Parameter(torch.zeros(1)); self.cs = nn.Parameter(torch.tensor(math.log(5.0)))
             self.ls = nn.Parameter(torch.tensor(math.log(10.0))); self.lk = nn.Parameter(torch.tensor(math.log(10.0)))
-            self.register_buffer("w", torch.tensor([SPEEDS[p % len(SPEEDS)] for p in range(DH // 2)]) * math.pi / 180)
+            self.register_buffer("w", torch.tensor([CLOCK[p % len(CLOCK)] for p in range(DH // 2)]) * math.pi / 180)
             gg = torch.Generator().manual_seed(6)
             self.register_buffer("Pq", F.normalize(torch.randn(2 * len(SPEEDS), D, generator=gg), dim=-1))
             self.register_buffer("Pk", F.normalize(torch.randn(2 * len(SPEEDS), D, generator=gg), dim=-1))
@@ -273,6 +274,8 @@ def run(arm, seed, RA, RB):
         loss = F.cross_entropy(lt.reshape(-1, NT), bt["t"][:, 1:].reshape(-1)) + F.nll_loss(li.reshape(-1, NI), bt["i"][:, 1:].reshape(-1))
         opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step(); sched.step()
     net.eval(); r = {"loss_end": float(loss.detach())}; tens, errs = [], []
+    if os.environ.get("TM_SAVE"):                                           # T3b: state dicts for the gate-margin read
+        torch.save(net.state_dict(), f".cache/megazord{SUF}_{arm}_s{seed}.pt")
     with torch.no_grad():
         for sp, byh in ev.items():
             accs = []
@@ -294,7 +297,7 @@ if __name__ == "__main__":
     def say(s):
         print(s, flush=True); out.write(s + "\n"); out.flush()
     say(f"mode {'smoke' if SMOKE else 'full'} (pid {os.getpid()}) steps {STEPS} seeds {SEEDS} arms {ARMS} tree {NT}x{NI} breaths {NB} "
-        f"train h {TRAIN_H} held h {HELD_H} held leaves {int(HELD.sum())} noise {NOISE}")
+        f"clock {CLOCK} train h {TRAIN_H} held h {HELD_H} held leaves {int(HELD.sum())} noise {NOISE}")
     RA, treeA = build_tree("A", say); RB, treeB = build_tree("B", say)      # before torch spins up threads (fork)
     import torch
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "16")))
