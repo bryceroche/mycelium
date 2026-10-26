@@ -53600,3 +53600,9 @@ Read: .cache/tree_db_v2_bench.txt (36 s, pid 54967) + scripts/tree_db_check.py.
 - **D3 PASS:** shard 5 (the saboteur) audition 0.000 → rolled back; shards 0–4, 6, 7 audition 1.000 → promoted; final leaves bit-exact to base + the 7 clean shards; the audit re-read 760,510 events OK.
 - **READ — bytes:** 152.2 MB (v1) → 0.23 MB working DB + 1.94 MB cold Parquet (**~70× smaller**; one-hot vectors compress to almost nothing). Migration of an 811k-event store: 2 s.
 - **PREDICTIONS:** D0 ✓; D1 ✓ (better: bit-exact, not just 1e-15); D2 ✗ (rollback 11.5×); D3 ✓; >10× shrink ✓ (70×).
+
+### 2026-10-26 (06:50) — TREE_DB v2 D4 PASS: T2w re-run on v2, W0–W3 all PASS on every seed (.cache/tree_handshake_v2.txt; unit treedb2; phase A 579 s, phase B 630 s, separate processes)
+
+- W0 fidelity [True ×3] (~406k events, 82 permanent batches → 18 rows per seed); W1 reserved node 1.000 ×3, 0 rows flipped; W2 B audition 1.000 ×3 → promoted, saboteur 0.000 ×3 → rejected, store unchanged, rebuild == incremental; W3 guards fire ×3.
+- Store per seed after both phases: 0.22 MB working DB + 2.5 MB cold events (v1: ~152 MB).
+- **TREE_DB v2 STANDS: D0 D1 D3 D4 PASS, D2 FAIL (banked; compaction = fix 5, held, now motivated by the measured rollback slope in batches-per-key).** The banked v1 T2w read and stores are untouched; v1 stores open only through migrate_v1 (TreeDB refuses a v1 file).
