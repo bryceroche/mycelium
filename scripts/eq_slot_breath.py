@@ -20,7 +20,9 @@ Decode: Hungarian over the final pointer (one mention per slot). Envs: EQ_ARM, E
 EQ_D, EQ_BATCH, EQ_LR, EQ_TAG. Output .cache/eq_slot_{TAG}.json + .pt
 THE PROBLEM-DISJOINT RERUN (ledger 2026-10-27, word given): EQ_SPLIT=problem cuts val by PROBLEM KEY (gen.src_idx / gen.pool, else
 the digit-masked text: resampled variants share it), EQ_CAP=N keeps <= N train rows per key (lowest sha1(text_sha) first),
-EQ_HOLD_CURVE=1 logs the holdout exact-order beside each VAL line (a read; never used for selection). Defaults = the 10-27 runs."""
+EQ_HOLD_CURVE=1 logs the holdout exact-order beside each VAL line (a read; never used for selection). Defaults = the 10-27 runs.
+EQ_FAST=1 (perf, same math): each batch trimmed to its longest text (pads are masked keys), and the shared block's re-read
+projects the text's keys/values ONCE per forward instead of once per breath (BREATH/NOMLP; X is the same every breath)."""
 import hashlib, json, math, os, re, sqlite3, sys, time
 
 import numpy as np
@@ -34,7 +36,7 @@ STEPS = int(os.environ.get("EQ_STEPS", "20000")); NB = int(os.environ.get("EQ_NB
 BATCH = int(os.environ.get("EQ_BATCH", "32")); LR = float(os.environ.get("EQ_LR", "3e-4")); NH = 8
 PB = int(os.environ.get("EQ_PB", "256"))   # BUS planes (T3e2: 64 fails held rules, 256 does not)
 TAG = os.environ.get("EQ_TAG", f"{ARM}_{READER}_s{SEED}")
-SPLIT = os.environ.get("EQ_SPLIT", "text"); CAP = int(os.environ.get("EQ_CAP", "0")); HOLD_CURVE = os.environ.get("EQ_HOLD_CURVE") == "1"
+FAST = os.environ.get("EQ_FAST") == "1"; SPLIT = os.environ.get("EQ_SPLIT", "text"); CAP = int(os.environ.get("EQ_CAP", "0")); HOLD_CURVE = os.environ.get("EQ_HOLD_CURVE") == "1"
 
 
 def problem_key(smp):   # the row's PROBLEM: the source index when the mix carries one, else the digit-masked text
@@ -105,9 +107,18 @@ def make_net():
                 gp = torch.Generator().manual_seed(7); pr = torch.randperm(PB, generator=gp)
                 self.register_buffer("rho_inv", pr.argsort())
 
-        def forward(self, S, smask, X, xmask, C, cmask, bus=None):
+        def text_kv(self, X):   # EQ_FAST: the re-read's keys/values, (B, NH, T, D/NH), projected once per forward
+            B, T, _ = X.shape; _, wk, wv = self.ca.in_proj_weight.chunk(3); _, bk, bv = self.ca.in_proj_bias.chunk(3)
+            return tuple(F.linear(X, w, b).view(B, T, NH, D // NH).transpose(1, 2) for w, b in ((wk, bk), (wv, bv)))
+
+        def forward(self, S, smask, X, xmask, C, cmask, bus=None, kv=None):
             h = self.n1(S); S = S + self.sa(h, h, h, key_padding_mask=~smask, need_weights=False)[0]
-            if bus is None:
+            if kv is not None:   # THE RE-READ, the cached-projection form (same math as self.ca)
+                h = self.n2(S); B, K, _ = h.shape; wq = self.ca.in_proj_weight[:D]; bq = self.ca.in_proj_bias[:D]
+                q = F.linear(h, wq, bq).view(B, K, NH, D // NH).transpose(1, 2)
+                o = F.scaled_dot_product_attention(q, kv[0], kv[1], attn_mask=xmask[:, None, None, :])
+                S = S + self.ca.out_proj(o.transpose(1, 2).reshape(B, K, D))
+            elif bus is None:
                 h = self.n2(S); S = S + self.ca(h, X, X, key_padding_mask=~xmask, need_weights=False)[0]   # THE RE-READ
             else:   # THE BUS: unbind the one-shot text vector with this breath's question, rho^-1(conj(q) * s)
                 u = (torch.polar(torch.ones(()), -self.bq(self.n2(S))) * bus[:, None])[..., self.rho_inv]
@@ -135,13 +146,14 @@ def make_net():
             C = torch.gather(X, 1, ctok[..., None].expand(-1, -1, D)) + self.cst(self.stk[:KMAX])[None]
             S = (self.s0 + self.sst(self.stk[:KMAX]))[None].expand(B, -1, -1)
             lgs = []; bus = None
+            kv = self.blocks[0].text_kv(X) if FAST and ARM in ("BREATH", "NOMLP") else None
             if ARM == "BUS":   # THE HANDOFF, once: every text token bound key (x) rho(value) into ONE PB-plane phasor vector
                 one = torch.ones(()); m = xmask[..., None].float()
                 bus = ((torch.polar(one, self.bk(X)) * torch.polar(one, self.bv(X))[..., self.rho]) * m).sum(1) / m.sum(1).sqrt()
             for b in range(NB):
                 if ARM in ("BREATH", "BUS", "NOMLP"):
                     S = S + self.bst(self.stk[b])
-                    S, lg = self.blocks[0](S, smask, X, xmask, C, cmask, bus)
+                    S, lg = self.blocks[0](S, smask, X, xmask, C, cmask, bus, kv)
                     p = lg.softmax(-1); hard = F.one_hot(p.argmax(-1), KMAX).float() + p - p.detach()   # THE SNAP
                     S = S + self.snap(hard @ C)
                 else:
@@ -162,6 +174,8 @@ def batch(rows, idx, mm):
     tgt = torch.full((len(rs), KMAX), -100, dtype=torch.long)
     for i, r in enumerate(rs):
         ctok[i, :r["n"]] = torch.tensor(r["ctok"]); cmask[i, :r["n"]] = True; tgt[i, :r["n"]] = torch.tensor(r["tgt"])
+    if FAST:   # trim to the batch's longest text: every key beyond it is a masked pad; every mention token lies inside it
+        L = int(xmask.sum(1).max()); X, xmask = X[:, :L].contiguous(), xmask[:, :L].contiguous()
     return rs, X, xmask, ctok, cmask, cmask.clone(), tgt
 
 
