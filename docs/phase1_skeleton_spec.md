@@ -53939,3 +53939,10 @@ Scored by `scripts/toys/reread_t3e_verdict.py` against the 10-26 20:48 pins; ban
 - BUS at NB 24: 2/5 land; held_rule mean 0.735 (0.873 at NB 12): the P=64 bus degrades with depth on held rules. POOL 0/5 at both depths.
 **Predictions scored:** CONTROL OK — WRONG (VOID). R1/R2/R3 — unscored (VOID).
 **Re-registration needed (holds for the word):** a per-depth control (each depth's verdicts gated by that depth's own landings) or a pinned seed-replacement rule; R3 read on landed-pair seeds only; the bus at P=256 as the width follow-up. Lesson: a joint cross-depth control lets one seed's non-landing void bars that never read that depth.
+
+### 2026-10-27 03:43 — (B) THE DISTILLED READER: **FAIL by 0.004** (prediction FAIL ✓)
+
+Unit `distill` (log `.cache/run_distill.log`): student s6x512 (21.4M trainable; frozen Llama embedding by host lookup), 30,000 steps at 0.285 s/step (8560 s). VAL loss 0.826 (smoke) → 0.2165 at step 28k (mse 0.154 in teacher-variance units; still creeping, −0.003 per 4k steps). Export wildholdSTU (311 rows, pads zero) → masked wild read on CLK3_241's FROZEN head.
+**Student 0.3554 vs teacher 0.3793** (n=2051 paired slots): diff −0.0239, paired SE 0.0085, McNemar z 2.81 (177 right only under the teacher, 128 only under the student). **BAR ≥ 0.3593: FAIL** (0.004 short). Prediction (FAIL on the frozen head): RIGHT. Its second half (head continuation recovers) is UNTESTED.
+Read: a 21M student reproduces enough of the trunk's L0–L3 coordinates for a head that never saw it to keep 94% of its wild score. Fields: pres 0.898, ftype 0.857, res 0.801, op 0.752; the losses concentrate where they always do (dig 0.481, args 0.424).
+**Next (holds for the word):** head continuation on student states (needs the student export of the 50,653 training rows, ~53 GB memmap) as the registered recovery test, or a longer student (the val curve has not flattened).
