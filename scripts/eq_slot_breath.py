@@ -15,8 +15,11 @@ ARMS:
   VANILLA  NB DISTINCT blocks (same block form, NB x the block params), no breath stamp, no snap = the compute-matched
            standard decoder
 Decode: Hungarian over the final pointer (one mention per slot). Envs: EQ_ARM, EQ_SEED, EQ_READER (BP|STU), EQ_STEPS, EQ_NB,
-EQ_D, EQ_BATCH, EQ_LR, EQ_TAG. Output .cache/eq_slot_{TAG}.json + .pt"""
-import hashlib, json, math, os, sqlite3, sys, time
+EQ_D, EQ_BATCH, EQ_LR, EQ_TAG. Output .cache/eq_slot_{TAG}.json + .pt
+THE PROBLEM-DISJOINT RERUN (ledger 2026-10-27, word given): EQ_SPLIT=problem cuts val by PROBLEM KEY (gen.src_idx / gen.pool, else
+the digit-masked text: resampled variants share it), EQ_CAP=N keeps <= N train rows per key (lowest sha1(text_sha) first),
+EQ_HOLD_CURVE=1 logs the holdout exact-order beside each VAL line (a read; never used for selection). Defaults = the 10-27 runs."""
+import hashlib, json, math, os, re, sqlite3, sys, time
 
 import numpy as np
 
@@ -29,6 +32,14 @@ STEPS = int(os.environ.get("EQ_STEPS", "20000")); NB = int(os.environ.get("EQ_NB
 BATCH = int(os.environ.get("EQ_BATCH", "32")); LR = float(os.environ.get("EQ_LR", "3e-4")); NH = 8
 PB = int(os.environ.get("EQ_PB", "256"))   # BUS planes (T3e2: 64 fails held rules, 256 does not)
 TAG = os.environ.get("EQ_TAG", f"{ARM}_{READER}_s{SEED}")
+SPLIT = os.environ.get("EQ_SPLIT", "text"); CAP = int(os.environ.get("EQ_CAP", "0")); HOLD_CURVE = os.environ.get("EQ_HOLD_CURVE") == "1"
+
+
+def problem_key(smp):   # the row's PROBLEM: the source index when the mix carries one, else the digit-masked text
+    g = smp.get("gen")
+    if isinstance(g, dict) and "src_idx" in g: return f"{g.get('src')}:{g['src_idx']}"
+    if isinstance(g, dict) and "pool" in g: return f"{g.get('src')}:pool:{json.dumps(g['pool'], sort_keys=True)}"
+    return "mask:" + re.sub(r"\d+(\.\d+)?", "#", smp["text"].strip())
 T_ALG, H_TRUNK, KMAX = 256, 2048, 14
 TOK = ".cache/llama-3.2-1b-weights/tokenizer.json"
 NPY, NPZ = ".cache/phase1_alg_states_{}_states.npy", ".cache/phase1_alg_states_{}.npz"
@@ -62,8 +73,15 @@ def build(split):
         cands = sorted(s[1] for s in st)
         ctok = [int(np.nonzero(offs[:, 1] > cs)[0][0]) for cs in cands]
         tgt = [cands.index(s[1]) for s in st]                          # stated slot rank r -> candidate index (text rank)
-        out.append(dict(row=i, n=len(st), ctok=ctok, tgt=tgt, eq=[s[0] for s in st], cands=cands,
-                        val=int(hashlib.sha1(sha[i].encode()).hexdigest(), 16) % 100 == 0))
+        vkey = problem_key(smp) if SPLIT == "problem" else sha[i]
+        out.append(dict(row=i, n=len(st), ctok=ctok, tgt=tgt, eq=[s[0] for s in st], cands=cands, pkey=problem_key(smp),
+                        hsh=hashlib.sha1(sha[i].encode()).hexdigest(), val=int(hashlib.sha1(vkey.encode()).hexdigest(), 16) % 100 == 0))
+    if CAP and split == "train":   # <= CAP train rows per problem (val rows are whole problems under EQ_SPLIT=problem; kept)
+        seen = {}; keep = []
+        for r in sorted(out, key=lambda r: r["hsh"]):
+            if r["val"] or seen.get(r["pkey"], 0) < CAP:
+                keep.append(r); seen[r["pkey"]] = seen.get(r["pkey"], 0) + (not r["val"])
+        out = sorted(keep, key=lambda r: r["row"])
     return out, tm
 
 
@@ -192,10 +210,12 @@ if __name__ == "__main__":
             msg = f"[eq_slot] step {step} loss {loss.item():.4f} | {(time.time() - t1) / (step + 1):.3f}s/step"
             if step % 5000 == 0 or step == STEPS - 1:
                 ex, _, _ = evaluate(net, val, mm_tr); msg += f" | VAL exact-order final {ex[-1]:.3f} (per block {' '.join(f'{x:.2f}' for x in ex)})"
+                if HOLD_CURVE:
+                    eh, _, _ = evaluate(net, ho, mm_ho); msg += f" | HOLD exact-order final {eh[-1]:.3f} (block1 {eh[0]:.3f})"
             print(msg, flush=True)
     ex, sv, per_row = evaluate(net, ho, mm_ho, T_ho)
     print(f"[eq_slot] HOLDOUT {TAG}: solver {sv:.4f} | exact-order final {ex[-1]:.3f} | per block {' '.join(f'{x:.3f}' for x in ex)} "
           f"| n {len(ho)} | {time.time() - t0:.0f}s", flush=True)
-    json.dump(dict(tag=TAG, arm=ARM, reader=READER, seed=SEED, nb=NB, d=D, steps=STEPS, params=npar, holdout_solver=sv,
+    json.dump(dict(tag=TAG, arm=ARM, reader=READER, seed=SEED, nb=NB, d=D, steps=STEPS, params=npar, split=SPLIT, cap=CAP, n_train=len(trn), holdout_solver=sv,
                    holdout_exact=ex.tolist(), per_row=per_row), open(f".cache/eq_slot_{TAG}.json", "w"))
     torch.save(net.state_dict(), f".cache/eq_slot_{TAG}.pt")
