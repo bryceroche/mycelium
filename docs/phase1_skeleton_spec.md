@@ -53874,3 +53874,41 @@ The organ effect survives on landed seeds, so M2c's PASS is not only learnabilit
 - The template provenance.
 
 **NEXT (needs its own registration):** the table's training use — the head's given slots point at text_pos and eq_slot is graded through the solver (graph equivalence under the answer key), not by position.
+
+### 2026-10-26 (20:48) — DESIGN NOTE (Bryce + Opus, no builds): THE LARGER MYCELIUM SYSTEM MAP, as discussed; the breathing transformer is nailed down first
+
+- **READER (vanilla, distilled from Llama; (B) registered 19:27):** one bidirectional sweep; token states cached.
+- **REASONER (the breathing transformer):** re-reads the cached reader states every breath with a query built from what it has worked out (Bryce's hill #1, alternation, in its cheap form; T3e tests it). A reader re-run conditioned on the reasoner is reserved for if re-reading proves too weak.
+- **THE ORDER TABLE ≠ THE T256 BUS:** the table is the SYMBOLIC per-problem store (SQLite rows); the bus is its CONTINUOUS face (256 complex planes = 512 = the waist). Each row rides the bus as a bound phasor; they meet at the per-breath SNAP.
+- **THE NOTEBOOK RETURNS** as that per-problem table + composite-key entities: written by the reasoner each breath (eq_slot fills, derived values), read on the next; now SNAPPED/symbolic, not a soft vector. Load-bearing evidence for the snap at depth: T3d.
+- **THE TREE:** permanent knowledge (types, rules), shared by reader (type recognition, T2l) and reasoner.
+- **SHARED ORGANS:** the rotation family (token RoPE / breath T6 / bus T256, kept in sync per the compatibility ruling); the phase-binding algebra; the two certifiers (mouth + vote / solver + key).
+- **U-NET COMPRESSION (hills):** 2048 → 512 → 128 and back, the tree's levels as the U-Net's levels. RISK under the mandatory-road law: a skip that can carry everything votes the bottleneck down. So the skips carry the fine ADDRESS (which) and the bottleneck the coarse TYPE (what), per T2v's factoring.
+- **ORDER OF WORK:** T3e (re-read vs one-shot) → the breathing transformer on the order table's eq_slot task (first real-data task) → system pieces.
+
+### 2026-10-26 (20:48) — WORD GIVEN ("word given for your choice"): T3e RE-READ vs ONE-SHOT registered (CPU; scripts/toys/reread_toy.py; bars pinned BEFORE the grid)
+
+**Question:** does the reasoner gain from taking its CURRENT question back to the text every breath (alternation), vs being handed one package at handoff?
+**Machine:** MEGAZORD (T6 clock gate, tree read, snap) with only the RULE READ varied; the "text" is the in-context rule σ.
+**Arms:**
+- **REREAD:** MEGAZORD's per-breath MHA over the NT facts.
+- **BUS:** one-shot fixed algebra. The whole rule is bound into ONE P = 64-plane phasor vector, s = Σ TC[t]·ρ(TC[σ(t)]), ρ a fixed plane permutation (the VALUE role). Each breath unbinds ρ⁻¹(conj(Tq)·s) → learned linear.
+- **POOL:** one-shot learned, the vanilla handoff. Two pooling queries per head → a 2D-wide summary (= BUS's width); each breath an MLP reads (current type, summary).
+
+**Splits:** indist / **HELD_RULE** (an active hop crosses a held type pair (1,4),(3,5),(5,6),(7,0), which no training rule contains) / HELD_H / LONG / EDGE / SWAP. Trees: the banked T3b6 (NB 12) and T3d (NB 24) stores, read-only. 12,000 steps, seeds 0–4, NB 12 then NB 24.
+**FEASIBILITY (3000 steps, seed 0, N_EV 60):**
+- REREAD: 1.000 on every split.
+- POOL: in-dist 0.167, held_rule 0.037 (slow).
+- BUS as first written: in-dist 0.169.
+  - **Cause:** ELEMENTWISE PHASE BINDING IS COMMUTATIVE. bind(t, σ(t)) = bind(σ(t), t), so unbinding with t returns σ(t) AND σ⁻¹(t) cleanly. Analytic one-hop accuracy 0.62 at P = 64/128/256 alike.
+  - **Fix:** a fixed plane permutation ρ on the value. Analytic one-hop 0.994 (P 64) / 0.9997 (128) / 1.000 (256).
+  - **Refit BUS (3000 steps):** in-dist 0.998, held_rule 0.937, long 0.994.
+- **DESIGN LAW CANDIDATE (the T256 bus):** directed relations need a NON-COMMUTATIVE role (a permutation, never only an elementwise role phasor — elementwise roles cancel the same way).
+
+**BARS (means over 5 seeds):**
+- **CONTROL:** REREAD in-dist ≥ 0.95 on every seed at both depths, else VOID.
+- **R1 RE-READ BEATS THE LEARNED PACKAGE:** REREAD − POOL on HELD_RULE ≥ 0.10 and every seed positive (NB 12).
+- **R2 RE-READ vs THE BUS (NB 12, HELD_RULE):** PASS if REREAD − BUS ≥ 0.05 and every seed positive; EQUIVALENT if |diff| < 0.02; else BETWEEN.
+- **R3 DEPTH:** (REREAD − BUS on LONG at NB 24) − (the same at NB 12) ≥ 0.05.
+
+**PREDICTIONS:** CONTROL OK; R1 PASS; R2 PASS (gap ~0.06); R3 PASS (bus wrong-picks compound: 0.994^11 ≈ 0.94 vs 0.994^23 ≈ 0.87). **NOTE:** the bus here is capacity-limited at P = 64 (8 bound facts); at the real bus width (256) the analytic ceiling is 1.000, so a bus loss here is a WIDTH effect, and a P = 256 rerun is the follow-up before any system claim.
