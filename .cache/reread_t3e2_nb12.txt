@@ -1,0 +1,7 @@
+T3e pid 101079 NB 12 steps 12000 seeds [0, 1, 2, 3, 4] arms ['BUS256'] clock (180.0, 60.0, 30.0, 15.0, 7.5, 3.75) trees _t3b6 held pairs [(1, 4), (3, 5), (5, 6), (7, 0)]
+BUS256 s0: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000  [1012s]
+BUS256 s1: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000  [1012s]
+BUS256 s2: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000  [1012s]
+BUS256 s3: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000  [1012s]
+BUS256 s4: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000  [1012s]
+DONE in 1012s

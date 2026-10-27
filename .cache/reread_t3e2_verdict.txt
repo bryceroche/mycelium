@@ -1,0 +1,11 @@
+NB 24 (s5-9) REREAD mean: indist 0.839 held_rule 0.832 held_h 0.829 long 0.860 edge 0.896 swap 0.824 | in-dist per seed [1.0, 1.0, 1.0, 1.0, 0.196]
+NB 24 (s5-9) BUS    mean: indist 0.918 held_rule 0.682 held_h 0.910 long 0.933 edge 0.943 swap 0.789 | in-dist per seed [0.951, 0.911, 1.0, 0.853, 0.874]
+NB 24 (s5-9) BUS256 mean: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000 | in-dist per seed [1.0, 1.0, 1.0, 1.0, 1.0]
+NB 12 BUS256 (s0-4) BUS256 mean: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000 | in-dist per seed [1.0, 1.0, 1.0, 1.0, 1.0]
+VERDICTS (T3e2)
+C24 CONTROL: OK (REREAD landed seeds [5, 6, 7, 8])
+R2 RE-READ vs THE WIDE BUS (NB 24): EQUIVALENT (REREAD - BUS256 on HELD_RULE +0.000; per landed seed [0.0, 0.0, 0.0, 0.0])
+W1 WIDTH: PASS (BUS256 - BUS on HELD_RULE at NB 24 +0.318; per seed [0.266, 0.399, 0.045, 0.468, 0.411])
+R3 DEPTH: PASS (REREAD - BUS on HELD_RULE: NB 12 +0.127, NB 24 +0.294; growth +0.168)
+READ NB 12 width: BUS256 - BUS on HELD_RULE +0.127 (same seeds 0-4)
+READ landed (in-dist >= 0.95): NB 24 REREAD 4/5, BUS 2/5, BUS256 5/5; NB 12 BUS256 5/5

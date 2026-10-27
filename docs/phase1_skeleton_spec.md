@@ -53976,3 +53976,14 @@ Unit `headcont` (log `.cache/run_headcont.log`). Exports formpm35cSTU (50,653 ro
 **Predictions scored:** PRIMARY PASS ✓ (≈0.37 predicted, 0.365 read); PARITY PASS ✓ (−0.010 predicted, −0.016 read); HCT within ±0.010 of CLK3_241 ✓. The 10-26 half-prediction "head continuation recovers" is now RIGHT.
 **Scope:** one seed per arm, one fixture; parity is the pinned one-sided bar (the deficit is −1.7 SE, real-ish, inside the bar). Llama-3.2-1B L0–L3 (~500M with the embedding) → 21.4M trainable + the frozen embedding table as a lookup. Not a promotion: the deployed manifest is untouched.
 **Consequence (by the pinned reader rule):** the eq_slot task reads the STUDENT's states (EQ_READER=STU).
+
+### 2026-10-27 09:37 — T3e2 VERDICTS: C24 OK; **R2 EQUIVALENT (the wide bus = re-read)**; W1 PASS (width); R3 PASS (vs the narrow bus only)
+
+Unit `t3e2` (log `.cache/run_t3e2.log`; verdict `.cache/reread_t3e2_verdict.txt`; nb24/nb12 .txt/.json banked).
+- **C24 CONTROL: OK** — REREAD landed 4/5 at NB 24 (seed 9 stalled at in-dist 0.196: REREAD's second NB 24 non-landing in ten seeds, after T3e s3).
+- **R2 RE-READ vs THE WIDE BUS (NB 24): EQUIVALENT** — REREAD − BUS256 on HELD_RULE +0.000 on every landed seed (both 1.000).
+- **W1 WIDTH: PASS** — BUS256 − BUS on HELD_RULE +0.318 at NB 24 (every seed positive); +0.127 at NB 12. The T3e bus loss was width.
+- **R3 DEPTH: PASS** — (REREAD − BUS) on HELD_RULE +0.127 (NB 12) → +0.294 (NB 24), growth +0.168. Read with W1: the growing edge is the NARROW bus degrading with depth, not re-read gaining.
+- **BUS256: 1.000 on every split, every seed, both depths; landed 10/10** (REREAD 9/10 at NB 24 across T3e + T3e2, 5/5 at NB 12; BUS P=64 2/5).
+**Predictions scored:** C24 OK ✓; W1 PASS ✓; R2 BETWEEN ✗ (EQUIVALENT: the wide bus closed the whole gap); R3 PASS ✓ (but its meaning is the narrow bus's).
+**READING:** at P=256 with a non-commutative value role, a ONE-SHOT phasor handoff of the whole rule carries everything the breathing reasoner needs, at either depth, and lands MORE reliably than per-breath re-reading. The learned one-shot summary (POOL) fails (~0.03 held rules); the algebraic one (the T256 bus) does not. **SCOPE:** the toy's "text" is 8 facts in 256 planes; superposition noise grows ~ sqrt(items / planes), so on real text (~100 tokens, many relations) the bus-vs-re-read question is a CAPACITY question, untested. eq_slot (running) uses re-read; a bus arm on real text is the follow-up. **T256 design law (now measured twice):** directed relations need a non-commutative role (permuted value), AND enough planes (64 fails on held rules, 256 doesn't).
