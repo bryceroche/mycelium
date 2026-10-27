@@ -53845,7 +53845,7 @@ The organ effect survives on landed seeds, so M2c's PASS is not only learnabilit
 - **BAR (swap test, pinned now):** the student's states fed to CLK3_241's FROZEN head read masked wild within 0.020 of the trunk's 0.3793 (≥ 0.3593), paired SE quoted. A gentle head continuation on the student's states is a READ, not the bar.
 - **Prediction:** frozen-head swap FAILS the bar on the first student (the head is tuned to the teacher's exact coordinates); head continuation recovers to within 0.03.
 
-### 2026-10-26 (19:45) — (A) THE MASTER ORDER TABLE: BUILT (.cache/order_table.sqlite: tables order_map [one row per given] + order_rows [one per problem row]; census .cache/order_table_census.txt; scripts/order_table.py)
+### 2026-10-26 (19:33) — (A) THE MASTER ORDER TABLE: BUILT (.cache/order_table.sqlite: tables order_map [one row per given] + order_rows [one per problem row]; census .cache/order_table_census.txt; scripts/order_table.py)
 
 **Coverage:** 50,964 rows (50,653 train + 311 holdout); 175,794 givens.
 - **problem_idx recovered on 100%** of GSM8K / SVAMP / ASDiv rows: src_idx verified against the source text; else an exact text match; else exact after undoing the resample substitutions; else a digit-blind template match. The template is needed because undoing the resample collides when a new value equals an existing number, and pool rows carry no src_idx.
