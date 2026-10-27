@@ -12,6 +12,8 @@ ARMS:
   BUS      BREATH with the RE-READ replaced by THE T256 BUS (T3e2's winner on the toy): the text is bound ONCE into a PB-plane
            phasor vector, s = sum_t exp(i k(x_t)) * rho(exp(i v(x_t))) / sqrt(n); each breath unbinds rho^-1(conj(exp(i q(S))) * s)
            (the candidates' own states still feed the pointer: the bus replaces only the context read)
+  NOMLP    BREATH with the block's feed-forward REMOVED: each breath = slot self-attn -> re-read -> snap -> clock -> pointer
+           (Bryce's breathing transformer is MHA without the MLP; T3d: no free MLP across planes; ledger 2026-10-27)
   VANILLA  NB DISTINCT blocks (same block form, NB x the block params), no breath stamp, no snap = the compute-matched
            standard decoder
 Decode: Hungarian over the final pointer (one mention per slot). Envs: EQ_ARM, EQ_SEED, EQ_READER (BP|STU), EQ_STEPS, EQ_NB,
@@ -95,7 +97,8 @@ def make_net():
             super().__init__()
             self.n1, self.n2, self.n3 = nn.LayerNorm(D), nn.LayerNorm(D), nn.LayerNorm(D)
             self.sa = nn.MultiheadAttention(D, NH, batch_first=True); self.ca = nn.MultiheadAttention(D, NH, batch_first=True)
-            self.ff = nn.Sequential(nn.Linear(D, 4 * D), nn.GELU(), nn.Linear(4 * D, D))
+            if ARM != "NOMLP":   # NOMLP: Bryce's breathing transformer = MHA WITHOUT THE MLP (10-24 notes; the T3d build rule)
+                self.ff = nn.Sequential(nn.Linear(D, 4 * D), nn.GELU(), nn.Linear(4 * D, D))
             self.pq, self.pk = nn.Linear(D, D), nn.Linear(D, D)
             if ARM == "BUS":
                 self.bq, self.bo = nn.Linear(D, PB), nn.Linear(2 * PB, D)
@@ -109,7 +112,8 @@ def make_net():
             else:   # THE BUS: unbind the one-shot text vector with this breath's question, rho^-1(conj(q) * s)
                 u = (torch.polar(torch.ones(()), -self.bq(self.n2(S))) * bus[:, None])[..., self.rho_inv]
                 S = S + self.bo(torch.cat([u.real, u.imag], -1))
-            S = S + self.ff(self.n3(S))
+            if ARM != "NOMLP":
+                S = S + self.ff(self.n3(S))
             lg = torch.einsum("bkd,bjd->bkj", self.pq(S), self.pk(C)) / math.sqrt(D)
             return S, lg.masked_fill(~cmask[:, None, :], -1e4)
 
@@ -119,8 +123,8 @@ def make_net():
             self.xn = nn.LayerNorm(H_TRUNK); self.xp = nn.Linear(H_TRUNK, D)
             self.register_buffer("stk", torch.from_numpy(stamp(max(KMAX, NB))))
             self.cst, self.sst = nn.Linear(12, D), nn.Linear(12, D); self.s0 = nn.Parameter(torch.zeros(D))
-            self.blocks = nn.ModuleList([Block() for _ in range(1 if ARM in ("BREATH", "BUS") else NB)])
-            if ARM in ("BREATH", "BUS"):
+            self.blocks = nn.ModuleList([Block() for _ in range(1 if ARM in ("BREATH", "BUS", "NOMLP") else NB)])
+            if ARM in ("BREATH", "BUS", "NOMLP"):
                 self.bst = nn.Linear(12, D); self.snap = nn.Linear(D, D)
             if ARM == "BUS":
                 self.bk, self.bv = nn.Linear(D, PB), nn.Linear(D, PB)
@@ -135,7 +139,7 @@ def make_net():
                 one = torch.ones(()); m = xmask[..., None].float()
                 bus = ((torch.polar(one, self.bk(X)) * torch.polar(one, self.bv(X))[..., self.rho]) * m).sum(1) / m.sum(1).sqrt()
             for b in range(NB):
-                if ARM in ("BREATH", "BUS"):
+                if ARM in ("BREATH", "BUS", "NOMLP"):
                     S = S + self.bst(self.stk[b])
                     S, lg = self.blocks[0](S, smask, X, xmask, C, cmask, bus)
                     p = lg.softmax(-1); hard = F.one_hot(p.argmax(-1), KMAX).float() + p - p.detach()   # THE SNAP
