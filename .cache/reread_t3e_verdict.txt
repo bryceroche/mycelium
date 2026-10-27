@@ -1,0 +1,13 @@
+NB 12 REREAD mean: indist 1.000 held_rule 1.000 held_h 1.000 long 1.000 edge 1.000 swap 1.000 | in-dist per seed [1.0, 1.0, 1.0, 1.0, 1.0]
+NB 12 BUS    mean: indist 0.978 held_rule 0.873 held_h 0.976 long 0.977 edge 0.978 swap 0.933 | in-dist per seed [1.0, 1.0, 0.946, 0.946, 1.0]
+NB 12 POOL   mean: indist 0.538 held_rule 0.033 held_h 0.536 long 0.655 edge 0.773 swap 0.291 | in-dist per seed [0.509, 0.331, 0.649, 0.466, 0.737]
+NB 24 REREAD mean: indist 0.875 held_rule 0.844 held_h 0.883 long 0.903 edge 0.909 swap 0.841 | in-dist per seed [1.0, 1.0, 1.0, 0.374, 1.0]
+NB 24 BUS    mean: indist 0.951 held_rule 0.735 held_h 0.952 long 0.961 edge 0.967 swap 0.829 | in-dist per seed [1.0, 0.98, 0.914, 0.94, 0.92]
+NB 24 POOL   mean: indist 0.356 held_rule 0.031 held_h 0.406 long 0.456 edge 0.664 swap 0.084 | in-dist per seed [0.411, 0.344, 0.317, 0.319, 0.39]
+VERDICTS (T3e)
+CONTROL: VOID
+R1 RE-READ BEATS THE LEARNED PACKAGE: VOID (REREAD - POOL on HELD_RULE +0.967; per seed [0.963, 0.956, 0.979, 0.964, 0.973])
+R2 RE-READ vs THE BUS: VOID (REREAD - BUS on HELD_RULE +0.127; per seed [0.044, 0.04, 0.261, 0.246, 0.042])
+R3 DEPTH: VOID (REREAD - BUS on LONG: NB 12 +0.023, NB 24 -0.058; growth -0.080)
+READ NB 12: landed (in-dist >= 0.95) REREAD 5/5, BUS 3/5, POOL 0/5
+READ NB 24: landed (in-dist >= 0.95) REREAD 4/5, BUS 2/5, POOL 0/5

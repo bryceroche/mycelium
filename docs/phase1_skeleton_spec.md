@@ -53928,3 +53928,14 @@ The organ effect survives on landed seeds, so M2c's PASS is not only learnabilit
 **PAD CONTROL:** the TEACHER's wild states with pads ZEROED read 0.3793 on CLK3_241, identical slot-for-slot to the open read (0 discordant). The head does not read pad states, so the export writes zeros there exactly.
 **PIPELINE:** the 400-step smoke student exported → swap read 0.1853 (half the teacher after 2 minutes).
 **FIRED:** unit `distill` (.cache/run_distill.sh): waits for T3e → 30,000 steps → export wildholdSTU → masked wild read on CLK3_241's FROZEN head → paired vs the teacher read. **BAR as registered: ≥ 0.3593. Prediction (registered): FAIL on the frozen head; head continuation recovers.**
+
+### 2026-10-27 01:19 — T3e VERDICTS: **VOID by its own control** (REREAD s3 did not land at NB 24)
+
+Scored by `scripts/toys/reread_t3e_verdict.py` against the 10-26 20:48 pins; banked `.cache/reread_t3e_verdict.txt` (+ nb12/nb24 .txt/.json).
+**CONTROL: VOID.** As pinned, the control covers BOTH depths: REREAD landed 5/5 at NB 12 (all 1.000 on every split), 4/5 at NB 24 — **seed 3 at NB 24 stalled at in-dist 0.374** (an optimization non-landing, the T3a-seed-1 shape). Per the pin, R1/R2/R3 are VOID. The bars do not bend; nothing below is a claim.
+**READS (non-claims, recorded for the re-registration):**
+- NB 12 (where the control held on every seed): REREAD−POOL on HELD_RULE **+0.967** (every seed ≥ +0.956; POOL ≈ 0.03 on held rules = it memorizes its training rules and cannot compose a new one). REREAD−BUS on HELD_RULE **+0.127**, every seed positive (+0.04/+0.04/+0.26/+0.25/+0.04): the bus is bimodal — 3 seeds land at ~0.957 held_rule, 2 stall at in-dist 0.946 / held_rule ~0.75. Would-have-been: R1 PASS, R2 PASS.
+- R3 as computed: REREAD−BUS on LONG +0.023 (NB 12) → −0.058 (NB 24), growth −0.080 — entirely REREAD s3's non-landing (the other four REREAD seeds are 1.000 on LONG at NB 24). Uninterpretable as pinned.
+- BUS at NB 24: 2/5 land; held_rule mean 0.735 (0.873 at NB 12): the P=64 bus degrades with depth on held rules. POOL 0/5 at both depths.
+**Predictions scored:** CONTROL OK — WRONG (VOID). R1/R2/R3 — unscored (VOID).
+**Re-registration needed (holds for the word):** a per-depth control (each depth's verdicts gated by that depth's own landings) or a pinned seed-replacement rule; R3 read on landed-pair seeds only; the bus at P=256 as the width follow-up. Lesson: a joint cross-depth control lets one seed's non-landing void bars that never read that depth.
