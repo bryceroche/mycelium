@@ -53808,3 +53808,69 @@ The organ effect survives on landed seeds, so M2c's PASS is not only learnabilit
 - CLAUDE.md §4 updated in this transaction (the old clock is a non-conforming PASSENGER; T6 enters with a job that needs range).
 
 **Tie to T3d (15:36):** in the toy, the snap/clock became load-bearing only at depth (NB 24). The chassis at K3 has no depth for a clock to serve. Both reads point the same way: the clock earns its keep when the loop is long.
+
+### 2026-10-26 (19:27) — WORD GIVEN ("word given for both"): (A) THE MASTER ORDER TABLE and (B) THE DISTILLED READER registered
+
+**Bryce's design (2026-10-26):**
+- The problem text is NEVER reordered.
+- The model gets a mapping table from the order givens appear in the text to the order the equations need them.
+- One MASTER table for training, carrying dataset and problem-number columns.
+- Reading comprehension goes to a small VANILLA reader, distilled from Llama as teacher; reasoning goes to the breathing transformer.
+
+**(A) THE MASTER ORDER TABLE** (zero GPU; scripts/order_table.py → .cache/order_table.sqlite + .cache/order_table_census.txt).
+- **Rows:** one per GIVEN factor of every row of the chassis training mix (.cache/form_mix_pm35c.jsonl, 50,653 rows) plus the wild holdout (.cache/wild_admitted_holdout.jsonl, split = 'holdout': a measurement fixture, never trained on).
+- **Columns:**
+  - **dataset:** gsm8k-train / gsm8k-test / svamp / asdiv / mint:<generator>.
+  - **problem_idx:** the GSM8K split row, SVAMP ID or ASDiv ID; the mix row for synthetic mint.
+  - **provenance:** how problem_idx was recovered — src_idx verified against the source text / exact text match / exact after undoing the recorded resample substitutions / none.
+  - **split, mix, row, text_sha, var, value.**
+  - **text_pos:** rank of the given's numeral among the row's located givens, in text order.
+  - **char_start.**
+  - **eq_slot:** rank of the given in gold factor order = derivation order.
+  - **owner, owner_kind:** governor_census's spaCy governor chain. An offline HEURISTIC label, never gold, never a runtime stage.
+  - **locate:** mention / value / unstated.
+  - **multi_occ:** the value occurs in the text more often than the row's givens use it.
+- **Location rule:** prefer a `mentions` span whose text parses to the value; else the first unused numeral (digits or spelled) of equal value in text order; else 'unstated' (text_pos NULL). Custody: reads text + factors only, never solution fields.
+- **Predictions:**
+  - GSM8K-sourced training rows: mention order = derivation order on 0.40–0.55 of rows (wild 0.467).
+  - ASDiv/SVAMP ('canonical: positional'): ≥ 0.90.
+  - Synthetic mint: ≥ 0.80.
+  - Givens located in text ≥ 0.97 overall.
+  - problem_idx recovered on ≥ 0.95 of GSM8K / SVAMP / ASDiv rows.
+  - Not bars: a census of a data artifact; the table's training use gets its own registration.
+
+**(B) THE DISTILLED READER** (GPU; registered here, fired only after a feasibility read is ledgered).
+- **Teacher:** frozen Llama-3.2-1B L0–L3, the BP states (bidirectional + pads, the chassis's precompute).
+- **Student:** a vanilla bidirectional transformer, about 6 layers × 512d, same tokenizer (positions align), corpus-pruned vocab, 2048d output projection. Trained by feature distillation (state MSE + cosine) on the chassis corpora.
+- **BAR (swap test, pinned now):** the student's states fed to CLK3_241's FROZEN head read masked wild within 0.020 of the trunk's 0.3793 (≥ 0.3593), paired SE quoted. A gentle head continuation on the student's states is a READ, not the bar.
+- **Prediction:** frozen-head swap FAILS the bar on the first student (the head is tuned to the teacher's exact coordinates); head continuation recovers to within 0.03.
+
+### 2026-10-26 (19:45) — (A) THE MASTER ORDER TABLE: BUILT (.cache/order_table.sqlite: tables order_map [one row per given] + order_rows [one per problem row]; census .cache/order_table_census.txt; scripts/order_table.py)
+
+**Coverage:** 50,964 rows (50,653 train + 311 holdout); 175,794 givens.
+- **problem_idx recovered on 100%** of GSM8K / SVAMP / ASDiv rows: src_idx verified against the source text; else an exact text match; else exact after undoing the resample substitutions; else a digit-blind template match. The template is needed because undoing the resample collides when a new value equals an existing number, and pool rows carry no src_idx.
+- **GSM8K split check:** 0 training rows come from GSM8K TEST.
+
+**Mention order = derivation order (share of rows):**
+
+| Source | Share | Prediction |
+|---|---|---|
+| GSM8K train-mix | 0.487 | 0.40–0.55 ✓ |
+| Wild holdout | 0.474 | (the 10-16 census read 0.467 under a different matcher) |
+| ASDiv | 0.807 | ≥ 0.90 ✗ |
+| SVAMP | 0.627 | ≥ 0.90 ✗ |
+| Synthetic mint | 0.494 | ≥ 0.80 ✗ |
+| ALL train | 0.530 | — |
+
+'canonical: positional' does not mean text order, and the mint generators serialize solution-first like gold. So HALF the training mix teaches plan order through a positional read — the table's case is the whole mix, not just GSM8K.
+**Givens located: 0.982 train / 0.977 holdout** (prediction ≥ 0.97 ✓).
+- **Located by:** mention span 0.91–1.00 per source; a multiplicative word ('twice', 'half', 'one-third', 'dozen') = locate 'lexical' 5.6% of GSM8K givens.
+- **Unstated residue:** world constants (60, 7, 100, 1000, 12) and implicit counts ('a driver' = 1).
+- **multi_occ:** 0.071 train / 0.127 holdout. These rows' text_pos depends on the first-unused-occurrence rule; flagged, not hidden.
+
+**Build fixes before banking** (the unbanked first passes were deleted):
+- Compound and spelled numbers ('twenty-one', 'one hundred five', '$seventeen$'), spelled fractions, and multiplicative words: the census's single-word lexicon missed them, so the builder has its own scanner, unit-checked: ordinals like 'the third day' never match.
+- Negative literals ('-86').
+- The template provenance.
+
+**NEXT (needs its own registration):** the table's training use — the head's given slots point at text_pos and eq_slot is graded through the solver (graph equivalence under the answer key), not by position.

@@ -1,0 +1,10 @@
+MASTER ORDER TABLE (ledger 2026-10-26 19:27): .cache/order_table.sqlite; 50964 rows; 39s
+  holdout gsm8k-train  rows    302 | mention order = derivation order 0.474 | givens 981: mention 0.000 value 0.985 lexical 0.000 unstated 0.015 | provenance: src_idx-verified 302
+  holdout mint         rows      9 | mention order = derivation order 0.778 | givens 28: mention 0.000 value 0.714 lexical 0.000 unstated 0.286 | provenance: synthetic 9
+  train   asdiv        rows   4613 | mention order = derivation order 0.807 | givens 10466: mention 0.985 value 0.000 lexical 0.003 unstated 0.012 | provenance: exact 1418, unsubstituted 3171, template 24
+  train   gsm8k-train  rows  21250 | mention order = derivation order 0.487 | givens 76443: mention 0.911 value 0.006 lexical 0.056 unstated 0.027 | provenance: src_idx-verified 17960, exact 920, unsubstituted 2084, template 286
+  train   mint         rows  21000 | mention order = derivation order 0.494 | givens 79534: mention 0.971 value 0.016 lexical 0.000 unstated 0.013 | provenance: synthetic 21000
+  train   svamp        rows   3790 | mention order = derivation order 0.627 | givens 8342: mention 1.000 value 0.000 lexical 0.000 unstated 0.000 | provenance: exact 955, unsubstituted 2752, template 83
+  ALL train: rows 50653, identical 0.530; givens 174785, located 0.982, multi_occ 0.071
+  ALL holdout: rows 311, identical 0.482; givens 1009, located 0.977, multi_occ 0.127
+  READ: training rows whose source is GSM8K TEST: 0 distinct problems
