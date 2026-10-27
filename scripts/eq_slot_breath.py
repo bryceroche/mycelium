@@ -9,6 +9,9 @@ ARMS:
   BREATH   ONE shared block applied NB times (slot self-attn -> RE-READ cross-attn over ALL text tokens -> FF), a T6 BREATH
            stamp added each breath, and THE SNAP: a straight-through one-hot of each slot's pointer argmax re-injects the
            chosen candidate (the notebook commits; T3d: the snap's job grows with depth)
+  BUS      BREATH with the RE-READ replaced by THE T256 BUS (T3e2's winner on the toy): the text is bound ONCE into a PB-plane
+           phasor vector, s = sum_t exp(i k(x_t)) * rho(exp(i v(x_t))) / sqrt(n); each breath unbinds rho^-1(conj(exp(i q(S))) * s)
+           (the candidates' own states still feed the pointer: the bus replaces only the context read)
   VANILLA  NB DISTINCT blocks (same block form, NB x the block params), no breath stamp, no snap = the compute-matched
            standard decoder
 Decode: Hungarian over the final pointer (one mention per slot). Envs: EQ_ARM, EQ_SEED, EQ_READER (BP|STU), EQ_STEPS, EQ_NB,
@@ -24,6 +27,7 @@ from mycelium import rotor_clock as CK
 ARM = os.environ.get("EQ_ARM", "BREATH"); SEED = int(os.environ.get("EQ_SEED", "0")); READER = os.environ.get("EQ_READER", "BP")
 STEPS = int(os.environ.get("EQ_STEPS", "20000")); NB = int(os.environ.get("EQ_NB", "8")); D = int(os.environ.get("EQ_D", "256"))
 BATCH = int(os.environ.get("EQ_BATCH", "32")); LR = float(os.environ.get("EQ_LR", "3e-4")); NH = 8
+PB = int(os.environ.get("EQ_PB", "256"))   # BUS planes (T3e2: 64 fails held rules, 256 does not)
 TAG = os.environ.get("EQ_TAG", f"{ARM}_{READER}_s{SEED}")
 T_ALG, H_TRUNK, KMAX = 256, 2048, 14
 TOK = ".cache/llama-3.2-1b-weights/tokenizer.json"
@@ -75,10 +79,18 @@ def make_net():
             self.sa = nn.MultiheadAttention(D, NH, batch_first=True); self.ca = nn.MultiheadAttention(D, NH, batch_first=True)
             self.ff = nn.Sequential(nn.Linear(D, 4 * D), nn.GELU(), nn.Linear(4 * D, D))
             self.pq, self.pk = nn.Linear(D, D), nn.Linear(D, D)
+            if ARM == "BUS":
+                self.bq, self.bo = nn.Linear(D, PB), nn.Linear(2 * PB, D)
+                gp = torch.Generator().manual_seed(7); pr = torch.randperm(PB, generator=gp)
+                self.register_buffer("rho_inv", pr.argsort())
 
-        def forward(self, S, smask, X, xmask, C, cmask):
+        def forward(self, S, smask, X, xmask, C, cmask, bus=None):
             h = self.n1(S); S = S + self.sa(h, h, h, key_padding_mask=~smask, need_weights=False)[0]
-            h = self.n2(S); S = S + self.ca(h, X, X, key_padding_mask=~xmask, need_weights=False)[0]   # THE RE-READ
+            if bus is None:
+                h = self.n2(S); S = S + self.ca(h, X, X, key_padding_mask=~xmask, need_weights=False)[0]   # THE RE-READ
+            else:   # THE BUS: unbind the one-shot text vector with this breath's question, rho^-1(conj(q) * s)
+                u = (torch.polar(torch.ones(()), -self.bq(self.n2(S))) * bus[:, None])[..., self.rho_inv]
+                S = S + self.bo(torch.cat([u.real, u.imag], -1))
             S = S + self.ff(self.n3(S))
             lg = torch.einsum("bkd,bjd->bkj", self.pq(S), self.pk(C)) / math.sqrt(D)
             return S, lg.masked_fill(~cmask[:, None, :], -1e4)
@@ -89,19 +101,25 @@ def make_net():
             self.xn = nn.LayerNorm(H_TRUNK); self.xp = nn.Linear(H_TRUNK, D)
             self.register_buffer("stk", torch.from_numpy(stamp(max(KMAX, NB))))
             self.cst, self.sst = nn.Linear(12, D), nn.Linear(12, D); self.s0 = nn.Parameter(torch.zeros(D))
-            self.blocks = nn.ModuleList([Block() for _ in range(1 if ARM == "BREATH" else NB)])
-            if ARM == "BREATH":
+            self.blocks = nn.ModuleList([Block() for _ in range(1 if ARM in ("BREATH", "BUS") else NB)])
+            if ARM in ("BREATH", "BUS"):
                 self.bst = nn.Linear(12, D); self.snap = nn.Linear(D, D)
+            if ARM == "BUS":
+                self.bk, self.bv = nn.Linear(D, PB), nn.Linear(D, PB)
+                gp = torch.Generator().manual_seed(7); self.register_buffer("rho", torch.randperm(PB, generator=gp))
 
         def forward(self, X, xmask, ctok, cmask, smask):
             X = self.xp(self.xn(X)); B = X.shape[0]
             C = torch.gather(X, 1, ctok[..., None].expand(-1, -1, D)) + self.cst(self.stk[:KMAX])[None]
             S = (self.s0 + self.sst(self.stk[:KMAX]))[None].expand(B, -1, -1)
-            lgs = []
+            lgs = []; bus = None
+            if ARM == "BUS":   # THE HANDOFF, once: every text token bound key (x) rho(value) into ONE PB-plane phasor vector
+                one = torch.ones(()); m = xmask[..., None].float()
+                bus = ((torch.polar(one, self.bk(X)) * torch.polar(one, self.bv(X))[..., self.rho]) * m).sum(1) / m.sum(1).sqrt()
             for b in range(NB):
-                if ARM == "BREATH":
+                if ARM in ("BREATH", "BUS"):
                     S = S + self.bst(self.stk[b])
-                    S, lg = self.blocks[0](S, smask, X, xmask, C, cmask)
+                    S, lg = self.blocks[0](S, smask, X, xmask, C, cmask, bus)
                     p = lg.softmax(-1); hard = F.one_hot(p.argmax(-1), KMAX).float() + p - p.detach()   # THE SNAP
                     S = S + self.snap(hard @ C)
                 else:

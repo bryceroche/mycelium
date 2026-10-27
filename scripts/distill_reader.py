@@ -10,6 +10,8 @@ Modes:
   --export JSONL --src SPLIT --out SPLIT2 : run the student over JSONL and write the states memmap under SPLIT2 + a copy of
           SPLIT's npz (tokmask/sent/gold are state-independent; tokmask asserted equal), so ALG_TEST_NAME=SPLIT2 reads it.
           Pad positions are written as ZEROS (the student is never trained on them).
+          DR_VOCAB=fold: EMB @ w_in folded into one fp16 V x D table; DR_VOCAB=prune: + reader_vocab.py's kept set, dropped
+          tokens = the mean of their fallback pieces' rows (ledger 10-27, the shrunk reader)
   --padzero SRC --out SPLIT2 : the teacher's own states with pads zeroed (the feasibility control: do pads matter?)"""
 import argparse, json, math, os, queue, shutil, sys, threading, time
 sys.path.insert(0, "."); sys.path.insert(0, "scripts")
@@ -102,6 +104,19 @@ if args.export:
     ztm = np.load(STATES_NPZ.format(split=args.src))["tokmask"]
     assert ztm.shape == mask.shape and (ztm.astype(np.float32) == mask).all(), "tokmask mismatch vs the source split"
     ld = safe_load(CKPT); p = {k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld}
+    VOCAB = os.environ.get("DR_VOCAB", "full")
+    if VOCAB != "full":   # THE SHRUNK READER (ledger 10-27): fold EMB @ w_in into one fp16 V x D table (exact up to fp16 storage);
+        # "prune" keeps reader_vocab.py's K and gives every dropped token the MEAN of its fallback pieces' rows
+        EMB = (EMB.astype(np.float32) @ p["w_in"].numpy()).astype(np.float16)
+        if VOCAB == "prune":
+            z = np.load(".cache/reader_vocab_k.npz"); ptr, pc = z["piece_ptr"], z["pieces"]
+            keep = np.zeros(len(EMB), bool); keep[z["keep"]] = True; assert keep[pc].all(), "a fallback piece was dropped"
+            for j, i in enumerate(z["oov_ids"]):
+                EMB[i] = EMB[pc[ptr[j]:ptr[j + 1]]].astype(np.float32).mean(0).astype(np.float16)
+            print(f"[export] PRUNED: {int(keep.sum())} kept rows x {EMB.shape[1]}, {len(z['oov_ids'])} tokens composed from pieces", flush=True)
+        else:
+            print(f"[export] FOLDED: {EMB.shape[0]} x {EMB.shape[1]} fp16", flush=True)
+        p["w_in"] = Tensor.eye(D, dtype=dtypes.float).contiguous().realize()
     shutil.copyfile(STATES_NPZ.format(split=args.src), STATES_NPZ.format(split=args.out))
     st = np.lib.format.open_memmap(d_npy, mode="w+", dtype=np.float16, shape=(len(ids), T_ALG, H_TRUNK))
     for s0 in range(0, len(ids), 8):
