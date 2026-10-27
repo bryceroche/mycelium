@@ -53966,3 +53966,13 @@ FORM: `scripts/toys/reread_toy.py` gains arm **BUS256** (the bus at P=256 planes
 **THE READER RULE (pinned before B2 lands):** the student's states (STU) iff B2's PARITY passes (HCS − HCT ≥ −0.020), else the teacher's (BP). Chain `.cache/run_eqslot.sh`, unit `eqslot` (waits for headcont + t3e2; CPU alone): BREATH s0, VANILLA s0, BREATH s1, VANILLA s1 → `scripts/eq_slot_verdict.py`.
 **BARS (pinned now):** E1 BREATH solver ≥ TEXT + 0.10 on BOTH seeds (TEXT solver-graded on the same rows). E2 THE FAIR FIGHT, BREATH − VANILLA on paired rows per seed: PASS mean ≥ +0.020 and both seeds positive / EQUIVALENT |mean| < 0.020 / VANILLA WINS mean ≤ −0.020 and both negative / else BETWEEN. Reads: the per-block exact-order curve (does the loop climb with breaths?), paired SE per seed.
 **PREDICTIONS:** E1 PASS (~0.70); E2 EQUIVALENT — at matched compute on a one-step assignment, the breathing advantage (if any) should be parameter efficiency (5.6x fewer), not accuracy; a breath curve that climbs past block 1 is the sign the loop is doing work.
+
+### 2026-10-27 07:23 — (B2) HEAD CONTINUATION VERDICTS: **PRIMARY PASS, PARITY PASS** — the 21M student replaces the trunk at inference (on this fixture, one seed)
+
+Unit `headcont` (log `.cache/run_headcont.log`). Exports formpm35cSTU (50,653 rows) + test23STU (300). Both arms warm 165/165 keys from CLK3_241, 12k steps, LR 5e-5.
+- **HCT** (teacher states, the control): masked wild **0.3808** (vs CLK3_241 0.3793: +0.0015, paired SE 0.0068, z 0.21 — continuation alone buys nothing; val test23BP 0.9013).
+- **HCS** (student states): masked wild **0.3652** (vs the frozen-head student 0.3554: +0.0098, SE 0.0078; val test23STU 0.9163).
+- **PRIMARY HCS ≥ 0.3593: PASS** (+0.006 over the bar). **PARITY HCS − HCT ≥ −0.020: PASS** (−0.0156, paired SE 0.0092, z 1.69; discordant 196/164). Fields: pres 0.921 (above the teacher's 0.909), ftype 0.853, res 0.808, op 0.748; dig 0.508 / args 0.425 carry the gap.
+**Predictions scored:** PRIMARY PASS ✓ (≈0.37 predicted, 0.365 read); PARITY PASS ✓ (−0.010 predicted, −0.016 read); HCT within ±0.010 of CLK3_241 ✓. The 10-26 half-prediction "head continuation recovers" is now RIGHT.
+**Scope:** one seed per arm, one fixture; parity is the pinned one-sided bar (the deficit is −1.7 SE, real-ish, inside the bar). Llama-3.2-1B L0–L3 (~500M with the embedding) → 21.4M trainable + the frozen embedding table as a lookup. Not a promotion: the deployed manifest is untouched.
+**Consequence (by the pinned reader rule):** the eq_slot task reads the STUDENT's states (EQ_READER=STU).
