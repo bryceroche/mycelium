@@ -53912,3 +53912,19 @@ The organ effect survives on landed seeds, so M2c's PASS is not only learnabilit
 - **R3 DEPTH:** (REREAD − BUS on LONG at NB 24) − (the same at NB 12) ≥ 0.05.
 
 **PREDICTIONS:** CONTROL OK; R1 PASS; R2 PASS (gap ~0.06); R3 PASS (bus wrong-picks compound: 0.994^11 ≈ 0.94 vs 0.994^23 ≈ 0.87). **NOTE:** the bus here is capacity-limited at P = 64 (8 bound facts); at the real bus width (256) the analytic ceiling is 1.000, so a bus loss here is a WIDTH effect, and a P = 256 rerun is the follow-up before any system claim.
+
+### 2026-10-26 (22:16) — (B) THE DISTILLED READER: FEASIBILITY (scripts/distill_reader.py; smoke artifacts deleted) → FIRED, queued behind T3e
+
+**Student:** frozen Llama embedding (gathered on the host) → 2048→512 → 6 pre-norm blocks (8-head bidirectional MHA, RoPE θ 500000, pad keys masked, SwiGLU 1408; ReZero-style zero wo/wd) → RMSNorm → 512→2048 + bias (teacher mean). **21,373,440 trainable params.** Loss on REAL tokens: MSE / teacher per-dim variance (0.0639) + (1 − cos). Val: 256 rows held out 1% by TEXT identity.
+**AMENDMENT (before any read):** the registered 'corpus-pruned vocab' is replaced by the FULL frozen Llama embedding table, a host-side lookup (no OOV on wild; pruning is a deployment step, not a reading-quality one).
+**Three engineering finds (tinygrad):**
+- (1) A device-side EMB[ids] over the 128k-row table lowers to a compare-and-reduce, ~2e12 ops per batch, so the lookup moved to the host.
+- (2) The scheduler fused the w_out matmul's reduction under the loss's per-row mean, and recomputed per-row norms and the guard's loss scalar inside the backward's elementwise kernels: **13.7 s/step**.
+  - Bisected on a synthetic harness: the masked MSE alone 11 s; the cosine's row norms +0.5–1.5 s; the isfinite guard +1.2 s once composed.
+  - **Fix:** .contiguous() boundaries on the model output, the row reductions, the token count and the guard scalar → **0.30 s/step** with data loading (30k steps ≈ 2.5 h).
+- (3) GPU host threads beside a 16-thread CPU toy slowed the toy ~3.5× (load 17 on 16 cores): the 'CPU toys run alone' rule, now with a measured reason.
+
+**Smoke (400 steps):** VAL loss 17.56 → 0.826 (mse 0.569).
+**PAD CONTROL:** the TEACHER's wild states with pads ZEROED read 0.3793 on CLK3_241, identical slot-for-slot to the open read (0 discordant). The head does not read pad states, so the export writes zeros there exactly.
+**PIPELINE:** the 400-step smoke student exported → swap read 0.1853 (half the teacher after 2 minutes).
+**FIRED:** unit `distill` (.cache/run_distill.sh): waits for T3e → 30,000 steps → export wildholdSTU → masked wild read on CLK3_241's FROZEN head → paired vs the teacher read. **BAR as registered: ≥ 0.3593. Prediction (registered): FAIL on the frozen head; head continuation recovers.**
