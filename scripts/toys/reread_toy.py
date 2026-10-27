@@ -8,6 +8,8 @@ ARMS:
           s = sum_t TC[t] * rho(TC[sigma(t)]) / sqrt(NT), rho a fixed plane permutation (the VALUE role); every breath the
           reasoner UNBINDS with its current type, rho^-1(conj(Tq) * s). Without rho the bind is commutative and the unbind
           returns sigma(t) and sigma^-1(t) alike (feasibility: one-hop 0.62 at any width; with rho 0.994 at P=64, 1.000 at 256)
+  BUS256  BUS at P=256 planes (own codes, seed 2028; the T3e2 width follow-up): the bind and unbind live in 256 planes,
+          rb maps the unbound 512 reals back to the reasoner's 2P; REREAD/BUS/POOL byte-identical
   POOL    one-shot, learned (the vanilla handoff): two learned pooling queries per head summarize the facts once into a
           2D-wide vector (= BUS's width); every breath an MLP reads (current type, summary)
 SPLITS: indist / HELD_RULE (the rule contains a held type pair t -> t' that an active hop crosses; no training rule
@@ -25,7 +27,7 @@ from mycelium import tree_db as TDB
 ARMS = os.environ.get("TE_ARMS", "REREAD,BUS,POOL").split(",")
 SEEDS = [int(s) for s in os.environ.get("TM_SEEDS", "0,1,2,3,4").split(",")]
 TREE_TAG = {12: "_t3b6", 24: "_t3d"}[M.NB]
-OUT = f".cache/reread_t3e_nb{M.NB}{'_smoke' if M.SMOKE else ''}.txt"
+OUT = f".cache/reread_t3e{os.environ.get('TE_TAG', '')}_nb{M.NB}{'_smoke' if M.SMOKE else ''}.txt"
 HELD_PAIRS = {(1, 4), (3, 5), (5, 6), (7, 0)}                              # never in a training rule
 HP = np.zeros((M.NT, M.NT), bool)
 for a, b in HELD_PAIRS:
@@ -80,9 +82,12 @@ def build_net():
     class Net(Base):
         def __init__(self, arm):
             super().__init__("MEGAZORD"); self.arm = arm
-            if arm == "BUS":
-                self.rb = nn.Linear(2 * P, 2 * P)
-                gp = torch.Generator().manual_seed(7); pr = torch.randperm(P, generator=gp)
+            if arm in ("BUS", "BUS256"):
+                self.PW = P if arm == "BUS" else 256; self.rb = nn.Linear(2 * self.PW, 2 * P)
+                if arm == "BUS256":
+                    gw = torch.Generator().manual_seed(2028)
+                    self.register_buffer("TCW", torch.polar(torch.ones(NT, 256), 2 * math.pi * torch.rand(NT, 256, generator=gw)))
+                gp = torch.Generator().manual_seed(7); pr = torch.randperm(self.PW, generator=gp)
                 self.register_buffer("rho", pr); self.register_buffer("rho_inv", pr.argsort())
             if arm == "POOL":
                 self.pq = nn.Parameter(torch.randn(2, NH, DH) / math.sqrt(DH))
@@ -95,8 +100,9 @@ def build_net():
             V = self.rv(ri(TC[bt["sig"]])).view(Bn, NT, NH, DH).transpose(1, 2)
             hopk = rot(self.ck.expand(Bn, D), wD[None] * h[:, None].float())
             fk = ri(TC[ALL_T] * IC[ALL_I]) / math.sqrt(P)
-            if self.arm == "BUS":                                           # THE HANDOFF, once: the whole rule in one vector
-                s = (TC[None] * TC[bt["sig"]][..., self.rho]).sum(1) / math.sqrt(NT)
+            if self.arm in ("BUS", "BUS256"):                               # THE HANDOFF, once: the whole rule in one vector
+                TB = TC if self.arm == "BUS" else self.TCW
+                s = (TB[None] * TB[bt["sig"]][..., self.rho]).sum(1) / math.sqrt(NT)
             if self.arm == "POOL":                                          # THE HANDOFF, once: a learned summary
                 a0 = torch.softmax(torch.einsum("qhd,bhld->bqhl", self.pq, K) / math.sqrt(DH), -1)
                 s = torch.einsum("bqhl,bhld->bqhd", a0, V).reshape(Bn, 2 * D)
@@ -108,8 +114,9 @@ def build_net():
                     Q = self.rq(ri(Tq)).view(Bn, NH, DH)
                     a = torch.softmax(torch.einsum("bhd,bhld->bhl", Q, K) / math.sqrt(DH), -1)
                     msg = self.ro(torch.einsum("bhl,bhld->bhd", a, V).reshape(Bn, D))
-                elif self.arm == "BUS":
-                    msg = self.rb(ri((Tq.conj() * s)[..., self.rho_inv]))
+                elif self.arm in ("BUS", "BUS256"):
+                    TqB = Tq if self.arm == "BUS" else ht.to(torch.complex64) @ self.TCW
+                    msg = self.rb(ri((TqB.conj() * s)[..., self.rho_inv]))
                 else:
                     msg = self.ro(self.pm(torch.cat([ri(Tq), s], -1)))
                 r = ri(Tq) + p_go * msg
