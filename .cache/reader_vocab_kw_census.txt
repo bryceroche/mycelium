@@ -1,0 +1,1 @@
+K = 48170 of 128256 tokens (24.7M params at 512d; singles 256); holdout problems fenced from GSM8K-train 302 | HOLDOUT token OOV 0.0045, rows touched 33/311 | GSM8K TEST token OOV 0.0043, problems touched 0.147 | mean pieces per dropped token 4.33

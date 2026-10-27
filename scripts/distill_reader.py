@@ -109,7 +109,7 @@ if args.export:
         # "prune" keeps reader_vocab.py's K and gives every dropped token the MEAN of its fallback pieces' rows
         EMB = (EMB.astype(np.float32) @ p["w_in"].numpy()).astype(np.float16)
         if VOCAB == "prune":
-            z = np.load(".cache/reader_vocab_k.npz"); ptr, pc = z["piece_ptr"], z["pieces"]
+            z = np.load(os.environ.get("DR_VOCAB_K", ".cache/reader_vocab_k.npz")); ptr, pc = z["piece_ptr"], z["pieces"]
             keep = np.zeros(len(EMB), bool); keep[z["keep"]] = True; assert keep[pc].all(), "a fallback piece was dropped"
             for j, i in enumerate(z["oov_ids"]):
                 EMB[i] = EMB[pc[ptr[j]:ptr[j + 1]]].astype(np.float32).mean(0).astype(np.float16)

@@ -5,7 +5,8 @@ each dropped token's FALLBACK PIECES, so a pruned reader never meets a hard out-
       byte-level base: any string decomposes into them)
   a dropped token's pieces = greedy longest-prefix segmentation of its token string over K's strings
 At read time a dropped token's input row = the MEAN of its pieces' rows (the sequence and its positions are unchanged, so every
-downstream span, mask and pointer is untouched). Writes .cache/reader_vocab_k.npz (keep, oov_ids, piece_ptr, pieces) + a census."""
+downstream span, mask and pointer is untouched). RV_WHOLE=1 (the 10-27 backstop arm) adds every space-prefixed whole-word token
+(3+ letters) -> .cache/reader_vocab_kw.npz. Writes .cache/reader_vocab_k.npz (keep, oov_ids, piece_ptr, pieces) + a census."""
 import json, os, sys
 
 import numpy as np
@@ -14,7 +15,8 @@ from tokenizers import Tokenizer
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 os.chdir(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-OUT = ".cache/reader_vocab_k.npz"
+WHOLE = bool(int(os.environ.get("RV_WHOLE", "0")))   # the backstop arm: + every whole-word token
+OUT = ".cache/reader_vocab_kw.npz" if WHOLE else ".cache/reader_vocab_k.npz"
 P = ".cache/gsm8k/datasets--openai--gsm8k/snapshots/740312add88f781978c0658806c59bc2815b9866/main/"
 HOLDOUT = ".cache/wild_admitted_holdout.jsonl"
 
@@ -44,6 +46,9 @@ if __name__ == "__main__":
         if q.strip() in ho: n_fenced += 1; continue
         K.update(tok.encode(q).ids); K.update(tok.encode(a).ids)
     singles = {i for s, i in vocab.items() if len(s) == 1}; K |= singles
+    if WHOLE:
+        import re
+        K |= {i for s, i in vocab.items() if re.fullmatch(r"\u0120[A-Za-z]{3,}", s)}   # space-prefixed whole words, 3+ letters
     kept_str = {inv[i]: i for i in K}
     oov = sorted(set(range(len(inv))) - K); ptr, pieces = [0], []
     for i in oov:
