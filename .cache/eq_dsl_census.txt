@@ -1,0 +1,7 @@
+rendered train 50404 rows, holdout 310 rows, render failures 0 | verbs kept 60 (top: be, have, equal, divide, buy, get, make, give, sell, take, cost, move)
+field coverage (train mentions 171572): ent!=E0 0.878 | obj!=O0 0.572 | verb kept 0.894 | any cue 0.205
+GSM8K train problems 3363 -> distinct DSL skeletons 3355 | problems in a shared skeleton 15 (0.004) over 7 skeletons
+DETERMINACY: within shared skeletons, problems whose order = the skeleton's majority order 0.933 (n 15)
+coarse skeleton (no mag/sent/query): 3291 distinct | in shared 0.040 | determinacy 0.785 (n 135)
+HOLDOUT: skeleton seen in GSM8K train 0.003 (1/310) | of those, train majority order = gold 0.000
+identity order on holdout 0.481 | mean mentions 3.18

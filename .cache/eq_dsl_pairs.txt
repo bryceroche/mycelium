@@ -1,0 +1,6 @@
+pairs: train 14952 (inverted 0.300) | holdout 1245 (inverted 0.263) | 'never invert' holdout acc 0.737
+full     : pair-skeletons  12020 | holdout pairs covered (>=3 train) 0.148 | majority-vote acc 0.735
+no_verb  : pair-skeletons   5796 | holdout pairs covered (>=3 train) 0.631 | majority-vote acc 0.726
+roles    : pair-skeletons   1627 | holdout pairs covered (>=3 train) 0.904 | majority-vote acc 0.726
+cues_form: pair-skeletons   1878 | holdout pairs covered (>=3 train) 0.903 | majority-vote acc 0.736
+q_only   : pair-skeletons     34 | holdout pairs covered (>=3 train) 0.998 | majority-vote acc 0.751
