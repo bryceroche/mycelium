@@ -1,0 +1,2 @@
+holdout: rows 290 (2-5 stated givens, gold solves) | ONLY ONE order solves 0.479 | mean solving orders 2.39 | text order solves 0.510 | by n: n2 0.89 n3 0.45 n4 0.28 n5 0.17
+train: rows 300 (2-5 stated givens, gold solves) | ONLY ONE order solves 0.500 | mean solving orders 2.07 | text order solves 0.527 | by n: n2 0.89 n3 0.52 n4 0.32 n5 0.12
