@@ -54097,3 +54097,17 @@ Chain `.cache/run_reldsl.sh` (systemd unit `reldsl`): cov 0.125 → 1 → 0.25 �
 - Reads: the same pairs at cov 0.125 (ceiling: NOMLP 0.99); wild unseen holdout; paired SE.
 **Predictions (scored):** Q1 EQUIVALENT (NOMLP's learned binding already finds incidence on 32 symbols; the algebra's win in T3 was at composition it could not learn); Q2 PHASE BEATS VANILLA AT LOW DATA.
 Chain `.cache/run_reldsl_phase.sh` (unit `reldslphase`) waits for `reldsl`, then cov 0.03125 → 0.125, s0/s1, then the verdict.
+
+### 2026-10-28 11:37 — WORD GIVEN ("word given for the 'breathing transformer' -- lets bring it alive!"): THE CANONICAL DEFINITION + ORGAN 2, THE NOTEBOOK, on THE DEPTH SPLIT
+
+**The definition, frozen:** `docs/breathing_transformer.md` — Bryce's nine points tightened into eight organs (phase binding; breaths + snap; the SQLite tree; U-Net macro/micro with micro = ID tags only; the Nazaré rejoin; no MLP; breath rotation of attention planes, never the clock dims; the T6 clock), each with its evidence and status. Two corrections recorded there: the "MLP stores keys in near-orthogonal combinations" picture is the literature's, untested by us; binding is exact for one pair, bundled pairs are superposition with crosstalk ~1/√P cleaned by the snap. The real-data arm carries 3 of 8 organs; the build order is fixed there (PHASE → NOTEBOOK → ROTATE → TREE → UNET/Nazaré), each organ against the previous arm with pinned bars.
+**Organ 2, THE NOTEBOOK (`scripts/rel_dsl_organs.py`, RD_ARM=NOTEBOOK):** PHASE + the executor in the loop. Every breath each derived var's CHOSEN factor fires iff all its other vars are already known (givens known at breath 0); fired vars become known, and the known flag plus the breath it became known (T6 stamp) are added to the var's token before the next breath (a road, no gain; non-differentiable by design). Checks before any training read: PHASE rebuilt in this file is bit-identical to `rel_dsl_phase.make_net` (max logit diff 0.0, same keys); with GOLD choices the fire rule makes every query known exactly at its depth, all derived vars known, 64/64. The per-breath notebook lives in tensors during training (SQLite per breath at 64 × 8 per step is not viable); the SQLite tree enters with the TREE organ.
+**THE DEPTH SPLIT (the chaining test):** TRAIN = non-VAL train-fixture structures of depth ≤ 3 (2,843); SHALLOW = VAL structures depth ≤ 3 (708, unseen, in range); MID = depth 4 (1,375, read); **DEEP = depth 5..8 (984), never trained at that depth.** RESULT baseline shallow 0.895, mid 0.870, deep 0.857. Arms NOTEBOOK, PHASE, NOMLP, VANILLA × s0/s1, 8,000 steps, NB 8.
+**BARS (pinned before any training read; `scripts/rel_dsl_depth_verdict.py`):**
+- **C0:** an arm with SHALLOW seed mean < 0.95 is VOID for the bars.
+- **K1:** NOTEBOOK − PHASE on DEEP ≥ +0.03 with both seed pairs positive → THE NOTEBOOK CARRIES DEPTH; ≤ −0.02 HURTS; else EQUIVALENT.
+- **K2:** NOMLP − VANILLA on DEEP ≥ +0.03 with both pairs positive → BREATHING CHAINS DEEPER; ≤ −0.02 VANILLA DEEPER; else EQUIVALENT.
+- **K3:** best breathing arm DEEP − RESULT ≥ +0.10 → CHAINS BEYOND THE TRIVIAL PLAN; else DOES NOT.
+- Reads: PHASE − NOMLP on DEEP; MID; by depth 5..8; paired SE.
+**Predictions (scored):** C0 all arms pass; K1 THE NOTEBOOK CARRIES DEPTH; K2 BREATHING CHAINS DEEPER; K3 CHAINS (by NOTEBOOK).
+Chain `.cache/run_reldsl_depth.sh` (unit `reldsldepth`) waits for `reldsl` and `reldslphase`.
