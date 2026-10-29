@@ -54252,3 +54252,9 @@ Answer accuracy (executor reaches the key), seeds s0/s1:
 - **N2: EQUIVALENT (−0.007;** HELD +0.000, LONG −0.014, seeds −0.025 / −0.003). Width alone recovers +0.129 on LONG over NOMLP at D=128.
 - **N1 is re-read:** "THE MLP IS NEEDED" stands as a verdict on the 339k arm; at matched parameters the MLP is not needed on this bench. Organ 6 enters the reader stack as NOMLPW.
 - **Prediction scored:** N2 ✗ (said MLP NEEDED). Running total 12/19.
+
+### 2026-10-29 13:48 — GSM8K READER BENCH: FEASIBILITY READ = TEST AT THE FLOOR; a second feasibility read declared (per-step)
+- VANILLA s0, 6,000 steps: ORIG (fit) answer 0.854 / program 0.854; **TEST answer 0.016 / program 0.002** (flat 0.012–0.015 from step 1,000 on while ORIG climbed 0.03 → 0.85). CF splits not read.
+- A from-scratch 1.8M reader on 5,337 GSM8K problems is a memorizer: whole-answer and whole-program TEST reads cannot rank arms (floor). As declared, the bars move to a structural read — but whole-program is also at the floor, so a FINER one is needed first.
+- `score()` gains per-gold-step reads (each slot read alone; the model is non-autoregressive): step_op, step_ptr (both operands in their valid sets), step_all, first_all (step 1 correct).
+- **SECOND FEASIBILITY READ (declared now):** VANILLA s0 again, same settings, reading ORIG and TEST per-step metrics only. If TEST step_all is also near the floor (< 0.10), the grid on scratch readers is not informative on TEST and I stop to bring it to Bryce (the reader would need a pretrained input, e.g. the frozen trunk = GPU). CF splits stay unread.

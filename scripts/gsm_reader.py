@@ -162,7 +162,7 @@ def loss_fn(out, t):
 
 def score(net, its, wid, tree, seed=0):
     import torch
-    rng = np.random.default_rng(10_000 + seed); res = dict(ans=[], prog=[])
+    rng = np.random.default_rng(10_000 + seed); res = dict(ans=[], prog=[], step_op=[], step_ptr=[], step_all=[], first_all=[])
     with torch.no_grad():
         for s0 in range(0, len(its), 128):
             part = its[s0:s0 + 128]; t, E = batch(part, wid, tree, rng); op, pa, pb = net(t)
@@ -178,6 +178,10 @@ def score(net, its, wid, tree, seed=0):
                 m = e["m"]; ok = len(prog) == m and all(po[b, k] == e["op"][k] and t["va"][b, k, ia[b, k]] and t["vb"][b, k, ib[b, k]]
                                                          for k in range(m))
                 res["prog"].append(bool(ok))
+                for k in range(m):                                      # per gold step (non-autoregressive: each slot read alone)
+                    o = po[b, k] == e["op"][k]; pt = bool(t["va"][b, k, ia[b, k]] and t["vb"][b, k, ib[b, k]])
+                    res["step_op"].append(o); res["step_ptr"].append(pt); res["step_all"].append(o and pt)
+                    if k == 0: res["first_all"].append(o and pt)
     return {k: np.asarray(v) for k, v in res.items()}
 
 
