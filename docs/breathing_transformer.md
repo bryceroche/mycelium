@@ -49,4 +49,5 @@ for the same accuracy, and chains far longer than training.
 | 4 micro ID tags only (fresh random phase per name per story) | ID | VOID (C0): alone, ID strips gender from every name and fails in-distribution (IN 0.558) |
 | 3 + 4 tree macro channel (SQLite name-gender, test-time provisional → promoted) | TREE | IN 0.985, unseen names 0.996 (VANILLA 0.260); partly by construction (the DB holds what weights cannot) |
 | 7 + 8 T6 sentence-clock rotation, no absolute positions | CLOCK | K1 PASS: long stories 0.949 vs TREE 0.394 (+0.555) |
-| 6 no MLP | NOMLP | N1 THE MLP IS NEEDED (−0.142 on LONG; confounded with −61 % params); S PASS: stack beats VANILLA on both axes (+0.734 / +0.441) |
+| 6 no MLP | NOMLP | N1 THE MLP IS NEEDED (−0.142 on LONG at −61 % params); S PASS: stack beats VANILLA on both axes (+0.734 / +0.441) |
+| 6 no MLP, parameter-matched | NOMLPW | N2 EQUIVALENT to CLOCK (−0.007): the N1 deficit was capacity; the MLP is not needed at matched size |

@@ -54246,3 +54246,9 @@ Answer accuracy (executor reaches the key), seeds s0/s1:
 **Names:** spaCy PERSON first-name tokens; TREE = `.cache/gsmb_tree.db`, space name-gender, ONE permanent batch from the names corpus (static lexicon, no answers or labels; 1,608 / 2,106 names have a node; test names included — a lexicon lookup, disclosed).
 **Checks:** ID and CLOCK outputs are IDENTICAL (max |diff| 0.0) when every name in 64 questions is swapped for an unseen string (same phases); VANILLA moves (0.032). Params: VANILLA 1.79M (vocab 6,995 × 128 is 0.9M of it), CLOCK 1,786,117, NOMLP 1.26M, NOMLPW = RD_D=168 → 1,785,845.
 **FEASIBILITY READ (declared now, before bars):** VANILLA s0, 6,000 steps, reading ORIG (fit) and TEST answer accuracy only. It sets where the bars sit (a TEST floor near 0 would move the bars to the structural read). No other arm is run before the bars.
+
+### 2026-10-29 13:36 — THE WIDTH-MATCHED NOMLP: VERDICT N2 EQUIVALENT (the N1 deficit was capacity) (`.cache/nlb_n2_verdict.txt`)
+- NOMLPW (D=208, 851,144 params): IN 1.000/1.000, HELD 1.000/1.000, LONG 0.942/0.927 vs CLOCK (867,336) LONG 0.967/0.930.
+- **N2: EQUIVALENT (−0.007;** HELD +0.000, LONG −0.014, seeds −0.025 / −0.003). Width alone recovers +0.129 on LONG over NOMLP at D=128.
+- **N1 is re-read:** "THE MLP IS NEEDED" stands as a verdict on the 339k arm; at matched parameters the MLP is not needed on this bench. Organ 6 enters the reader stack as NOMLPW.
+- **Prediction scored:** N2 ✗ (said MLP NEEDED). Running total 12/19.
