@@ -13,7 +13,15 @@ ARMS (RD_ARM):
                     breath: neural picks, the fixed algebra marks what is now derived, the result returns as state. A road: the
                     flags replace nothing, they are added every breath with no gain. Known-ness is structural (which vars are
                     derived); values stay with the final executor. Non-differentiable by design (the notebook is a record).
-Output .cache/rel_dsl_{TAG}.json (TAG default {ARM}_depth_s{SEED})."""
+  ROTATE            NOTEBOOK + BREATH ROTATION (organ 7): the shared block's attention is computed by hand from the SAME
+                    parameters (in_proj / out_proj); every query is rotated by the T6 gears x the current breath b, every key by
+                    the gears x b too EXCEPT a known var's key, rotated by its write time (the breath it became known): the
+                    var->known-fact score depends on b - write time alone (relative phase, T2u). Head planes take the T6 gears
+                    cyclically (rotor_clock.t6_plane_speeds); the T6 stamp dims in the residual are never rotated.
+THE HARD DEPTH SPLIT (RD_SPLIT=depth2; the organs past the notebook need headroom): TRAIN = non-VAL structures depth <= 2,
+capped to the first RD_COV share (default 0.25) in sha1 order; SHALLOW = VAL depth <= 2; MID = depth 3..4; DEEP = depth 5..9;
+NB 10 (RD_NB) so every chain fits.
+Output .cache/rel_dsl_{TAG}.json (TAG default {ARM}_{SPLIT}_s{SEED})."""
 import json, math, os, sys, time
 
 import numpy as np
@@ -23,7 +31,8 @@ import rel_dsl_breath as RB
 from mycelium import rotor_clock as CK
 
 ARM = RB.ARM; PB = int(os.environ.get("RD_PB", "256"))
-TAG = os.environ.get("RD_TAG", f"{ARM}_depth_s{RB.SEED}")
+SPLIT = os.environ.get("RD_SPLIT", "depth")
+TAG = os.environ.get("RD_TAG", f"{ARM}_{SPLIT}_s{RB.SEED}")
 
 
 def load_depth():
@@ -35,6 +44,11 @@ def load_depth():
         t["ok"] = {int(k): v for k, v in t["ok"].items()}; t["gold"] = RB.Fraction(t["gold"]); first.setdefault(t["sdig"], t)
     items = sorted(first.values(), key=lambda t: RB.h(t["sdig"]))
     isval = lambda t: RB.h(t["sdig"]) % 5 == 0
+    if SPLIT == "depth2":
+        tr = [t for t in items if not isval(t) and t["depth"] <= 2]
+        cov = float(os.environ.get("RD_COV", "0.25"))
+        return (tr[:max(1, int(round(cov * len(tr))))], [t for t in items if isval(t) and t["depth"] <= 2],
+                [t for t in items if 3 <= t["depth"] <= 4], [t for t in items if 5 <= t["depth"] <= 9])
     train = [t for t in items if not isval(t) and t["depth"] <= 3]
     shallow = [t for t in items if isval(t) and t["depth"] <= 3]
     mid = [t for t in items if t["depth"] == 4]
@@ -46,15 +60,26 @@ def make_net():
     if ARM in ("VANILLA", "NOMLP"): return RB.make_net()
     import torch, torch.nn as nn, torch.nn.functional as F
     D, NH, NB = RB.D, RB.NH, RB.NB
-    NOTE = ARM == "NOTEBOOK"
+    NOTE = ARM in ("NOTEBOOK", "ROTATE"); ROT = ARM == "ROTATE"; DH = D // NH
+    w = torch.as_tensor(np.radians(CK.t6_plane_speeds(DH // 2)), dtype=torch.float32)   # gear speed per head plane
 
     class Block(nn.Module):
         def __init__(s):
             super().__init__()
             s.ln1 = nn.LayerNorm(D); s.att = nn.MultiheadAttention(D, NH, batch_first=True)
 
-        def forward(s, x, mask):
-            y = s.ln1(x); return x + s.att(y, y, y, attn_mask=mask, need_weights=False)[0]
+        def forward(s, x, mask, aq=None, ak=None):
+            y = s.ln1(x)
+            if aq is None: return x + s.att(y, y, y, attn_mask=mask, need_weights=False)[0]
+            B, L, _ = y.shape                                                   # the same attention, by hand, with rotation
+            q, k, v = (t.reshape(B, L, NH, DH).transpose(1, 2) for t in F.linear(y, s.att.in_proj_weight, s.att.in_proj_bias).chunk(3, -1))
+            q, k = rot(q, aq), rot(k, ak)
+            o = F.scaled_dot_product_attention(q, k, v, attn_mask=mask.reshape(B, NH, L, L))
+            return x + s.att.out_proj(o.transpose(1, 2).reshape(B, L, D))
+
+    def rot(z, a):   # z: B x NH x L x DH (interleaved planes), a: B x L x DH/2 angles
+        c, sn = a.cos()[:, None], a.sin()[:, None]; re, im = z[..., 0::2], z[..., 1::2]
+        return torch.stack([re * c - im * sn, re * sn + im * c], -1).flatten(-2)
 
     class Net(nn.Module):
         def __init__(s):
@@ -96,7 +121,10 @@ def make_net():
                 x = x + s.bproj(s.bst[b])[None, None]
                 if NOTE:                                                         # THE NOTEBOOK: what is derived so far, and when
                     x = torch.cat([x[:, :nv] + s.known(known.long()) + s.kproj(s.kst[kt]) * known[..., None], x[:, nv:]], 1)
-                x = s.blocks[0](x, mask)
+                if ROT:                                                          # queries at now; known keys at their write time
+                    tk = torch.cat([torch.where(known > 0, kt, torch.full_like(kt, b)), torch.full((B, nf), b, dtype=kt.dtype)], 1)
+                    x = s.blocks[0](x, mask, aq=(w * b).expand(B, L, -1), ak=tk[..., None].float() * w)
+                else: x = s.blocks[0](x, mask)
                 zz = s.ln(x); lg = torch.einsum("bvd,bfd->bvf", s.pq(zz[:, :nv]), s.pk(zz[:, nv:])) / math.sqrt(D)
                 lg = lg.masked_fill(~pm, -1e4); out.append(lg)
                 p = lg.softmax(-1); ch = p.argmax(-1); oh = F.one_hot(ch, nf).float(); st = (oh - p.detach() + p) * dv[..., None]
@@ -129,7 +157,7 @@ if __name__ == "__main__":
             curve.append(dict(step=step, loss=float(loss.detach()), shallow=float(s_), deep=float(d_)))
             print(f"[ro] {TAG} step {step} loss {float(loss.detach()):.4f} SHALLOW {s_:.3f} DEEP {d_:.3f} ({time.time() - t0:.0f}s)", flush=True)
     net.eval(); S = {k: RB.score(net, v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
-    bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 9)}
+    bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
     json.dump(dict(tag=TAG, arm=ARM, seed=RB.SEED, split="depth", n_train=len(train), params=npar, steps=RB.STEPS, curve=curve,
                    **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
                    deep_by_depth=bydepth, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep))),
