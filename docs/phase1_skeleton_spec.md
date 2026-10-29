@@ -54234,3 +54234,8 @@ Answer accuracy (executor reaches the key), seeds s0/s1:
 - **By-construction share (disclosed at registration):** on HELD, need-gender pronoun owner accuracy VANILLA 0.286 vs TREE 0.999 — no weights can hold an unseen name's gender, so this part is the database's capability. VANILLA also loses non-pronoun owner on HELD (owner 0.816 overall) because unseen names hit untrained embeddings; the comparator is weak by design (no subword tokens).
 - **Predictions scored:** H1/H2/T1 unscored (VOID); K1 ✓; N1 ✗ (said EQUIVALENT); S ✓ → 2/3. Running total 12/18.
 - **Tension flagged (Bryce's note 10):** a templated bench, not GSM8K text. Next real test of the stack = the same arms on the GSM8K counterfactual fixture.
+
+### 2026-10-29 13:13 — WORD GIVEN (Bryce: "word given for both"): (1) THE WIDTH-MATCHED NOMLP; (2) the stack on GSM8K text (registered separately)
+**(1) NOMLPW** = NOMLP at RD_D=208 (851,144 params vs CLOCK 867,336; NOMLP at D=128 had 339,464). Removes N1's confound. Same code (`scripts/nl_reader.py`, no edit; env only), same data, steps, lr. Chain `.cache/run_nlb_n2.sh` (unit `nlbn2`), s0/s1, ~25 min CPU.
+**BAR (pinned before any read; `scripts/nlb_n2_verdict.py`):** C0 NOMLPW IN mean < 0.80 → VOID. **N2:** NOMLPW − CLOCK, mean of HELD and LONG: ≤ −0.02 THE MLP IS NEEDED (not capacity); ≥ +0.02 NO-MLP BETTER; else EQUIVALENT (the N1 deficit was capacity). Read without a bar: NOMLPW − NOMLP per split.
+**Prediction (scored):** N2 THE MLP IS NEEDED (the gap shrinks but stays past −0.02; width does not buy length extrapolation).
