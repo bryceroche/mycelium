@@ -96,6 +96,18 @@ pure prose at 340 epochs is poison −243 — tune between).
   phasor binding as an ACTIVE RECURRENT LOOP). Full form:
   `docs/rotational_bus.md` §0. Bars/kills still govern claims; fit governs
   what gets built forward.
+- **THE NO-MLP RULING (2026-10-29)**: nothing Mycelium builds or trains carries a
+  feed-forward MLP. Memory = the SQLite tree (`mycelium/tree_db.py`); binding = phase
+  binding / conjugate unbind; composition = attention. Exceptions ONLY: the frozen Llama
+  trunk (teacher/instrument until a distilled MLP-free student passes its bars) and
+  MLP/vanilla arms as MEASUREMENT CONTROLS (never built forward, never promoted).
+  Evidence: N2 (param-matched NOMLP = CLOCK), the composition law. Ledger 10-29.
+- **THE ALTERNATION RULING (2026-10-29)**: the core rhythm is alternation between the
+  BREATHING TRANSFORMER and the CSP SOLVER — each breath proposes/derives; the solver
+  executes, certifies and writes back what is now known (never raw values into the
+  reasoning state); the next breath reads it. Evidence: NOTEBOOK 0.994 vs VANILLA
+  0.724 at depth 5-9 from depth <= 2 training (rel-DSL). Definition:
+  `docs/breathing_transformer.md`.
 - **THE T6 CLOCK RULING (2026-10-26)**: the breath rotor is six continuous
   gears, 180/60/30/15/7.5/3.75 deg per tick (periods 2..96) = T^6, every gear
   turning every tick; single source `mycelium/rotor_clock.py` (T6_SPEEDS,

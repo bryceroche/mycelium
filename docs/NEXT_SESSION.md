@@ -3,7 +3,14 @@
 **READ FIRST:** CLAUDE.md → this block → the ledger (docs/phase1_skeleton_spec.md) from "2026-10-14 (~16:00) — THE DEPTH PROBE'S
 SAVED PASS IS A SMOKE" to the end → MEMORY.md's board. Reads table: `.venv/bin/python3 scripts/reads.py table wildhold`.
 
-## STATE AT HANDOFF
+## NEW DIRECTION (2026-10-29, two rulings — read before anything below; the 10-15 handoff state follows)
+- **NO MLP, EVER** (except the frozen Llama trunk as teacher, and MLP/vanilla arms as measurement controls). Memory = the SQLite
+  tree; binding = phase binding; composition = attention. CLAUDE.md §4; ledger 10-29.
+- **ALTERNATION = THE CORE RHYTHM:** breathing transformer <-> CSP solver, breath by breath (the notebook). `docs/breathing_transformer.md`.
+- Branch binding-comprehension. In flight: STEP 0 (the GSM8K reader bench's MLP-free arms on frozen Llama states); then the
+  MLP-free distilled student (phase + tree) replacing the trunk.
+
+## STATE AT HANDOFF (2026-10-15)
 - **Branch gen-weights, clean, pushed.** NOTHING IS RUNNING (pc-crq completed 19:51, pc-bindtoy completed; no queue armed). The
   restart kills nothing. After it: `DEV=PCI+AMD`; long GPU work as `systemd-run --user` units; `systemctl --user reset-failed`.
 - **THE TRUNK STATES SWITCHED (two seeds):** do_precompute ran Llama L0–L3 UNMASKED (bidirectional + ~190 id-0 '!' pads visible
