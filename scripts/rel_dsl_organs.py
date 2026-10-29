@@ -18,6 +18,20 @@ ARMS (RD_ARM):
                     the gears x b too EXCEPT a known var's key, rotated by its write time (the breath it became known): the
                     var->known-fact score depends on b - write time alone (relative phase, T2u). Head planes take the T6 gears
                     cyclically (rotor_clock.t6_plane_speeds); the T6 stamp dims in the residual are never rotated.
+  ROTQ              NOTEBOOK + QUERY-ONLY ROTATION (ledger 10-29, Bryce: "only rotate the queries not the entire attention space"):
+                    the same hand attention, queries rotated by the T6 gears x the current breath b, keys never rotated (the
+                    v109pi pi-cycled-Q form): each breath reads the keys through its own clock angle; no write-time relative phase.
+  TREE              NOTEBOOK + THE TREE SNAP (organ 3; ledger 10-29, Bryce: "word given for the tree"): the snap no longer re-injects
+                    the chosen factor's free, drifting state; it injects a FIXED POINT = the centroid of the step's TYPE (op of the
+                    chosen factor x the var's role in it: arg / result / minuend; root -> op -> role, 12 leaves) + the factor's
+                    breath-0 token (its ID: the fixed phase bind of its symbols + op, never drifted). The road has no bypass (the
+                    free snap is gone). Centroids are BIRCH CFs (N, LS, SS) of the chosen factor's state at the breath a var FIRES
+                    in the notebook, accumulated ONLY from chains the executor verified (final plan -> the gold answer), in
+                    windows of RD_TWIN steps (the active centroid = the last closed window's mean; window 0 snaps on ID alone).
+                    THE SQLITE TREE (mycelium/tree_db.py, .cache/tree_reldsl_{TAG}.db): the 12 step types are nodes; every
+                    window's verified steps are a permanent batch of SYMBOLIC events (key = step type, vec = (breath, depth));
+                    the model-space centroids go only to the generation-tagged centroids table (the space guard), and the final
+                    scoring reloads them FROM SQLite (asserted equal to memory).
 THE HARD DEPTH SPLIT (RD_SPLIT=depth2; the organs past the notebook need headroom): TRAIN = non-VAL structures depth <= 2,
 capped to the first RD_COV share (default 0.25) in sha1 order; SHALLOW = VAL depth <= 2; MID = depth 3..4; DEEP = depth 5..9;
 NB 10 (RD_NB) so every chain fits.
@@ -33,6 +47,7 @@ from mycelium import rotor_clock as CK
 ARM = RB.ARM; PB = int(os.environ.get("RD_PB", "256"))
 SPLIT = os.environ.get("RD_SPLIT", "depth")
 TAG = os.environ.get("RD_TAG", f"{ARM}_{SPLIT}_s{RB.SEED}")
+TWIN = int(os.environ.get("RD_TWIN", "1000")); NTYPE = 12
 
 
 def load_depth():
@@ -60,7 +75,7 @@ def make_net():
     if ARM in ("VANILLA", "NOMLP"): return RB.make_net()
     import torch, torch.nn as nn, torch.nn.functional as F
     D, NH, NB = RB.D, RB.NH, RB.NB
-    NOTE = ARM in ("NOTEBOOK", "ROTATE"); ROT = ARM == "ROTATE"; DH = D // NH
+    NOTE = ARM in ("NOTEBOOK", "ROTATE", "ROTQ", "TREE"); ROT = ARM in ("ROTATE", "ROTQ"); TREE = ARM == "TREE"; DH = D // NH
     w = torch.as_tensor(np.radians(CK.t6_plane_speeds(DH // 2)), dtype=torch.float32)   # gear speed per head plane
 
     class Block(nn.Module):
@@ -97,6 +112,8 @@ def make_net():
                 ph1 = np.stack([CK.t6_phases(b, 6) for b in range(NB + 1)])
                 s.register_buffer("kst", torch.as_tensor(np.concatenate([np.cos(ph1), np.sin(ph1)], -1), dtype=torch.float32))
                 s.known = nn.Embedding(2, D); s.kproj = nn.Linear(12, D)
+            if TREE:   # in-memory centroids of the step types (buffers: Welford/BIRCH, never trained)
+                s.register_buffer("cent", torch.zeros(NTYPE, D)); s.collect = None
 
         def forward(s, bt, ids):
             vf, vm, fo, fm, A, Rz, Mz, pm, tg, dv = bt
@@ -116,6 +133,10 @@ def make_net():
                 inc = ((A + Rz + Mz) > 0).float().transpose(1, 2)                 # B x V x F incidence
                 known = ((vf % 2) == 1).float()                                  # givens known at breath 0
                 kt = torch.zeros_like(known, dtype=torch.long)                   # breath each var became known
+            if TREE:                                                             # step type of every (var, factor) pair
+                role = torch.where(Rz.transpose(1, 2) > 0, 1, torch.where(Mz.transpose(1, 2) > 0, 2, 0))
+                T = fo[:, None, :] * 3 + role; OH = F.one_hot(T, NTYPE).float()    # B x V x F x 12
+                F0 = Fz                                                          # the factor's ID: its breath-0 token
             out = []
             for b in range(NB):
                 x = x + s.bproj(s.bst[b])[None, None]
@@ -123,18 +144,25 @@ def make_net():
                     x = torch.cat([x[:, :nv] + s.known(known.long()) + s.kproj(s.kst[kt]) * known[..., None], x[:, nv:]], 1)
                 if ROT:                                                          # queries at now; known keys at their write time
                     tk = torch.cat([torch.where(known > 0, kt, torch.full_like(kt, b)), torch.full((B, nf), b, dtype=kt.dtype)], 1)
-                    x = s.blocks[0](x, mask, aq=(w * b).expand(B, L, -1), ak=tk[..., None].float() * w)
+                    ak = torch.zeros(B, L, DH // 2) if ARM == "ROTQ" else tk[..., None].float() * w
+                    x = s.blocks[0](x, mask, aq=(w * b).expand(B, L, -1), ak=ak)
                 else: x = s.blocks[0](x, mask)
                 zz = s.ln(x); lg = torch.einsum("bvd,bfd->bvf", s.pq(zz[:, :nv]), s.pk(zz[:, nv:])) / math.sqrt(D)
                 lg = lg.masked_fill(~pm, -1e4); out.append(lg)
                 p = lg.softmax(-1); ch = p.argmax(-1); oh = F.one_hot(ch, nf).float(); st = (oh - p.detach() + p) * dv[..., None]
-                x = torch.cat([x[:, :nv] + s.snap(st @ x[:, nv:]), x[:, nv:]], 1)
+                if TREE:                                                         # THE TREE SNAP: type centroid + ID
+                    xf = x[:, nv:]
+                    x = torch.cat([x[:, :nv] + s.snap(torch.einsum("bvf,bvft->bvt", st, OH) @ s.cent + st @ F0), x[:, nv:]], 1)
+                else: x = torch.cat([x[:, :nv] + s.snap(st @ x[:, nv:]), x[:, nv:]], 1)
                 if NOTE:
                     with torch.no_grad():                                        # fire: the chosen factor's other vars all known
                         miss = torch.einsum("bvf,bv->bf", inc, 1 - known)        # unknown vars per factor
                         missc = torch.gather(miss, 1, ch) - (1 - known)          # minus the var itself
                         fire = dv & (known == 0) & (missc <= 0.5)
                         kt = torch.where(fire, torch.full_like(kt, b + 1), kt); known = torch.where(fire, torch.ones_like(known), known)
+                        if TREE and s.collect is not None:                       # the step taken: type + chosen factor's state
+                            s.collect.append((b, fire.clone(), torch.gather(T, 2, ch[..., None])[..., 0],
+                                              torch.gather(xf, 1, ch[..., None].expand(-1, -1, D)).detach()))
             return torch.stack(out, 1)
     return Net()
 
@@ -148,19 +176,57 @@ if __name__ == "__main__":
     print(f"[ro] {TAG} arm {ARM} | train {len(train)} (depth<={2 if SPLIT == "depth2" else 3}) | shallow {len(shallow)} mid {len(mid)} deep {len(deep)} | params {npar} | "
           f"RESULT shallow {rp(shallow):.3f} mid {rp(mid):.3f} deep {rp(deep):.3f}", flush=True)
     t0 = time.time(); curve = []
+    if ARM == "TREE":
+        from mycelium import tree_db as TDB
+        dbp = f".cache/tree_reldsl_{TAG}.db"; assert not os.path.exists(dbp), f"refusing to reuse {dbp}"
+        tdb = TDB.TreeDB(dbp); tdb.register_space("step-type", "symbolic", 2, "rel-DSL verified step: (breath fired, chain depth)")
+        tname = [f"{on}.{rn}" for on in ("given", "add", "mul", "sub") for rn in ("arg", "result", "minuend")]
+        CF = [np.zeros(NTYPE), np.zeros((NTYPE, RB.D)), np.zeros(NTYPE)]; ev = []; tstat = []
     for step in range(1, RB.STEPS + 1):
         its = [train[i] for i in rng.integers(0, len(train), RB.BATCH)]
-        bt, ids = RB.batch(its, rng); loss = RB.loss_fn(net(bt, ids), bt)
+        bt, ids = RB.batch(its, rng)
+        if ARM == "TREE": net.collect = []
+        lg_all = net(bt, ids); loss = RB.loss_fn(lg_all, bt)
         opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step()
+        if ARM == "TREE":
+            with torch.no_grad():                                                # verified chains only (the executor)
+                lgl = lg_all[:, -1]; ver = torch.as_tensor([RB.RC.execute(t["facs"], {v: int(lgl[k, v].argmax()) for v in t["der"]},
+                                                                            t["query"]) == t["gold"] for k, t in enumerate(its)])
+                for b, fire, ty, xs in net.collect:
+                    m = (fire & ver[:, None]).numpy()
+                    if not m.any(): continue
+                    tys, X = ty.numpy()[m], xs.numpy()[m].astype(np.float64); kk = np.nonzero(m)[0]
+                    np.add.at(CF[0], tys, 1); np.add.at(CF[1], tys, X); np.add.at(CF[2], tys, (X * X).sum(1))
+                    ev += [(tname[t_], np.array([b, its[k]["depth"]], np.float32), f"step{step}.item{k}") for t_, k in zip(tys, kk)]
+            net.collect = None
+            if step % TWIN == 0:                                                 # close the window: centroids + a batch
+                live = CF[0] > 0; c = np.zeros((NTYPE, RB.D)); c[live] = CF[1][live] / CF[0][live, None]
+                net.cent.copy_(torch.as_tensor(c, dtype=torch.float32)); tdb.save_centroids(TAG, *CF)
+                if ev:
+                    tdb.add_evidence(f"w{step}", ev, "permanent", "executor", TAG, "step-type")
+                    if not tdb.nodes():                                          # the shape, certified by the first batch:
+                        tdb.add_node(1000, None, 0, "step", f"w{step}")          # root -> op -> role; leaf id = type index
+                        for o, on in enumerate(("given", "add", "mul", "sub")):  # (= the centroids table's node)
+                            tdb.add_node(100 + o, 1000, 1, on, f"w{step}")
+                            for r, rn in enumerate(("arg", "result", "minuend")): tdb.add_node(3 * o + r, 100 + o, 2, f"{on}.{rn}", f"w{step}")
+                tstat.append(dict(step=step, n=[int(x) for x in CF[0]], ver=float(ver.float().mean())))
+                print(f"[ro] {TAG} tree window {step}: verified steps {int(CF[0].sum())} | per type " +
+                      " ".join(f"{tname[i]}:{int(CF[0][i])}" for i in range(NTYPE) if CF[0][i]), flush=True)
+                CF = [np.zeros(NTYPE), np.zeros((NTYPE, RB.D)), np.zeros(NTYPE)]; ev = []
         if step % 2000 == 0 or step == RB.STEPS:
             net.eval(); s_ = RB.score(net, shallow).mean(); d_ = RB.score(net, deep).mean(); net.train()
             curve.append(dict(step=step, loss=float(loss.detach()), shallow=float(s_), deep=float(d_)))
             print(f"[ro] {TAG} step {step} loss {float(loss.detach()):.4f} SHALLOW {s_:.3f} DEEP {d_:.3f} ({time.time() - t0:.0f}s)", flush=True)
+    if ARM == "TREE":                                                            # score with the centroids reloaded FROM SQLite
+        N_, LS_, _ = tdb.load_centroids(TAG, TAG); c = np.zeros((NTYPE, RB.D)); c[N_ > 0] = LS_[N_ > 0] / N_[N_ > 0, None]
+        assert np.abs(c - net.cent.numpy()).max() < 1e-5, "SQLite centroids differ from memory"
+        net.cent.copy_(torch.as_tensor(c, dtype=torch.float32)); tdb.close()
     net.eval(); S = {k: RB.score(net, v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
     bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
     json.dump(dict(tag=TAG, arm=ARM, seed=RB.SEED, split=SPLIT, n_train=len(train), params=npar, steps=RB.STEPS, curve=curve,
                    **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
-                   deep_by_depth=bydepth, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep))),
+                   deep_by_depth=bydepth, cov=float(os.environ.get("RD_COV", "0.25")) if SPLIT == "depth2" else None,
+                   tree=tstat if ARM == "TREE" else None, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep))),
               open(f".cache/rel_dsl_{TAG}.json", "w"))
     print(f"[ro] {TAG} FINAL SHALLOW {S['shallow'].mean():.3f} MID {S['mid'].mean():.3f} DEEP {S['deep'].mean():.3f} | by depth "
           + " ".join(f"d{d} {v:.3f}" for d, v in bydepth.items()), flush=True)
