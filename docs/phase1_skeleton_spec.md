@@ -54170,3 +54170,15 @@ Chain `.cache/run_reldsl_tree.sh` (unit `reldsltree`), ~11 runs, ~4.5 h.
 **Runs:** NOSTAMP × s0/s1 at LOW (the tree chain's pinned headroom rule; NOTEBOOK controls are that chain's), unit `reldslnostamp`, queued behind `reldsltree`, ~45 min.
 **BAR (pinned before any read; `scripts/rel_dsl_nostamp_verdict.py`):** C0 SHALLOW < 0.95 VOID. **S1:** NOTEBOOK − NOSTAMP on DEEP ≥ +0.03 with both seed pairs positive → THE WRITE-TIME STAMP IS LOAD-BEARING (the coupling holds); ≤ −0.02 THE STAMP HURTS; else EQUIVALENT (the known bit carries it) — CEILING instead when both arms' DEEP seed means are ≥ 0.97.
 **Prediction (scored):** S1 EQUIVALENT (the fire rule needs known-vs-unknown, not when).
+
+### 2026-10-29 11:08 — TREE / ROTQ / NOSTAMP VERDICTS (banked 10:26 / 11:07; `.cache/rel_dsl_tree_verdict.txt`, `rel_dsl_nostamp_verdict.txt`)
+
+**Calibration:** NOTEBOOK s0 DEEP at cov 0.0625 (93 structures) 0.959, at 0.03125 (47) 0.936 → pinned rule **LOW = 0.0625** (✗ predicted 0.03125). NOTEBOOK s1 at LOW 0.991: seed spread 0.032 at low data.
+**DEEP (seed means; paired SE ~0.003–0.008):**
+- cov 0.25: NOTEBOOK 0.994, ROTATE 0.977, ROTQ 0.980, TREE 0.972.
+- cov 0.0625: NOTEBOOK 0.975, NOSTAMP 0.981, ROTQ 0.954, TREE 0.946.
+- **U1 HURTS (TREE − NOTEBOOK −0.029 at LOW; seeds −0.033/−0.024) ✗ predicted EQUIVALENT. U2 HURTS (−0.023 at 0.25; −0.029/−0.016) ✗ predicted NO HARM.** Not starved: ~420–460k verified steps per window; populated types add/mul × arg/result.
+- **V1 HURTS (ROTQ − NOTEBOOK −0.021 at LOW; −0.009/−0.032) ✗ predicted EQUIVALENT. V2 NO HARM (−0.014 at 0.25) ✓.** Read: ROTQ − ROTATE +0.004 (±0.006): query-only rotation ≈ full rotation; both cost ~0.015–0.02.
+- **S1 CEILING (NOTEBOOK − NOSTAMP −0.006; seeds −0.010/−0.001; both arms ≥ 0.97) ✗ by label (predicted EQUIVALENT; substance agrees: removing the write-time stamp costs nothing, NOSTAMP is numerically ahead).** The relay's "the notebook must be coupled with the T6 clock" is NOT supported at this scope; the known bit carries the notebook. (The per-breath T6 stamp was kept and is untested.)
+**Predictions scored this round: 1/6 (V2). Running total since 10-28: 10/15.**
+**READING:** on the relation-DSL task the forward stack stays NOTEBOOK (no MLP + shared breaths + free snap + phase bind + the known bit). Three additions cost accuracy: the tree snap (a type centroid + ID throws away the chosen factor's breath-evolved context, which the free snap carried), and rotation in either form (the notebook + breath stamp already carry "when"). Hypothesis (no claim): this task gives organs 3 and 7 no job — every problem is self-contained (no cross-problem facts for a tree to store) and "how long ago" is handed over by the notebook. Organ rows in docs/breathing_transformer.md record the real-data nulls; their toy evidence stands with its regime tag.

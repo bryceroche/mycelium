@@ -37,6 +37,7 @@ for the same accuracy, and chains far longer than training.
 | 6 no MLP + 2 breaths/snap + 8 T6 stamp | NOMLP | rel-DSL cov 0.125: 0.990/0.991 vs VANILLA 0.941/0.951 (R1 +0.045 vs +0.05 bar) |
 | 1 phase bind / conjugate unbind | PHASE | Q1 EQUIVALENT to linear binding (+0.009); Q2 beats VANILLA at 3 % data (+0.072); enters the stack |
 | 3 the notebook: executor in the loop | NOTEBOOK | K1 PASS: trained depth ≤ 3, depth 5–8 at 0.992 (PHASE 0.909, VANILLA 0.731) |
-| 7 breath rotation by derivation time | ROTATE | T1 EQUIVALENT, leaning harmful (−0.018 on DEEP, both seeds, ~3.5 SE) on the hard split; NOT in the stack (NOTEBOOK 0.994 vs VANILLA 0.724 at depth 5–9 from depth ≤ 2 training) |
-| 3 snap to tree centroids in SQLite | TREE | next, on NOTEBOOK |
+| 7 breath rotation by derivation time | ROTATE | T1 EQUIVALENT, leaning harmful (−0.018 on DEEP, both seeds, ~3.5 SE) on the hard split; NOT in the stack (NOTEBOOK 0.994 vs VANILLA 0.724 at depth 5–9 from depth ≤ 2 training); ROTQ (queries only) the same: V1 HURTS −0.021 at 6 % data, ≈ ROTATE (+0.004) |
+| 3 snap to tree centroids in SQLite | TREE | U1/U2 HURTS (−0.029 / −0.023 vs NOTEBOOK); step-type centroid + ID loses the free snap's context; not in the stack. The task has no cross-problem facts for a tree to hold |
+| 8 write-time stamp in the notebook | NOSTAMP | S1 CEILING (−0.006): the known bit carries the notebook; the coupling is not needed here |
 | 4 + 5 U-Net macro/micro + Nazaré | UNET | last |
