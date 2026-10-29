@@ -41,3 +41,12 @@ for the same accuracy, and chains far longer than training.
 | 3 snap to tree centroids in SQLite | TREE | U1/U2 HURTS (−0.029 / −0.023 vs NOTEBOOK); step-type centroid + ID loses the free snap's context; not in the stack. The task has no cross-problem facts for a tree to hold |
 | 8 write-time stamp in the notebook | NOSTAMP | S1 CEILING (−0.006): the known bit carries the notebook; the coupling is not needed here |
 | 4 + 5 U-Net macro/micro + Nazaré | UNET | last |
+
+## The reader side (NL binding bench, 10-29; templated stories over gold DSL structures; `scripts/nl_reader.py`)
+
+| organ | arm | status |
+|---|---|---|
+| 4 micro ID tags only (fresh random phase per name per story) | ID | VOID (C0): alone, ID strips gender from every name and fails in-distribution (IN 0.558) |
+| 3 + 4 tree macro channel (SQLite name-gender, test-time provisional → promoted) | TREE | IN 0.985, unseen names 0.996 (VANILLA 0.260); partly by construction (the DB holds what weights cannot) |
+| 7 + 8 T6 sentence-clock rotation, no absolute positions | CLOCK | K1 PASS: long stories 0.949 vs TREE 0.394 (+0.555) |
+| 6 no MLP | NOMLP | N1 THE MLP IS NEEDED (−0.142 on LONG; confounded with −61 % params); S PASS: stack beats VANILLA on both axes (+0.734 / +0.441) |

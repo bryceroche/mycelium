@@ -54214,3 +54214,23 @@ Chain `.cache/run_reldsl_tree.sh` (unit `reldsltree`), ~11 runs, ~4.5 h.
 - Reads: owner accuracy on all mentions / pronouns / need-gender pronouns; op, role; paired SE.
 **Predictions (scored):** H1 PASS; H2 COST (ID loses gender on train names too; ~1/3 of pronouns need it and ~2/3 of referents are untitled); T1 HELPS; K1 HELPS; N1 EQUIVALENT; S PASS.
 Chain `.cache/run_nlb.sh` (unit `nlb`), 10 runs, ~2.5 h.
+
+### 2026-10-29 13:07 — THE NL BINDING BENCH: VERDICTS (unit `nlb`, 11:34 → 13:05; `.cache/nlb_verdict.txt`)
+Answer accuracy (executor reaches the key), seeds s0/s1:
+
+| arm | params | IN | HELD (unseen names) | LONG (9–12 sentences) |
+|---|---|---|---|---|
+| VANILLA | 870,792 | 0.984 / 0.993 | 0.320 / 0.200 | 0.374 / 0.356 |
+| ID | 887,304 | 0.573 / 0.543 | 0.543 / 0.534 | 0.144 / 0.132 |
+| TREE | 887,816 | 0.993 / 0.977 | 0.998 / 0.993 | 0.404 / 0.383 |
+| CLOCK | 867,336 | 0.998 / 1.000 | 1.000 / 1.000 | 0.967 / 0.930 |
+| NOMLP | 339,464 | 0.995 / 1.000 | 0.988 / 1.000 | 0.851 / 0.761 |
+
+- **C0:** ID's IN mean 0.558 < 0.80 → ID VOID; **H1, H2, T1 VOID (C0)** as pinned (their raw gaps, NOT verdicts: H1 +0.278, H2 −0.430, T1 +0.457).
+- **K1: THE CLOCK CARRIES LENGTH** (+0.555; seeds +0.563/+0.547, paired SE 0.012). Caveat as pinned: learned absolute positions are known to fail past trained lengths; K1 shows the organ does that job, not a new finding.
+- **N1: THE MLP IS NEEDED** (−0.074 mean; HELD −0.006, LONG −0.142). Confound not covered by the bar: removing the FF also removes 61 % of the parameters (339k vs 867k); a width-matched NOMLP would separate "MLP" from "capacity". Not run.
+- **S: THE ORGAN STACK BEATS VANILLA ON BOTH AXES** (HELD +0.734, LONG +0.441; all pairs positive).
+- **Reading ID (descriptive, VOID for bars):** micro ID tags ALONE strip gender from every name, so ID fails even in-distribution (need-gender pronouns 0.578 IN); adding the tree's macro channel restores it (TREE IN 0.985, need 1.000). Micro without macro is not a reader; micro + macro is — the U-Net split's shape, on text.
+- **By-construction share (disclosed at registration):** on HELD, need-gender pronoun owner accuracy VANILLA 0.286 vs TREE 0.999 — no weights can hold an unseen name's gender, so this part is the database's capability. VANILLA also loses non-pronoun owner on HELD (owner 0.816 overall) because unseen names hit untrained embeddings; the comparator is weak by design (no subword tokens).
+- **Predictions scored:** H1/H2/T1 unscored (VOID); K1 ✓; N1 ✗ (said EQUIVALENT); S ✓ → 2/3. Running total 12/18.
+- **Tension flagged (Bryce's note 10):** a templated bench, not GSM8K text. Next real test of the stack = the same arms on the GSM8K counterfactual fixture.
