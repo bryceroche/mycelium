@@ -35,8 +35,8 @@ for the same accuracy, and chains far longer than training.
 | organ | arm | status |
 |---|---|---|
 | 6 no MLP + 2 breaths/snap + 8 T6 stamp | NOMLP | rel-DSL cov 0.125: 0.990/0.991 vs VANILLA 0.941/0.951 (R1 +0.045 vs +0.05 bar) |
-| 1 phase bind / conjugate unbind | PHASE | queued (Q1/Q2) |
-| 3 the notebook: executor in the loop | NOTEBOOK | queued (depth split K1–K3) |
+| 1 phase bind / conjugate unbind | PHASE | Q1 EQUIVALENT to linear binding (+0.009); Q2 beats VANILLA at 3 % data (+0.072); enters the stack |
+| 3 the notebook: executor in the loop | NOTEBOOK | K1 PASS: trained depth ≤ 3, depth 5–8 at 0.992 (PHASE 0.909, VANILLA 0.731) |
 | 7 breath rotation by derivation time | ROTATE | next (needs the notebook's write times) |
 | 3 snap to tree centroids in SQLite | TREE | after ROTATE |
 | 4 + 5 U-Net macro/micro + Nazaré | UNET | last |
