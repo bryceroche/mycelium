@@ -145,7 +145,7 @@ if __name__ == "__main__":
     train, shallow, mid, deep = load_depth(); net = make_net(); opt = torch.optim.AdamW(net.parameters(), lr=RB.LR)
     npar = sum(p.numel() for p in net.parameters())
     rp = lambda its: float(np.mean([RB.RC.execute(t["facs"], RB.RC.result_plan(t), t["query"]) == t["gold"] for t in its]))
-    print(f"[ro] {TAG} arm {ARM} | train {len(train)} (depth<=3) | shallow {len(shallow)} mid {len(mid)} deep {len(deep)} | params {npar} | "
+    print(f"[ro] {TAG} arm {ARM} | train {len(train)} (depth<={2 if SPLIT == "depth2" else 3}) | shallow {len(shallow)} mid {len(mid)} deep {len(deep)} | params {npar} | "
           f"RESULT shallow {rp(shallow):.3f} mid {rp(mid):.3f} deep {rp(deep):.3f}", flush=True)
     t0 = time.time(); curve = []
     for step in range(1, RB.STEPS + 1):
@@ -158,7 +158,7 @@ if __name__ == "__main__":
             print(f"[ro] {TAG} step {step} loss {float(loss.detach()):.4f} SHALLOW {s_:.3f} DEEP {d_:.3f} ({time.time() - t0:.0f}s)", flush=True)
     net.eval(); S = {k: RB.score(net, v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
     bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
-    json.dump(dict(tag=TAG, arm=ARM, seed=RB.SEED, split="depth", n_train=len(train), params=npar, steps=RB.STEPS, curve=curve,
+    json.dump(dict(tag=TAG, arm=ARM, seed=RB.SEED, split=SPLIT, n_train=len(train), params=npar, steps=RB.STEPS, curve=curve,
                    **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
                    deep_by_depth=bydepth, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep))),
               open(f".cache/rel_dsl_{TAG}.json", "w"))

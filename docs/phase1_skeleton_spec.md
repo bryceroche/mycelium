@@ -54135,3 +54135,15 @@ Chain `.cache/run_reldsl_depth.sh` (unit `reldsldepth`) waits for `reldsl` and `
 - Reads: MID; by depth 5–9; paired SE.
 **Predictions (scored):** C0 passes for all three; **T1 EQUIVALENT** (the notebook's additive write-time stamp already carries "when"; rotation re-expresses it as relative phase, which T2u showed matters for UNSEEN offsets — here every offset up to 9 is seen in training only up to 2, so rotation could help; I still say equivalent); **T2 PASS**.
 Chain `.cache/run_reldsl_rotate.sh` (unit `reldslrot`). TREE (organ 3: snap to SQLite centroids) is designed next, after this lands.
+
+### 2026-10-29 06:20 — ROTATE VERDICT (banked 2026-10-28 22:30; `.cache/rel_dsl_rotate_verdict.txt`)
+
+**Hard depth split (train 372 structures, depth ≤ 2; DEEP depth 5–9 n 988 = d5 680 / d6 220 / d7 70 / d8 14 / d9 4; RESULT deep 0.855):**
+- SHALLOW: VANILLA 0.969/0.979, NOTEBOOK 1.000/1.000, ROTATE 1.000/1.000 → **C0 all pass ✓**.
+- MID (3–4): VANILLA 0.799/0.868, NOTEBOOK 0.999/0.998, ROTATE 0.996/0.995.
+- DEEP: VANILLA 0.699/0.749, **NOTEBOOK 0.992/0.996**, ROTATE 0.975/0.978. By depth (seed means) d5/d6/d7/d8/d9: VANILLA 0.743/0.723/0.593/0.571/0.375; NOTEBOOK 0.996/0.991/1.000/0.929/1.000; ROTATE 0.985/0.964/0.979/0.857/0.625 (d8/d9 n 14/4: texture only).
+- **T1 EQUIVALENT (ROTATE − NOTEBOOK −0.018; seeds −0.017/−0.018; paired SE 0.005/0.005) ✓ predicted — but by the frame only: 0.002 short of HURTS, both seeds negative at ~3.5 SE, and the deficit grows with depth.** Honest reading: breath rotation by write time does NOT help here and leans harmful. Why, as a hypothesis (not a claim): the notebook already hands the step its "when" as an additive stamp and the executor makes every fact exact, so there is nothing for relative phase to carry; rotating keys adds an angle the shared block must undo at offsets never trained (train depth ≤ 2 → offsets ≤ 2; T2u: rotation interpolates, never extrapolates).
+- **T2 THE STACK CHAINS FROM TWO-STEP TRAINING (NOTEBOOK − VANILLA +0.270; seeds +0.293/+0.247; paired SE 0.014) ✓ predicted.** Trained on 372 problems of ≤ 2 steps, NOTEBOOK (0.74M params) solves 5–9-step problems at 0.994; VANILLA (8.2M, 11×) falls to 0.724, BELOW the trivial RESULT plan (0.855).
+- **Decision (compatibility ruling + bars):** ROTATE does not enter the stack on this task; NOTEBOOK stays the forward arm; TREE builds on NOTEBOOK. Organ 7 stays in the definition (T2u evidence stands) with this real-data null on its row: its job needs a regime where "how long ago" is not already handed over.
+- Housekeeping: rel_dsl_organs.py printed "(depth<=3)" and wrote split="depth" for depth2 runs (labels only; data verified 372/384/3052/988); fixed after the chain ended.
+**Predictions scored:** C0 ✓, T1 ✓ (EQUIVALENT, near the HURTS line), T2 ✓. Running total 9/9 since 10-28.
