@@ -54419,3 +54419,14 @@ Seed means (TEST step_all / ORIG step_all): SOFT 0.128 / 0.951 · ORACLE 0.142 /
 - Attribution (after the bar): the placebo is high because at step 1 lag 1 is forced; where it is a real choice (k ≥ 2) lag 1 holds **0.635 vs placebo 0.345 (+0.289; n 2,537)** — recency is structure, not arithmetic.
 - Reads: lag histogram 1: 0.694 · 2: 0.183 · 3: 0.074 · 4: 0.033 · ≥5: 0.015. TEXT ORDER 0.780 of gold numeral operands lie at or after the latest sentence earlier steps used (the sentence clock already gives the reader this axis). At lag-1 gold, VANILLA picked a NUMERAL 0.665, another slot 0.296.
 - So: results are addressed mostly by RELATIVE TIME (lags 1–2 = 0.877), and the fine id the IMDB analogy needed is the TICK, not who/verb. The per-step-tick arm is earned; it needs the word.
+
+### 2026-10-30 11:27 — WORD GIVEN: THE TICK ARM (a T6 clock tick per step) — BARS pinned before any run
+**Arm TICK** (`scripts/gsm_trunk_reader.py` RD_ARM=TICK; every other arm bit-identical): NOTEBOOK + slot k at tick S + 1 + k (S = the last sentence's index; was S + 1 for every slot) in every block's q/k rotation (all six gears turning), AND the step pointer's query / key rotated by the T6 gears (D/2 planes) × their slots' ticks, so their dot product depends on the RELATIVE tick only — "one step back" is a fixed rotation. No new weights (params = NOTEBOOK's 1,189,526). Same steps / batch / LR / seeds.
+**Comparator for the reads:** NOTEBOOK re-run as tag NOTEBOOKR_s{0,1} (same code path, new unbarred reads; also a reproduction check against the banked 0.1154 / 0.1242 — thread count differs, 4 vs 8).
+**BARS** (paired by seed against the BANKED grid NOTEBOOK, TEST step_all 0.1154 / 0.1242):
+- C0: TICK ORIG step_all seed mean < 0.80 → VOID.
+- **T1:** TICK − NOTEBOOK ≥ +0.02 with both pairs positive → THE TICK PAYS; ≤ −0.02 → HURTS; else EQUIVALENT.
+- Reads (TICK vs NOTEBOOKR): lag-1 accuracy (operands whose gold set holds slot k−1: picked inside the valid set) and the numeral-for-slot share (gold slot-only operands where a numeral was picked), TEST; CF answers; TEST answer.
+**Prediction (scored):** T1 EQUIVALENT (the absolute slot index already lets the net learn "the slot before" at trained depths); the reads should move first (lag-1 accuracy up, numeral-for-slot down).
+Chain `.cache/run_tick.sh` (unit gsmtick): TICK s0/s1 + NOTEBOOKR s0/s1 in parallel at 4 threads each, then `scripts/gsm_tick_verdict.py`.
+- 11:30 smoke (100 steps, TEST): TICK step 0.053 / NOTEBOOK 0.052; lag-1 accuracy 0.898 / 0.902 (both near-untrained pointers lean on the last slot; not a TICK bug); numeral-for-slot 0.056 / 0.059. **Caveat disclosed:** R-CEIL's error locus was VANILLA's; NOTEBOOK's consumed bits may already cover much of the recency the tick targets — the NOTEBOOKR reads will say. Fired unit gsmtick.

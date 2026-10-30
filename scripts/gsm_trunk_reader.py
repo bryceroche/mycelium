@@ -13,6 +13,9 @@ splits are gsm_reader.py's (the pointer program; .cache/gsmb_data.json). A word'
             to slots (their reading is fixed while the program is written); slot k sees slots <= k. The consumed bits enter every
             block's slot-row attention (a learned per-head bias) and the pointer logits (a learned bias). Training = teacher forcing
             on the gold program (consumed = the first member of each gold valid set); scoring = sequential greedy decoding.
+  TICK      NOTEBOOK + A CLOCK TICK PER STEP (ledger 2026-10-30, Bryce "T6 clock to the rescue"): slot k sits at tick S + 1 + k (S =
+            the last sentence) instead of every slot at S + 1, and the step pointer's query / key are rotated by the T6 gears x
+            their slots' ticks, so "the result one step back" is a fixed relative rotation. No new weights.
 Output .cache/gsmb_trunk_{TAG}.json."""
 import json, math, os, sys, time
 
@@ -24,12 +27,12 @@ from mycelium import rotor_clock as CK
 
 ARM = os.environ.get("RD_ARM", "VANILLA"); SEED = int(os.environ.get("RD_SEED", "0")); TAG = os.environ.get("RD_TAG", f"{ARM}_s{SEED}")
 STEPS = int(os.environ.get("RD_STEPS", "6000")); BATCH = int(os.environ.get("RD_BATCH", "64")); LR = float(os.environ.get("RD_LR", "3e-4"))
-ARMS = ("VANILLA", "BASE", "ID", "TREE", "CLOCK", "NOTEBOOK")
+ARMS = ("VANILLA", "BASE", "ID", "TREE", "CLOCK", "NOTEBOOK", "TICK")
 D_DEFAULT = {"VANILLA": 128}                                      # every MLP-free arm: D=192 (BASE 1,197,765 vs VANILLA 1,163,909)
 D = int(os.environ.get("RD_D", D_DEFAULT.get(ARM, 192))); NH = 4; NL = int(os.environ.get("RD_NL", "4")); PB = 64; NNAME = 12; OMAX = 64
 K = GD.KMAX; LMAX = GD.LQMAX + K; NC = len(GD.CONSTS); OPS = GD.OPS + "."; H = 2048
-USE_MLP = ARM == "VANILLA"; USE_ID = ARM in ("ID", "TREE", "CLOCK", "NOTEBOOK"); USE_TREE = ARM in ("TREE", "CLOCK", "NOTEBOOK")
-USE_CLOCK = ARM in ("CLOCK", "NOTEBOOK"); NOTE = ARM == "NOTEBOOK"
+USE_MLP = ARM == "VANILLA"; USE_ID = ARM in ("ID", "TREE", "CLOCK", "NOTEBOOK", "TICK"); USE_TREE = ARM in ("TREE", "CLOCK", "NOTEBOOK", "TICK")
+USE_CLOCK = ARM in ("CLOCK", "NOTEBOOK", "TICK"); NOTE = ARM in ("NOTEBOOK", "TICK"); TICK = ARM == "TICK"
 SPLITS = ("ORIG", "CFNUM", "CFNAME", "TEST")
 TREE_DB = ".cache/gsmb_tree.db"
 
@@ -90,7 +93,7 @@ def encode(it, states, tree):
     n = len(it["toks"]); L = n + K
     x = np.zeros((L, H), np.float32); x[:n] = states[it["st0"]:it["st0"] + n]
     isn = np.array(it["isn"] + [False] * K); isnum = np.array([v is not None for v in it["vals"]] + [False] * K)
-    sid = np.array(it["sid"] + [it["sid"][-1] + 1] * K); off = np.zeros(L, np.int64)
+    sid = np.array(it["sid"] + ([it["sid"][-1] + 1 + k for k in range(K)] if TICK else [it["sid"][-1] + 1] * K)); off = np.zeros(L, np.int64)
     for i in range(1, n): off[i] = off[i - 1] + 1 if sid[i] == sid[i - 1] else 0
     off[n:] = np.arange(K)
     nm = list(dict.fromkeys(t for t, f in zip(it["surf"], it["isn"]) if f))
@@ -135,6 +138,7 @@ def batch(its, states, tree, rng, progs=None):
 def make_net():
     import torch, torch.nn as nn, torch.nn.functional as F
     DH = D // NH; w = torch.as_tensor(np.radians(CK.t6_plane_speeds(DH // 2)), dtype=torch.float32)
+    wp = torch.as_tensor(np.radians(CK.t6_plane_speeds(D // 2)), dtype=torch.float32)       # TICK: the step pointer's planes
 
     def rot(z, a):
         c, s_ = a.cos()[:, None], a.sin()[:, None]; re, im = z[..., 0::2], z[..., 1::2]
@@ -208,7 +212,13 @@ def make_net():
                 if NOTE: z = z + s.pc * ct * math.sqrt(D)
                 return z.masked_fill(~t["isnum"][:, None], -1e4)
             def ls(q):
-                z = torch.einsum("bkd,bjd->bkj", q, s.ks(h))
+                kk = s.ks(h)
+                if TICK:                                                                                  # relative time between slots
+                    a = torch.gather(t["sid"], 1, t["slot"])[..., None].float() * wp                     # (B, K, D/2)
+                    c, s_ = a.cos(), a.sin()
+                    r = lambda z: torch.stack([z[..., 0::2] * c - z[..., 1::2] * s_, z[..., 0::2] * s_ + z[..., 1::2] * c], -1).flatten(-2)
+                    q, kk = r(q), r(kk)
+                z = torch.einsum("bkd,bjd->bkj", q, kk)
                 if NOTE: z = z + s.pc * cs * math.sqrt(D)
                 return z.masked_fill(~torch.ones(K, K, dtype=torch.bool).tril(-1), -1e4)
             lc = lambda q: torch.einsum("bkd,cd->bkc", q, s.kc)
@@ -228,7 +238,7 @@ def loss_fn(out, t):
 
 def score(net, its, states, tree, seed=0):
     import torch
-    rng = np.random.default_rng(10_000 + seed); res = dict(ans=[], prog=[], step_op=[], step_ptr=[], step_all=[], first_all=[])
+    rng = np.random.default_rng(10_000 + seed); res = dict(ans=[], prog=[], step_op=[], step_ptr=[], step_all=[], first_all=[], lag1_ok=[], num_for_slot=[])
     with torch.no_grad():
         for s0 in range(0, len(its), 128):
             part = its[s0:s0 + 128]
@@ -261,6 +271,10 @@ def score(net, its, states, tree, seed=0):
                     o = PO[b, k] == e["op"][k]; pt = bool(t["va"][b, k, IA[b, k]] and t["vb"][b, k, IB[b, k]])
                     res["step_op"].append(o); res["step_ptr"].append(pt); res["step_all"].append(o and pt)
                     if k == 0: res["first_all"].append(o and pt)
+                    for V, I in ((t["va"], IA), (t["vb"], IB)):                     # reads: gold holds slot k-1 / gold is slot-only
+                        Vb = V[b, k].numpy(); i = int(I[b, k])
+                        if k >= 1 and Vb[L + k - 1]: res["lag1_ok"].append(bool(Vb[i]))
+                        if Vb[L:L + K].any() and not Vb[:L].any(): res["num_for_slot"].append(bool(i < L))
     return {k: np.asarray(v) for k, v in res.items()}
 
 
