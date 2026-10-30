@@ -54405,3 +54405,17 @@ Seed means (TEST step_all / ORIG step_all): SOFT 0.128 / 0.951 · ORACLE 0.142 /
 - Reads (VANILLA slot-confusion errors, picked key ≠ gold key vs random-candidate placebo): slot/slot 0.562 vs 0.584 · slot-for-numeral 0.786 vs 0.773 · numeral-for-slot 0.741 vs 0.725 — at placebo everywhere: the keys do not tell VANILLA's errors from any other candidate.
 - **Autopsy (first 400 TEST problems, not a bug):** gold slot keys are SMALL (mean 1.23 owners, 1.54 events) and collide — with an earlier slot 0.41, with a question numeral 0.43; unique 0.355 (matches S1). Problems have 1.78 distinct owners on average, 0.41 have ≤ 1. The (owner, event) vocabulary is too COARSE to address results in GSM8K: a problem is one or two people doing a few verbs, so "Rex / buy" names half the graph. S2 ties its placebo for the same reason (the final step's owners ≈ every owner).
 - **CLOSED as pinned:** chaining by inherited (owner, event) keys on this bench, before training. What would have to change for chaining to live is the KEY, not the walk: results need finer addresses than who/verb (the IMDB analogy works because a movie and an actor are unique ids; here the nodes share ids). No rescue registered; brought to Bryce.
+
+### 2026-10-30 11:23 — Bryce: "we need finer grain ids … T6 clock to the rescue" — R-CEIL (RECENCY: a per-step clock tick) — zero-training read, BARS pinned before it runs
+**The gap found in the code:** the reader's T6 clock rotates q/k by the six gears × SENTENCE index (`gsm_trunk_reader.py` CLOCK/NOTEBOOK), but every slot sits at ONE tick (`sid[-1] + 1`, line 93): numbers have time addresses, RESULTS share one. A per-step tick (slot k at tick S + k, every gear turning) gives each result a fine id, and "the result one step back" becomes a FIXED relative rotation (conjugate unbind, T2x 1.000) — a query that needs no content.
+**Reads** (`scripts/gsm_recency_ceiling.py`, TEST gold + VANILLA_s0 picks):
+- **R1 RECENCY:** share of gold slot operands (first member) at lag 1 (step k−1). Bar ≥ 0.50 AND ≥ placebo + 0.20 (placebo: a uniformly random earlier step).
+- **R2 ERROR LOCUS:** among VANILLA's wrong operands whose gold valid set holds a slot, the share whose gold holds the lag-1 slot. Bar ≥ 0.50.
+- Reads: the lag histogram; TEXT ORDER = share of gold numeral operands whose sentence ≥ the latest sentence used by earlier steps (the text read forward); the share of lag-1 gold where VANILLA picked a different slot vs a numeral.
+**R-CEIL PASS = R1 and R2** → a trained PER-STEP-TICK arm on NOTEBOOK is earned (needs the word). **Predictions:** R1 PASS; R2 PASS.
+
+### 2026-10-30 11:24 — R-CEIL: **PASS** (`.cache/gsm_recency_ceiling.txt`)
+- **R1 RECENCY 0.718** vs placebo 0.495 (margin +0.223; n 3,289) ✓ PASS. **R2 ERROR LOCUS 0.606** (n 1,835) ✓ PASS. Running total 23/36.
+- Attribution (after the bar): the placebo is high because at step 1 lag 1 is forced; where it is a real choice (k ≥ 2) lag 1 holds **0.635 vs placebo 0.345 (+0.289; n 2,537)** — recency is structure, not arithmetic.
+- Reads: lag histogram 1: 0.694 · 2: 0.183 · 3: 0.074 · 4: 0.033 · ≥5: 0.015. TEXT ORDER 0.780 of gold numeral operands lie at or after the latest sentence earlier steps used (the sentence clock already gives the reader this axis). At lag-1 gold, VANILLA picked a NUMERAL 0.665, another slot 0.296.
+- So: results are addressed mostly by RELATIVE TIME (lags 1–2 = 0.877), and the fine id the IMDB analogy needed is the TICK, not who/verb. The per-step-tick arm is earned; it needs the word.
