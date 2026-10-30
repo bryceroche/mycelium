@@ -54379,3 +54379,12 @@ Seed means (TEST step_all / ORIG step_all): LEARNED 0.073 / 0.438 · ORACLE 0.17
 **Predictions (scored):** C0 not void; G1 PASS (smaller than the 10-29 +0.052 read: the net no longer leans on gold switches); G2 EQUIVALENT (soft removes the cut, but owner choice ~0.6 cannot add +0.02 over a stack that already sees the trunk's context).
 Chain `.cache/run_graphsoft.sh` (unit gsmgsoft): seeds 0/1 in parallel, then `scripts/gsm_graphsoft_verdict.py`. This is the last rescue for the hard-switch kill; a G2 not PASS closes the learned walk on this bench at this query.
 - 07:04 smoke (200 steps): TEST SOFT 0.042 / ORACLE 0.094 / OPEN 0.040 / HARD 0.029, owner 0.598 — wiring live. Fired unit gsmgsoft.
+
+### 2026-10-30 08:04 — GRAPH RESCUE VERDICT (`.cache/gsm_graphsoft_verdict.txt`; unit gsmgsoft done 08:04)
+Seed means (TEST step_all / ORIG step_all): SOFT 0.128 / 0.951 · ORACLE 0.142 / 0.951 · OPEN 0.128 / 0.949 · HARD 0.074 / 0.423 · NOTEBOOK 0.120 / 0.966.
+- **C0 not void** (ORACLE ORIG 0.951) ✓.
+- **G1: the target does not pay** — ORACLE − NOTEBOOK **+0.022** (+0.029 / +0.016; both positive, under the +0.03 bar) ✗ (said PASS, smaller).
+- **G2: EQUIVALENT** — SOFT − NOTEBOOK +0.008 (+0.017 / −0.001) ✓. Running total 20/32.
+- Reads: OPEN − NOTEBOOK +0.008 (identical to SOFT to 0.001 on every split: the learned soft switch is INERT — the walk's bias moves no argmax; the residual-seal law again, the loss took the road that does not depend on a 0.58 walk). HARD − NOTEBOOK −0.046 (the cut, as on 10-29). SOFT − NOTEBOOK answers: CFNUM +0.007, CFNAME −0.003, TEST 0.000. Owner choice 0.584, event 0.521 — unmoved by end-to-end training.
+- **Attribution:** the 10-29 oracle read (+0.052) was more than half the net LEANING on gold switches it was trained under; trained without that crutch, the gold key is worth +0.022 TEST step (+0.05 CF answers) — real in sign on both seeds, under the bar.
+- **CLOSED as pinned:** the learned graph walk on this bench at this query (spaCy owner/event keys, owner choice ~0.58). The tags themselves cost nothing (OPEN ≈ NOTEBOOK + 0.008). What remains open is the QUERY, not the walk: the 10-15 wall, now priced from both sides (perfect query +0.022; the query the reader can form ≈ 0).
