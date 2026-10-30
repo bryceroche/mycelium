@@ -1,0 +1,22 @@
+M-CEIL (teacher formpm35cBP; train tokens 3598597, held-out tokens 180549 from 2441 rows; PCA-256 keeps 0.7577 of variance = the R^2 ceiling of any lookup here)
+  L0   keys     11906  R2 0.4934  (1-R2 0.5066)
+  L1   keys    110947  R2 0.6619  (1-R2 0.3381)
+  L2   keys    266924  R2 0.6927  (1-R2 0.3073)
+  L3   keys    460002  R2 0.6937  (1-R2 0.3063)
+  L2P  keys   1942560  R2 0.4988  (1-R2 0.5012)
+  BACKOFF L0>L1>L2>L3 (N>=3): R2 0.7147 (1-R2 0.2853); depth shares -1:0.001 0:0.023 1:0.046 2:0.070 3:0.860
+  BACKOFF L0>L1>L2>L3 (N>=10): R2 0.6748 (1-R2 0.3252); depth shares -1:0.009 0:0.099 1:0.140 2:0.131 3:0.621
+  BACKOFF L0>L1>L2 (N>=3): R2 0.6986 (1-R2 0.3014); depth shares -1:0.001 0:0.023 1:0.046 2:0.930
+  BACKOFF L0>L1>L2 (N>=10): R2 0.6648 (1-R2 0.3352); depth shares -1:0.009 0:0.099 1:0.140 2:0.752
+  BIRCH descent (global spread 99.7592):
+    T 0.0: R2 0.7147; stop shares L0:0.023 L1:0.046 L2:0.070 L3:0.860 | unseen 0.001
+    T 0.1: R2 0.7030; stop shares L0:0.107 L1:0.418 L2:0.291 L3:0.183 | unseen 0.001
+    T 0.2: R2 0.6775; stop shares L0:0.232 L1:0.568 L2:0.178 L3:0.020 | unseen 0.001
+    T 0.3: R2 0.6362; stop shares L0:0.450 L1:0.494 L2:0.054 L3:0.001 | unseen 0.001
+    T 0.5: R2 0.5754; stop shares L0:0.753 L1:0.246 L2:0.000 L3:0.000 | unseen 0.001
+    T 0.7: R2 0.5043; stop shares L0:0.976 L1:0.022 L2:0.000 L3:0.000 | unseen 0.001
+    T 1.0: R2 0.4934; stop shares L0:0.999 L1:0.000 L2:0.000 L3:0.000 | unseen 0.001
+M1 CONTEXT PAYS: best backoff - token-only +0.2213 (bar +0.05); L2 - placebo L2 +0.1939 (bar +0.03) -> PASS
+M2 THE DB IS AN ORGAN: lookup-only 1-R2 0.2853 (bar <= 0.31; SwiGLU student mse 0.154) -> PASS
+M3 PLATEAU: at the best T (0.0, R2 0.7147) 0.139 of tokens stop above L3 (bar >= 0.30) -> FAIL
+(137s)
