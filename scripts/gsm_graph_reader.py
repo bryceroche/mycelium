@@ -9,11 +9,16 @@ alternation, same training loop settings).
   train   : the teacher's walk = the key of each operand's first gold numeral member (CE owner + CE event + the pointer loss under
             the gold mask)
   score   : the same model three ways -- LEARNED (the walk chooses), ORACLE (the gold key opens the switch), OPEN (no switches)
-Output .cache/gsmb_graph_{TAG}.json."""
+Output .cache/gsmb_graph_{TAG}.json.
+GR_SOFT=1 (the one registered rescue, ledger 2026-10-30): SOFT SWITCHES -- the walk never cuts a numeral off; the pointer's numeral
+logits gain log(P_owner(l) * P_event(l) + EPS), P_owner(l) = sum_o p(o) match(l, o) (unknown = wildcard = 1), trained end to end on the
+model's OWN walk (+ the owner / event CE). Scored SOFT (learned) / ORACLE (one-hot gold key through the same formula) / OPEN / HARD
+(the learned argmax as a hard switch, a read). Tag GRAPHSOFT_s{seed}."""
 import json, math, os, sys, time
 
 os.environ["RD_ARM"] = "NOTEBOOK"
-SEED = int(os.environ.get("RD_SEED", "0")); os.environ.setdefault("RD_TAG", f"GRAPH_s{SEED}")
+SEED = int(os.environ.get("RD_SEED", "0")); SOFT = os.environ.get("GR_SOFT") == "1"
+os.environ.setdefault("RD_TAG", f"GRAPH{'SOFT' if SOFT else ''}_s{SEED}")
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ".")
@@ -21,7 +26,8 @@ import gsm_bench_data as GD
 import gsm_trunk_reader as R
 
 NG, PB, K = 12, R.PB, R.K
-MODES = ("LEARNED", "ORACLE", "OPEN")
+MODES = ("SOFT", "ORACLE", "OPEN", "HARD") if SOFT else ("LEARNED", "ORACLE", "OPEN")
+TRAIN_MODE, EPS = ("SOFT" if SOFT else "TEACH"), 1e-2
 
 
 def load_keys(Dt):
@@ -97,8 +103,21 @@ def make_graph_net(n_kind):
             lo = torch.einsum("bkxd,bnd->bkxn", q[:, :, :2], Co) / math.sqrt(PB) * s.temp
             le = torch.einsum("bkxd,bnd->bkxn", q[:, :, 2:], Ce) / math.sqrt(PB) * s.temp
             lo = lo.masked_fill(~present_o[:, None, None], -1e4); le = le.masked_fill(~present_e[:, None, None], -1e4)
-            if mode != "OPEN":
-                if mode == "LEARNED":
+            if SOFT and mode in ("SOFT", "ORACLE", "TEACH"):              # soft switches: a bias, never a cut
+                own, ev = g["own"], g["ev"]
+                mo = ((own[..., None] == ar) | (own[..., None] < 0)).float(); me = ((ev[..., None] == ar) | (ev[..., None] < 0)).float()
+                if mode == "SOFT": po, pe = lo.softmax(-1), le.softmax(-1)
+                else:
+                    po = torch.nn.functional.one_hot(gkey[..., 0].clamp(min=0), NG).float()
+                    pe = torch.nn.functional.one_hot(gkey[..., 1].clamp(min=0), NG).float()
+                Po = torch.einsum("bkxn,bln->bkxl", po, mo); Pe = torch.einsum("bkxn,bln->bkxl", pe, me)
+                if mode != "SOFT":                                            # gold key unknown -> the switch stays open
+                    Po = torch.where(gkey[..., 0, None] < 0, 1.0, Po); Pe = torch.where(gkey[..., 1, None] < 0, 1.0, Pe)
+                bias = (Po * Pe + EPS).log()
+                pa = torch.cat([pa[..., :L] + bias[:, :, 0], pa[..., L:]], -1)
+                pb = torch.cat([pb[..., :L] + bias[:, :, 1], pb[..., L:]], -1)
+            elif mode != "OPEN":
+                if mode in ("LEARNED", "HARD"):
                     ko = torch.where(present_o.any(1)[:, None, None], lo.argmax(-1), -1)
                     ke = torch.where(present_e.any(1)[:, None, None], le.argmax(-1), -1)
                 else:                                                         # ORACLE / teacher: the gold key
@@ -161,13 +180,13 @@ if __name__ == "__main__":
     for step in range(1, R.STEPS + 1):
         its = [train[int(i)] for i in rng.integers(0, len(train), R.BATCH)]
         t, _ = R.batch(its, states, tree, rng); g = gbatch(its, t, rng)
-        loss = gloss(net(t, g, "TEACH", g["gk"]), t, g)
+        loss = gloss(net(t, g, TRAIN_MODE, g["gk"]), t, g)
         opt.zero_grad(); loss.backward(); torch.nn.utils.clip_grad_norm_(net.parameters(), 1.0); opt.step()
         if step % 1000 == 0 or step == R.STEPS:
             net.eval(); r = {m: score(net, Dt["TEST"][:300], states, tree, m) for m in MODES}; net.train()
             curve.append(dict(step=step, loss=float(loss.detach()), **{f"TEST_{m}_{k}": v[k] for m, v in r.items() for k in ("step_all", "owner_ok")}))
             print(f"[graph] {R.TAG} step {step} loss {float(loss.detach()):.4f} " +
-                  " ".join(f"{m} {v['step_all']:.3f}" for m, v in r.items()) + f" owner {r['LEARNED']['owner_ok']:.3f} ({time.time() - t0:.0f}s)", flush=True)
+                  " ".join(f"{m} {v['step_all']:.3f}" for m, v in r.items()) + f" owner {r[MODES[0]]['owner_ok']:.3f} ({time.time() - t0:.0f}s)", flush=True)
     net.eval(); out = dict(tag=R.TAG, seed=SEED, params=npar, steps=R.STEPS, curve=curve)
     for sp in R.SPLITS:
         for m in MODES:
