@@ -65,3 +65,18 @@ for the same accuracy, and chains far longer than training.
 | 7 + 8 T6 sentence-clock rotation, no absolute positions | CLOCK | K1 PASS: long stories 0.949 vs TREE 0.394 (+0.555) |
 | 6 no MLP | NOMLP | N1 THE MLP IS NEEDED (−0.142 on LONG at −61 % params); S PASS: stack beats VANILLA on both axes (+0.734 / +0.441) |
 | 6 no MLP, parameter-matched | NOMLPW | N2 EQUIVALENT to CLOCK (−0.007): the N1 deficit was capacity; the MLP is not needed at matched size |
+
+## The reader side on GSM8K text (step 0, 10-29; frozen Llama-3.2-1B L0–L3 states → pointer programs; `scripts/gsm_trunk_reader.py`)
+
+The ladder rebuilt under the no-MLP ruling, every arm ~1.2M params, two seeds; primary read = GSM8K-test per-step accuracy (step_all), a floor-near read (VANILLA 0.111).
+
+| organ | arm | status |
+|---|---|---|
+| — MLP control (benchmark only) | VANILLA | TEST step 0.111, answer 0.026; CFNAME answer 0.443 |
+| 6 attention only, parameter-matched | BASE | B1 EQUIVALENT (−0.005): the MLP buys nothing here either |
+| 4 micro ID tags | ID | I1 EQUIVALENT (−0.016 on CFNAME): Llama's context words still carry the name |
+| 3 tree (name-gender) | TREE | T1 EQUIVALENT (+0.004): gender does not decide GSM8K operands |
+| 7 + 8 T6 clock | CLOCK | K1 EQUIVALENT on TEST (+0.007); CF reads rise (CFNUM 0.591 vs 0.497) |
+| ALTERNATION (reader ↔ executor) | NOTEBOOK | A1 EQUIVALENT (+0.006); S NOT ON BOTH: TEST step +0.009, but CFNAME answer **+0.068** and CFNUM **+0.066** over VANILLA on both seeds, TEST answer 0.041 vs 0.026 |
+
+Reading: on a floor-near TEST read no organ separates; the MLP-free + alternation stack is the most ROBUST to numeral and name swaps (unbarred for S, which needed both). Tree follow-ups (`gsm_type_forest.py` B-CEIL FAIL: errors are the right KIND; `gsm_graph_ceiling.py` G-CEIL PASS: an (owner, kind, event) key identifies the gold numeral in 0.745 of keyed operands — the walk's target is a per-problem GRAPH, the query is the open problem).

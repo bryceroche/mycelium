@@ -29,6 +29,17 @@ v2 LAYOUT (the v1 store re-scanned a key's whole event history on every add and 
   - KEY_SPACE(key -> space): the one-space check is a row lookup. WAL journal: readers never block the single writer.
   - THE MAP STEP IS PURE: prepare_shard(rows) -> (cold file, summaries) may run in any number of worker processes; the
     single writer commits prepared shards (add_prepared). One batch = one shard = one audition = one rollback unit.
+v3 (2026-10-29, Bryce's word: "word given for the whole queue"; ledger "THE TREE, ZOOMED OUT"): ONE store, several FORESTS.
+  - nodes.kind ('node' | 'name' | 'type' | 'macro'): the name-gender tree, the type forest (idea B, walked per breath = idea C)
+    and the macro floor (idea D) share one store and one custody. A v2 store is upgraded IN PLACE and ADDITIVELY on open (the
+    column is added with kind 'node' on every old row, the macros table and the parent index created; meta records it).
+  - MACROS(node -> body, grammar_version, batch): a macro node's PRIMITIVE body (the caller's DSL; it expands before any solver
+    sees it, so the key grades in primitives). The store keeps the text and its custody, never interprets it.
+  - children(node): the walk's step (idea C).
+  - PROMOTE BY RECURRENCE (idea A): promote_recurrent folds a set of provisional batches into ONE new permanent batch holding
+    only the keys carried by >= k DISTINCT sources (one certified problem = one source); the source batches become
+    'superseded' (out of every fold, files kept), so nothing is ever counted twice. constants() reads the other half of the
+    rule: a key whose Welford variance is ~0 over many sources is a world constant; a high-variance key is a per-problem slot.
 The breath never queries SQLite: a run loads the leaves into memory (`load_leaves`) and snaps against in-memory centroids."""
 import hashlib, os, sqlite3, tempfile, time
 
@@ -38,7 +49,8 @@ import pyarrow.parquet as pq
 
 DB = os.path.join(os.path.dirname(__file__), "..", ".cache", "tree.db")
 TIERS = ("permanent", "provisional")
-VERSION = "2"
+VERSION = "3"
+KINDS = ("node", "name", "type", "macro")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT NOT NULL);
@@ -47,7 +59,7 @@ CREATE TABLE IF NOT EXISTS spaces(
 CREATE TABLE IF NOT EXISTS batches(
   bid INTEGER PRIMARY KEY, batch TEXT UNIQUE NOT NULL, tier TEXT NOT NULL, certifier TEXT NOT NULL,
   generation TEXT NOT NULL, space TEXT NOT NULL REFERENCES spaces(name), note TEXT, created TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'live', n_events INTEGER NOT NULL, sha256 TEXT NOT NULL);     -- live | rolled_back
+  status TEXT NOT NULL DEFAULT 'live', n_events INTEGER NOT NULL, sha256 TEXT NOT NULL);     -- live | rolled_back | superseded
 CREATE TABLE IF NOT EXISTS summaries(
   key TEXT NOT NULL, bid INTEGER NOT NULL REFERENCES batches(bid), n INTEGER NOT NULL, mean BLOB NOT NULL,
   m2 BLOB NOT NULL, PRIMARY KEY(key, bid)) WITHOUT ROWID;
@@ -61,10 +73,16 @@ CREATE TABLE IF NOT EXISTS leaves(
   first_seen TEXT, last_seen TEXT);                                              -- permanent-tier aggregates only
 CREATE TABLE IF NOT EXISTS nodes(
   id INTEGER PRIMARY KEY, parent INTEGER REFERENCES nodes(id), level INTEGER NOT NULL, name TEXT NOT NULL,
-  batch TEXT NOT NULL REFERENCES batches(batch));                               -- shape persists only with provenance
+  batch TEXT NOT NULL REFERENCES batches(batch), kind TEXT NOT NULL DEFAULT 'node');   -- shape persists only with provenance
 CREATE TABLE IF NOT EXISTS centroids(
   generation TEXT NOT NULL, node INTEGER NOT NULL, n REAL NOT NULL, ls BLOB NOT NULL, ss REAL NOT NULL, built TEXT NOT NULL,
   PRIMARY KEY(generation, node));
+"""
+SCHEMA_V3 = """
+CREATE INDEX IF NOT EXISTS nodes_parent ON nodes(parent);
+CREATE TABLE IF NOT EXISTS macros(
+  node INTEGER PRIMARY KEY REFERENCES nodes(id), body TEXT NOT NULL, grammar_version TEXT NOT NULL,
+  batch TEXT NOT NULL REFERENCES batches(batch)) WITHOUT ROWID;                  -- a macro node's primitive body
 """
 LIVE = "b.tier='permanent' AND b.status='live'"
 
@@ -146,6 +164,14 @@ class TreeDB:
         with self.c:
             self.c.execute("INSERT OR IGNORE INTO meta VALUES ('schema_version', ?)", (VERSION,))
         v = self.c.execute("SELECT v FROM meta WHERE k='schema_version'").fetchone()[0]
+        if v == "2":                                                         # the additive upgrade: nothing old is rewritten
+            with self.c:
+                if "kind" not in [r[1] for r in self.c.execute("PRAGMA table_info(nodes)")]:
+                    self.c.execute("ALTER TABLE nodes ADD COLUMN kind TEXT NOT NULL DEFAULT 'node'")
+                self.c.execute("UPDATE meta SET v=? WHERE k='schema_version'", (VERSION,))
+                self.c.execute("INSERT OR REPLACE INTO meta VALUES ('upgraded_from_2', ?)", (_now(),))
+            v = VERSION
+        self.c.executescript(SCHEMA_V3)
         assert v == VERSION, f"{path}: schema version {v}, this code is {VERSION}"
 
     def close(self):
@@ -260,6 +286,34 @@ class TreeDB:
     def _batch_keys(self, bid):
         return [r[0] for r in self.c.execute("SELECT key FROM summaries WHERE bid=?", (bid,))]
 
+    def promote_recurrent(self, new_batch, from_batches, min_sources, certifier, generation, note=None):
+        """IDEA A: fold provisional batches (one space) into ONE new permanent batch holding only the events of keys carried
+        by >= min_sources DISTINCT sources across them; the source batches become 'superseded' (out of every fold, cold
+        files kept). Returns (keys promoted, keys held back). One call = one batch = one rollback unit."""
+        assert min_sources >= 1, min_sources
+        rows, spaces = [], set()
+        for b in from_batches:
+            bid, tier, status = self._batch(b)
+            assert (tier, status) == ("provisional", "live"), f"cannot fold {b}: {(tier, status)}"
+            spaces.add(self.c.execute("SELECT space FROM batches WHERE bid=?", (bid,)).fetchone()[0]); rows += self.batch_rows(b)
+        assert len(spaces) == 1, f"promote_recurrent folds one space at a time: {sorted(spaces)}"
+        src = {}
+        for k, _, s in rows:
+            src.setdefault(k, set()).add(s)
+        keep = {k for k, ss in src.items() if len(ss) >= min_sources}
+        prep = prepare_shard([r for r in rows if r[0] in keep], self.cold)
+        self.add_prepared(new_batch, prep, "permanent", f"{certifier}|recurrence>={min_sources}", generation, spaces.pop(),
+                          note=f"folded from {', '.join(from_batches)}" + (f"; {note}" if note else ""))
+        with self.c:
+            for b in from_batches:
+                self.c.execute("UPDATE batches SET status='superseded' WHERE batch=?", (b,))
+            held = sorted(set(src) - keep)
+            for i in range(0, len(held), 500):                              # a key no live batch holds releases its space claim
+                ch = held[i:i + 500]; q = ",".join("?" * len(ch))
+                self.c.execute(f"""DELETE FROM key_space WHERE key IN ({q}) AND key NOT IN (SELECT s.key FROM summaries s
+                                   JOIN batches b ON s.bid=b.bid WHERE b.status='live' AND s.key IN ({q}))""", ch + ch)
+        return sorted(keep), held
+
     def promote(self, batch):
         """provisional -> permanent: the batch's summaries enter the fold."""
         bid, tier, status = self._batch(batch)
@@ -278,6 +332,7 @@ class TreeDB:
             if tier == "permanent":
                 self._drop_checkpoints(bid, keys)
             self.c.execute("UPDATE batches SET status='rolled_back' WHERE bid=?", (bid,))
+            self.c.execute("DELETE FROM macros WHERE batch=?", (batch,))
             self.c.execute("DELETE FROM nodes WHERE batch=?", (batch,))
             for i in range(0, len(keys), 500):
                 ch = keys[i:i + 500]; q = ",".join("?" * len(ch))
@@ -322,6 +377,15 @@ class TreeDB:
         n, mean, m2 = r[0], _arr(r[1]), _arr(r[2])
         return n, mean, m2 / max(n - 1, 1)
 
+    def constants(self, max_var, min_n):
+        """IDEA A's other half: {key: mean} of every leaf with n >= min_n whose per-dim variance is <= max_var everywhere
+        (a world constant: "dozen" -> 12); the high-variance keys are per-problem slots ("crate" -> 50 / 24 / 10)."""
+        out = {}
+        for k, n, m, s in self.c.execute("SELECT key, n, mean, m2 FROM leaves WHERE n >= ?", (min_n,)):
+            if np.all(_arr(s) / max(n - 1, 1) <= max_var):
+                out[k] = _arr(m)
+        return out
+
     def load_leaves(self):
         """The run's working set: {key: (n, mean)} for every leaf (one query; the breath never touches SQLite)."""
         return {k: (n, _arr(m)) for k, n, m in self.c.execute("SELECT key, n, mean FROM leaves")}
@@ -354,12 +418,34 @@ class TreeDB:
         return out
 
     # ---- shape ----------------------------------------------------------------------------------------------------
-    def add_node(self, node_id, parent, level, name, batch):
+    def add_node(self, node_id, parent, level, name, batch, kind="node"):
+        assert kind in KINDS, kind
         with self.c:
-            self.c.execute("INSERT INTO nodes VALUES (?,?,?,?,?)", (node_id, parent, level, name, batch))
+            self.c.execute("INSERT INTO nodes(id, parent, level, name, batch, kind) VALUES (?,?,?,?,?,?)",
+                           (node_id, parent, level, name, batch, kind))
 
-    def nodes(self):
-        return self.c.execute("SELECT id, parent, level, name, batch FROM nodes ORDER BY id").fetchall()
+    def add_macro(self, node_id, parent, level, name, body, grammar_version, batch):
+        """IDEA D: a macro node + its primitive body, atomically (the batch is its custody and its rollback unit)."""
+        with self.c:
+            self.c.execute("INSERT INTO nodes(id, parent, level, name, batch, kind) VALUES (?,?,?,?,?,'macro')",
+                           (node_id, parent, level, name, batch))
+            self.c.execute("INSERT INTO macros VALUES (?,?,?,?)", (node_id, body, grammar_version, batch))
+
+    def macros(self):
+        """[(node, name, body, grammar_version, batch)] of every macro."""
+        return self.c.execute("""SELECT m.node, n.name, m.body, m.grammar_version, m.batch FROM macros m JOIN nodes n
+                                 ON n.id=m.node ORDER BY m.node""").fetchall()
+
+    def nodes(self, kind=None):
+        """[(id, parent, level, name, batch)], optionally of one forest kind."""
+        if kind is None:
+            return self.c.execute("SELECT id, parent, level, name, batch FROM nodes ORDER BY id").fetchall()
+        return self.c.execute("SELECT id, parent, level, name, batch FROM nodes WHERE kind=? ORDER BY id", (kind,)).fetchall()
+
+    def children(self, node):
+        """IDEA C's step: [(id, name, kind)] of a node's children (node=None: the roots)."""
+        q = "parent IS NULL" if node is None else "parent=?"
+        return self.c.execute(f"SELECT id, name, kind FROM nodes WHERE {q} ORDER BY id", () if node is None else (node,)).fetchall()
 
     # ---- centroids (generation-tagged; never mixed) --------------------------------------------------------------
     def save_centroids(self, generation, N, LS, SS):
@@ -394,7 +480,7 @@ def migrate_v1(src, dst):
         if status == "rolled_back":
             db.rollback(batch)
     with db.c:
-        db.c.executemany("INSERT INTO nodes VALUES (?,?,?,?,?)", old.execute("SELECT * FROM nodes ORDER BY id").fetchall())
+        db.c.executemany("INSERT INTO nodes(id, parent, level, name, batch) VALUES (?,?,?,?,?)", old.execute("SELECT * FROM nodes ORDER BY id").fetchall())
         db.c.executemany("INSERT INTO centroids VALUES (?,?,?,?,?,?)", old.execute("SELECT * FROM centroids").fetchall())
     old.close()
     return db

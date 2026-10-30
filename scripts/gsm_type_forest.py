@@ -97,7 +97,8 @@ if __name__ == "__main__":
          f"  largest class '{big_root}' holds {big} = {big / typed:.3f} of typed occurrences (VOID if > 0.50)",
          "  top classes: " + "; ".join(f"{r} ({c}: {', '.join(sorted([x for x in concrete if uf.find(x) == r], key=lambda x: -occ[x])[:6])})"
                                        for r, c in cls.most_common(8))]
-    json.dump(dict(parent={x: uf.find(x) for x in concrete}, merges=uf.merges, occ=dict(occ), concrete=sorted(concrete)), open(OUT, "w"))
+    json.dump(dict(parent={x: uf.find(x) for x in concrete}, merges=uf.merges, occ=dict(occ), concrete=sorted(concrete),
+                   edges={f"{a}|{b}": sorted(ps) for (a, b), ps in edges.items() if len(ps) >= MINPROB}), open(OUT, "w"))
     tg = []
     for it, nn in zip(Dt["TEST"], NN["TEST"]):
         walk([(o, first(A), first(B)) for o, A, B in it["prog"]], nn, len(it["toks"]), lambda op, a, b: tg.append(rej(op, a, b)))

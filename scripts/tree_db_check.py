@@ -1,7 +1,10 @@
 """tree_db_check.py — the permanent tree's audit (mycelium/tree_db.py). Zero-GPU, seconds. Runs on a scratch DB file.
 Checks: incremental Welford == numpy over the raw events; rebuild_all == incremental; provisional evidence stays out of the
 aggregates until promote; rollback restores the aggregates exactly as if the batch never existed; a reused batch name
-fails atomically (nothing partial lands); the centroid generation guard refuses a foreign generation; provenance per row."""
+fails atomically (nothing partial lands); the centroid generation guard refuses a foreign generation; provenance per row.
+v3: forests by kind + children (the walk); macros land and roll back with their batch; promote_recurrent admits only keys with
+>= k distinct sources, supersedes its sources (a later promote of one is refused) and folds == numpy; constants() separates a
+zero-variance key from a per-problem slot; a v2 store upgrades in place, additively, with its leaves bit-identical."""
 import os, sqlite3, sys, tempfile
 import numpy as np
 
@@ -107,7 +110,54 @@ def main():
     except ValueError as e:
         assert "SHA-256" in str(e), e
     open(p, "wb").write(good); db.rebuild_all(); print("a tampered cold file fails the audit loudly: OK")
-    db.close(); print("ALL CHECKS PASS")
+    v3_checks(db, rng)
+    db.close(); v2_upgrade_check(); print("ALL CHECKS PASS")
+
+
+def v3_checks(db, rng):
+    db.add_node(10, None, 0, "quantity", "B0", kind="type"); db.add_node(11, 10, 1, "money", "B1", kind="type")
+    db.add_node(12, 10, 1, "count", "B1", kind="type")
+    db.add_macro(20, None, 1, "percent-of", "mul(div(n,c100),n)", "gsm-ptr-1", "B2")
+    assert [r[3] for r in db.nodes("type")] == ["quantity", "money", "count"] and [r[0] for r in db.children(10)] == [11, 12]
+    assert {r[0] for r in db.children(None)} >= {0, 10, 20} and db.macros()[0][1:4] == ("percent-of", "mul(div(n,c100),n)", "gsm-ptr-1")
+    db.rollback("B2"); assert db.macros() == [] and not [r for r in db.nodes() if r[0] == 20]
+    print("v3 forests by kind + children + macros roll back with their batch: OK")
+    db.register_space("const1", "symbolic", 1, "a numeric value carried by a word in a certified problem")
+    eps = {"dozen": [12.0] * 5, "crate": [50.0, 24.0, 10.0, 36.0], "pentagon": [5.0, 5.0]}   # 5 / 4 / 2 distinct problems
+    for j in range(5):
+        rows = [(k, np.array([v[j]]), f"problem{j}") for k, v in eps.items() if j < len(v)]
+        db.add_evidence(f"EP{j}", rows, "provisional", "solver", "gen1", "const1")
+    keep, held = db.promote_recurrent("REC0", [f"EP{j}" for j in range(5)], 3, "answer_key", "gen1")
+    assert keep == ["crate", "dozen"] and held == ["pentagon"], (keep, held)
+    for k in keep:
+        n, m, var = db.leaf(k); X = np.array(eps[k])
+        assert n == len(X) and np.allclose(m, X.mean()) and np.allclose(var, X.var(ddof=1)), k
+    assert db.leaf("pentagon") is None and db.c.execute("SELECT COUNT(*) FROM key_space WHERE key='pentagon'").fetchone()[0] == 0
+    try:
+        db.promote("EP0"); raise AssertionError("a superseded batch promoted (double count)")
+    except AssertionError as e:
+        assert "superseded" in str(e), e
+    assert set(db.constants(1e-9, 3)) == {"dozen"} and np.allclose(db.constants(1e-9, 3)["dozen"], 12.0)
+    db.rebuild_all(); db.rollback("REC0"); assert db.leaf("dozen") is None
+    print("promote_recurrent (>= 3 distinct sources; sources superseded; == numpy) + constants() + rollback: OK")
+
+
+def v2_upgrade_check():
+    """a v2 store (the v2 schema verbatim, as gsmb_tree.db / tree.db are) upgrades in place; its leaves stay bit-identical."""
+    import shutil, glob as _g
+    src = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".cache", "gsmb_tree.db")
+    if not os.path.exists(src):
+        print("v2 upgrade: no banked v2 store to copy (skipped)"); return
+    d = tempfile.mkdtemp(); dst = os.path.join(d, "v2.db"); shutil.copy(src, dst); shutil.copytree(src + ".events", dst + ".events")
+    for ext in ("-wal", "-shm"):
+        if os.path.exists(src + ext): shutil.copy(src + ext, dst + ext)
+    c = sqlite3.connect(dst); before = c.execute("SELECT key, n, mean, m2 FROM leaves ORDER BY key").fetchall()
+    v = c.execute("SELECT v FROM meta WHERE k='schema_version'").fetchone()[0]; nn = c.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]; c.close()
+    assert v == "2", v
+    db = TreeDB(dst); assert db.c.execute("SELECT key, n, mean, m2 FROM leaves ORDER BY key").fetchall() == before
+    assert len(db.nodes("node")) == nn and db.c.execute("SELECT v FROM meta WHERE k='schema_version'").fetchone()[0] == "3"
+    db.rebuild_all(); db.close(); db = TreeDB(dst); db.close()                 # re-open of an upgraded store is a no-op
+    print(f"v2 store upgrades in place, additively ({len(before)} leaves bit-identical, {nn} nodes kind 'node'): OK")
 
 
 if __name__ == "__main__":
