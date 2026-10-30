@@ -54314,3 +54314,11 @@ Brainstorm (Gemini relay critiqued: exact storage does not end blur, it MOVES it
 - Library head: add(mul(n,n),x) 772 · add(mul(n,n),n) 644 · mul(mul(n,n),n) 497 · add(add(n,x),x) 497 · … · add(mul(n,n),mul(n,n)) 364 (two-item total cost) · mul(div(n,c100),n) 280 (PERCENT-OF) · sub(n,mul(n,x)) 209 (change after buying).
 - Caveat on the read: x-cut shapes are TEMPLATES (they cover any chain of that shape); the fully-leafed ones (no x) are the nameable macros. Hand admission (the quota) takes fully-leafed shapes only, into tree v3 as kind='macro' nodes with primitive bodies.
 - Prediction scored: D-COV PASS ✓. Running total 13/20.
+
+### 2026-10-29 17:40 — B-CEIL (rescue, k=3): FAIL — the type predicate rejects 0.022 of VANILLA's wrong TEST steps (`.cache/gsm_type_ceiling_k3.txt`)
+- Picks: the VANILLA_s0 re-run reproduced the grid exactly (TEST step_all 0.1083, |diff| 0.0000).
+- **(a) wrong steps rejected 0.0220 (n 3,547; bar ≥ 0.20) ✗** · (b) correct steps rejected 0.0046 (≤ 0.05 ✓) · (c) TEST gold rejected 0.0103 (≤ 0.05 ✓). Not VOID (largest class 0.330). **B-CEIL: FAIL.** B closes in this form (one rescue, as registered).
+- By predicted op: × 0.000, ÷ 0.000, STOP 0.000 (the predicate only judges + / −; 0.443 of wrong steps are + / −), + 0.045, − 0.059.
+- Diagnostic (unbarred), the 1,552 wrong + / − steps: an operand untyped 0.363 · both concrete and SAME class 0.333 · a noun unseen in TRAIN unions 0.162 · a DIM operand 0.091 · both concrete, DIFFERENT class 0.050. Where both sides are typed, the wrong pick is the right KIND 6.7× as often as the wrong kind: the error is "wrong number of the right kind" (the registered mechanism). Disclosed caveat: the fused class (money / hour / minute / day / people) inflates "same class"; only if it hid most of those pairs AND coverage were perfect would (a) reach ~0.24 — the FAIL is robust to noun-extraction quality but not proven against a perfect typer.
+- **Consequence (pinned 17:07): step 4 (the walk arm on this forest) is NOT fired.** Steps 3 (tree_db v3, after unit gsmt) and 5 (macro admission) proceed. The type forest stays banked as a vocabulary (cheap, consistent with the key: (b)/(c) clean) — it simply does not decide GSM8K operand errors.
+- Predictions scored: B-CEIL (original) said FAIL, verdict VOID ✗; the rescue said NOT VOID + FAIL on (a) ✓. Running total 14/22.
