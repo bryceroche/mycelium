@@ -32,10 +32,14 @@ from mycelium.llama_loader import load_llama_weights, _build_rope_freqs, _apply_
 TAG = os.environ.get("DR_TAG", "s6x512")
 D, NL = int(os.environ.get("DR_D", 512)), int(os.environ.get("DR_LAYERS", 6))
 NH, HD = D // 64, 64
-FF = int(os.environ.get("DR_FF", 1408))
+FF = int(os.environ.get("DR_FF", 1408))          # 0 = THE MLP-FREE STUDENT (ledger 10-30): no feed-forward anywhere
+DBIN = os.environ.get("DR_DB") == "1"              # + the reader DB row (reader_db_build.py) as a mandatory road at the input
+SAVE_AT = int(os.environ.get("DR_SAVE_AT", 0))     # an extra snapshot at this step (-> ..._{TAG}_s{step}.safetensors)
+DBNPY, DBP = ".cache/readerdb_{split}.npy", 256
 STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
 TRAIN_JSONL, TRAIN_SPLIT = ".cache/form_mix_pm35c.jsonl", "formpm35cBP"
 CKPT, META = f".cache/distill_reader_{TAG}.safetensors", f".cache/distill_reader_{TAG}.json"
+if args.export and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
 EPS = 1e-5
 PROF = bool(int(os.environ.get("DR_PROF", "0")))
 
@@ -64,21 +68,26 @@ COS, SIN = _build_rope_freqs(HD, T_ALG, 500000.0)
 def init_params(mean_out):
     rng = np.random.default_rng(0)
     nrm = lambda *s: Tensor(rng.normal(0, 1 / math.sqrt(s[0]), s).astype(np.float32), dtype=dtypes.float).contiguous()
-    p = {"w_in": nrm(H_TRUNK, D), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
+    p = {"w_in": nrm(H_TRUNK, D), **({"w_db": nrm(DBP, D)} if DBIN else {}), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
          "w_out": nrm(D, H_TRUNK), "b_out": Tensor(mean_out.astype(np.float32), dtype=dtypes.float).contiguous()}
     for i in range(NL):
         p[f"an{i}"] = Tensor.ones(D, dtype=dtypes.float).contiguous(); p[f"fn{i}"] = Tensor.ones(D, dtype=dtypes.float).contiguous()
         for k in ("wq", "wk", "wv"):
             p[f"{k}{i}"] = nrm(D, D)
         p[f"wo{i}"] = Tensor.zeros(D, D, dtype=dtypes.float).contiguous()         # ReZero-style: blocks start as identity
-        p[f"wg{i}"], p[f"wu{i}"] = nrm(D, FF), nrm(D, FF)
-        p[f"wd{i}"] = Tensor.zeros(FF, D, dtype=dtypes.float).contiguous()
+        if FF:
+            p[f"wg{i}"], p[f"wu{i}"] = nrm(D, FF), nrm(D, FF)
+            p[f"wd{i}"] = Tensor.zeros(FF, D, dtype=dtypes.float).contiguous()
+        else:
+            del p[f"fn{i}"]
     return p
 
 
-def forward(p, x0, am):
+def forward(p, x0, am, db=None):
     B = x0.shape[0]
     x = x0.cast(dtypes.float) @ p["w_in"]
+    if db is not None:
+        x = x + db.cast(dtypes.float) @ p["w_db"]
     for i in range(NL):
         h = _rms_norm(x, p[f"an{i}"], EPS)
         q = (h @ p[f"wq{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
@@ -88,8 +97,9 @@ def forward(p, x0, am):
         sc = (q @ k.transpose(-2, -1)) * (1 / math.sqrt(HD)) + am
         a = sc.clip(-1e4, 1e4).softmax(-1)
         x = x + (a @ v).transpose(1, 2).reshape(B, T_ALG, D) @ p[f"wo{i}"]
-        h2 = _rms_norm(x, p[f"fn{i}"], EPS)
-        x = x + ((h2 @ p[f"wg{i}"]).silu() * (h2 @ p[f"wu{i}"])) @ p[f"wd{i}"]
+        if FF:
+            h2 = _rms_norm(x, p[f"fn{i}"], EPS)
+            x = x + ((h2 @ p[f"wg{i}"]).silu() * (h2 @ p[f"wu{i}"])) @ p[f"wd{i}"]
     return _rms_norm(x, p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
 
 
@@ -119,9 +129,12 @@ if args.export:
         p["w_in"] = Tensor.eye(D, dtype=dtypes.float).contiguous().realize()
     shutil.copyfile(STATES_NPZ.format(split=args.src), STATES_NPZ.format(split=args.out))
     st = np.lib.format.open_memmap(d_npy, mode="w+", dtype=np.float16, shape=(len(ids), T_ALG, H_TRUNK))
+    edb = np.load(DBNPY.format(split=args.src), mmap_mode="r") if DBIN else None
+    if DBIN: assert edb.shape == (len(ids), T_ALG, DBP), f"db rows {edb.shape} vs {len(ids)} rows"
     for s0 in range(0, len(ids), 8):
         sl = slice(s0, min(s0 + 8, len(ids)))
-        o = forward(p, Tensor(EMB[ids[sl]], dtype=dtypes.half), addmask(mask[sl])).realize().numpy()
+        o = forward(p, Tensor(EMB[ids[sl]], dtype=dtypes.half), addmask(mask[sl]),
+                    Tensor(np.asarray(edb[sl]), dtype=dtypes.half) if DBIN else None).realize().numpy()
         assert np.isfinite(o).all()
         st[sl] = (o * mask[sl][:, :, None]).astype(np.float16)
     st.flush(); print(f"[export] {args.export} -> {args.out}: {len(ids)} rows (pads zero)", flush=True); sys.exit(0)
@@ -131,6 +144,8 @@ assert not os.path.exists(CKPT), f"{CKPT} exists -- refusing to overwrite"
 samples, ids, mask, _ = tokenize(TRAIN_JSONL)
 teach = np.load(STATES_NPY.format(split=TRAIN_SPLIT), mmap_mode="r")
 assert teach.shape == (len(ids), T_ALG, H_TRUNK)
+tdb = np.load(DBNPY.format(split=TRAIN_SPLIT), mmap_mode="r") if DBIN else None   # TRAIN rows are leave-one-out
+if DBIN: assert tdb.shape == (len(ids), T_ALG, DBP)
 ztm = np.load(STATES_NPZ.format(split=TRAIN_SPLIT))["tokmask"]; assert (ztm.astype(np.float32) == mask).all(), "tokmask mismatch"
 import hashlib
 val = np.array([int(hashlib.sha1(s["text"].encode()).hexdigest(), 16) % 100 == 0 for s in samples])   # 1% by TEXT identity
@@ -139,7 +154,7 @@ smp = np.sort(np.random.default_rng(1).choice(tr_idx, 512, replace=False))
 tsm = np.asarray(teach[smp]).astype(np.float32); msm = mask[smp] > 0
 mean_out = tsm[msm].mean(0); var_t = float(tsm[msm].var(0).mean())
 print(f"[distill] rows {len(ids)} train {len(tr_idx)} val {len(va_idx)} | teacher per-dim var {var_t:.4f} | D {D} layers {NL} FF {FF} "
-      f"steps {STEPS} batch {BATCH} lr {LR}", flush=True)
+      f"steps {STEPS} batch {BATCH} lr {LR} db {DBIN}", flush=True)
 p = init_params(mean_out); params = list(p.values())
 for t in params:
     t.requires_grad = True
@@ -157,10 +172,9 @@ def loss_fn(out, tgt, tm):
     return mse + ((1 - cos) * tm).sum() / n, mse
 
 
-@TinyJit
-def train_step(x0, am, tm, tgt):
+def _train(x0, am, tm, tgt, db):
     with Tensor.train():
-        out = forward(p, x0, am); loss, mse = loss_fn(out, tgt, tm)
+        out = forward(p, x0, am, db); loss, mse = loss_fn(out, tgt, tm)
         opt.zero_grad(); loss.backward()
         ok = loss.isfinite().cast(dtypes.float).contiguous()                # single-kernel guard (a boundary, or the loss is recomputed per grad element)
         for t in params:
@@ -169,16 +183,23 @@ def train_step(x0, am, tm, tgt):
         return loss.realize(), mse.realize()
 
 
-@TinyJit
-def eval_step(x0, am, tm, tgt):
-    out = forward(p, x0, am); loss, mse = loss_fn(out, tgt, tm)
+def _eval(x0, am, tm, tgt, db):
+    out = forward(p, x0, am, db); loss, mse = loss_fn(out, tgt, tm)
     return loss.realize(), mse.realize()
+
+
+if DBIN:
+    train_step = TinyJit(lambda x0, am, tm, tgt, db: _train(x0, am, tm, tgt, db))
+    eval_step = TinyJit(lambda x0, am, tm, tgt, db: _eval(x0, am, tm, tgt, db))
+else:
+    train_step = TinyJit(lambda x0, am, tm, tgt: _train(x0, am, tm, tgt, None))
+    eval_step = TinyJit(lambda x0, am, tm, tgt: _eval(x0, am, tm, tgt, None))
 
 
 def batch_of(idx):
     idx = np.sort(idx)
     return (Tensor(EMB[ids[idx]], dtype=dtypes.half), addmask(mask[idx]), Tensor(mask[idx], dtype=dtypes.float),
-            Tensor(np.asarray(teach[idx]), dtype=dtypes.half))
+            Tensor(np.asarray(teach[idx]), dtype=dtypes.half)) + ((Tensor(np.asarray(tdb[idx]), dtype=dtypes.half),) if DBIN else ())
 
 
 Q = queue.Queue(maxsize=6)
@@ -188,15 +209,15 @@ def loader():
     rng = np.random.default_rng(2)
     while True:
         idx = rng.choice(tr_idx, BATCH, replace=False); idx = np.sort(idx)
-        Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])))
+        Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb[idx]),) if DBIN else ()))
 
 
 threading.Thread(target=loader, daemon=True).start()
 VB = [va_idx[i:i + BATCH] for i in range(0, len(va_idx) - BATCH + 1, BATCH)]
 t0 = time.time(); hist = []
 for step in range(STEPS):
-    ta = time.time(); bi, bm, bt = Q.get(); tb = time.time()
-    xs = [Tensor(bi, dtype=dtypes.half), addmask(bm), Tensor(bm, dtype=dtypes.float), Tensor(bt, dtype=dtypes.half)]
+    ta = time.time(); bi, bm, bt, *bd = Q.get(); tb = time.time()
+    xs = [Tensor(bi, dtype=dtypes.half), addmask(bm), Tensor(bm, dtype=dtypes.float), Tensor(bt, dtype=dtypes.half)] + [Tensor(d, dtype=dtypes.half) for d in bd]
     xs = [x.contiguous().realize() for x in xs]; tc = time.time()
     loss, mse = train_step(*xs)
     if PROF:
@@ -209,7 +230,10 @@ for step in range(STEPS):
             vloss = float(np.mean([float(a.numpy()) for a, _ in vl])); vmse = float(np.mean([float(b.numpy()) for _, b in vl]))
             msg += f" | VAL loss {vloss:.4f} mse {vmse:.4f}"; hist.append(dict(step=step, val_loss=vloss, val_mse=vmse))
         print(msg, flush=True)
+    if SAVE_AT and step + 1 == SAVE_AT:
+        safe_save({k: v.realize() for k, v in p.items()}, CKPT.replace(".safetensors", f"_s{SAVE_AT}.safetensors"))
+        print(f"[distill] snapshot at step {SAVE_AT}", flush=True)
 safe_save({k: v.realize() for k, v in p.items()}, CKPT)
-json.dump(dict(tag=TAG, D=D, layers=NL, ff=FF, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
+json.dump(dict(tag=TAG, D=D, layers=NL, ff=FF, db=DBIN, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
                var_t=var_t, hist=hist, seconds=time.time() - t0), open(META, "w"), indent=1)
 print(f"[distill] saved {CKPT} in {time.time() - t0:.0f}s", flush=True)

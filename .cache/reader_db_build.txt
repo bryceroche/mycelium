@@ -1,0 +1,7 @@
+PCA-256: 0.7647 of the teacher's variance
+formpm35cBP (LOO): L0 R2 0.4893 L1 R2 0.6612 L2 R2 0.6979 BACKOFF R2 0.7014 | backoff depth shares miss:0.000 L0:0.012 L1:0.028 L2:0.960
+wildholdBP: L0 R2 0.3657 L1 R2 0.4681 L2 R2 0.4373 BACKOFF R2 0.4751 | backoff depth shares miss:0.026 L0:0.228 L1:0.304 L2:0.442
+test23BP: L0 R2 0.6134 L1 R2 0.7731 L2 R2 0.8027 BACKOFF R2 0.8031 | backoff depth shares miss:0.000 L0:0.000 L1:0.004 L2:0.996
+W1 wild backoff R2 0.4751 (bar >= 0.55; PCA ceiling 0.7647) -> FAIL
+W2 wild backoff - token-only +0.1094 (bar +0.05) -> PASS
+db rows scaled by 1/sqrt(global spread 99.784); (228s)
