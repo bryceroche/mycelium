@@ -55,6 +55,8 @@ def first(S):
 
 def cert(v):
     """the executor's certificate of a step result: executed / integer / non-negative (never the value)."""
+    try: v = None if v is None else float(v)                            # an all-constant chain is a Python int: may exceed int64 / float
+    except OverflowError: v = None
     if v is None or not np.isfinite(v): return (0.0, 0.0, 0.0)
     return (1.0, float(GD.V1.isint(v)), float(v >= -1e-9))
 
