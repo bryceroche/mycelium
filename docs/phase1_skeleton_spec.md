@@ -54315,7 +54315,7 @@ Brainstorm (Gemini relay critiqued: exact storage does not end blur, it MOVES it
 - Caveat on the read: x-cut shapes are TEMPLATES (they cover any chain of that shape); the fully-leafed ones (no x) are the nameable macros. Hand admission (the quota) takes fully-leafed shapes only, into tree v3 as kind='macro' nodes with primitive bodies.
 - Prediction scored: D-COV PASS ✓. Running total 13/20.
 
-### 2026-10-29 17:40 — B-CEIL (rescue, k=3): FAIL — the type predicate rejects 0.022 of VANILLA's wrong TEST steps (`.cache/gsm_type_ceiling_k3.txt`)
+### 2026-10-29 17:39 — B-CEIL (rescue, k=3): FAIL — the type predicate rejects 0.022 of VANILLA's wrong TEST steps (`.cache/gsm_type_ceiling_k3.txt`)
 - Picks: the VANILLA_s0 re-run reproduced the grid exactly (TEST step_all 0.1083, |diff| 0.0000).
 - **(a) wrong steps rejected 0.0220 (n 3,547; bar ≥ 0.20) ✗** · (b) correct steps rejected 0.0046 (≤ 0.05 ✓) · (c) TEST gold rejected 0.0103 (≤ 0.05 ✓). Not VOID (largest class 0.330). **B-CEIL: FAIL.** B closes in this form (one rescue, as registered).
 - By predicted op: × 0.000, ÷ 0.000, STOP 0.000 (the predicate only judges + / −; 0.443 of wrong steps are + / −), + 0.045, − 0.059.
