@@ -108,6 +108,12 @@ pure prose at 340 epochs is poison −243 — tune between).
   reasoning state); the next breath reads it. Evidence: NOTEBOOK 0.994 vs VANILLA
   0.724 at depth 5-9 from depth <= 2 training (rel-DSL). Definition:
   `docs/breathing_transformer.md`.
+- **THE ATOMS + DIFFUSION RULING (2026-10-30)**: the tree stores ATOMS (step types, 2-4 op fragments),
+  never per-problem graphs; radius = confidence, unbind = conjugate (never 1/z); the three rotors (T6 / RoPE / T256)
+  own DISJOINT complex planes; the silhouette is PER STEP (bottleneck classifies the step against atom centroids, the
+  micro keys bypass it); contrastive energy pulls bindings toward centroids; every breath advances EVERY step in
+  parallel (discrete-diffusion form; the executor commits what is determined each breath), breaths are weight-tied
+  (never specialize), heads MAY specialize. Ledger 10-30.
 - **THE T6 CLOCK RULING (2026-10-26)**: the breath rotor is six continuous
   gears, 180/60/30/15/7.5/3.75 deg per tick (periods 2..96) = T^6, every gear
   turning every tick; single source `mycelium/rotor_clock.py` (T6_SPEEDS,
