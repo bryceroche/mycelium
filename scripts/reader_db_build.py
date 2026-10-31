@@ -43,7 +43,7 @@ def lookup(store, k, z=None, kappa=None):
     """one row's DB prediction [n, P] (unscaled). kappa None = as built (the deepest node with N >= MINN); kappa = SHRINKAGE (each
     level's mean blended with its parent's by n / (n + kappa), the root prior 0 = the corpus mean). z given = leave-one-out."""
     pred = np.zeros((k.shape[1], P), np.float32)
-    for li, lv in enumerate(LEVELS):
+    for li, lv in enumerate(l for l in LEVELS if l in store):     # a truncated store = a shallower tree
         uk, N, LS, _ = store[lv]; pos = np.clip(np.searchsorted(uk, k[li]), 0, len(uk) - 1); hit = uk[pos] == k[li]
         n = np.where(hit, N[pos] - (1 if z is not None else 0), 0.0)
         S = np.where(hit[:, None], LS[pos] - (z if z is not None else 0), 0.0)
