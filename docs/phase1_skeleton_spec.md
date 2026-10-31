@@ -54629,3 +54629,17 @@ NMDB@30k frozen CLK3_241 head: 0.3637 → **0.3627** (paired −0.0010, SE 0.002
 ### 2026-10-31 12:05 — QUEUE 2 (1) VERDICT, THE OWNED TABLE: **PASS — the student owns its vocabulary; Llama's file is no longer read**
 `.cache/reader_table_nmdb30.npz`: 16,729 owned rows × 768 (12.8M) + 111,527 composed tokens. The wild export through it logged "no Llama file" (the run log's single loader line is the table WRITE, the last read of Llama's file in the research line). Masked wild, HCN head: **HCNP 0.3813** vs HCN 0.3784, diff **+0.0029** (paired SE 0.0036, z 0.80; discordant 25/31). **BAR ≥ −0.010: PASS.** PREDICTION PASS ✓. Running total 44/64.
 **The reader stack is now Llama-free end to end on the parser bench:** an owned 12.8M table → the 22.0M attention-only student + the Tree's DB row → the head: masked wild 0.3813, against 0.3793 for Llama L0–L3 (~500M + the 262.7M table) with the same head lineage. One seed; the twin runs next in unit lfq2.
+
+### 2026-10-31 12:35 — Q3 S0 VERDICT (THE SWAP on GSM8K; STU-TICK s0/s1 on gsmb_student_states.npy vs the banked Llama TICK): **PASS — with a counterfactual cost**
+| read | STU (s0/s1) | LLAMA (s0/s1) | diff (means) |
+|---|---|---|---|
+| ORIG step | 0.954 / 0.955 | 0.973 / 0.972 | −0.019 |
+| TEST step | 0.132 / 0.124 | 0.131 / 0.128 | **−0.0016** |
+| TEST op / pointers | 0.449 / 0.473 · 0.198 / 0.187 | 0.455 / 0.474 · 0.202 / 0.194 | −0.003 / −0.005 |
+| TEST answer | 0.043 / 0.046 | 0.048 / 0.047 | −0.003 |
+| CFNUM answer (step) | 0.559 / 0.552 (0.766 / 0.763) | 0.636 / 0.637 (0.821 / 0.822) | **−0.081** (−0.057) |
+| CFNAME answer (step) | 0.499 / 0.486 (0.719 / 0.709) | 0.562 / 0.560 (0.762 / 0.774) | **−0.069** (−0.054) |
+- **S0: PASS** — fit 0.954 / 0.955 ≥ 0.90; TEST step −0.0016 (bar ≥ −0.020). On new GSM8K problems the student's states read as well as Llama's.
+- **THE COST, where predicted:** the counterfactual reads drop 0.07–0.08 in answers. Those are the binding reads (the same text with swapped numbers / names, graded on recomputed gold), and they suffer from the student's distribution gap: it never saw GSM8K prose in distillation. ORIG answers −0.043 too.
+- PREDICTIONS: S0 PASS ✓; CF answers drop by more than 0.05 ✓. Running total 46/66.
+- **NEXT FORM, named (for the CF cost):** distill the student on GSM8K text. The teacher signal comes from the BANKED gsmb_trunk_states (native causal word states, no new Llama compute); its loss is a word-level head beside the BP token loss. Bars to pin at registration: the CF answer gap closes to ≥ −0.020 with TEST step held.
