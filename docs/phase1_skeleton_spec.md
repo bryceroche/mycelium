@@ -54588,3 +54588,24 @@ TRAIN 5,337 problems, 23,167 numeral words; roles * 10,555 / + 3,586 / /B 2,516 
 - **READ:** a numeral's role is NOT a phrase-level fact. Even leave-one-out on TRAIN (where wider contexts recur across problems) the window adds nothing past (tok, next). Memorization transfers to the counterfactuals (0.63, +0.21 over the prior: the tree recognizes the text), which is the "overfit the tree" half working. But on new text a local window knows only +0.05. The role lives in the RELATION between the numeral and the question (B-PLAN: the root op is readable from the question, 0.52 vs placebo 0.36).
 - PREDICTIONS: T1 PASS ✗, T2 FAIL ✓. Running total 35/54.
 - **NEXT FORM, named:** G-TREE2, the RELATIONAL key: (the numeral's unit noun, the question's target noun) and (the numeral's verb, the question's verb). It is a binding key, two words from two places joined, which is what phase binding makes on demand. Same bars, zero-GPU, fires on registration.
+
+### 2026-10-31 11:42 — G-TREE2 PINNED (the named next form; zero-GPU, `GT_KEYS=REL`)
+Keys: L0 (tok, next) unchanged; L1 (tok, next, QNOUN); L2 (prev, tok, next, QNOUN), where QNOUN = the word after "how many"/"how much" in the last sentence; PLACEBO L1 = (tok, next, a random word of the same problem). The same bars: T1 TEST backoff − prior ≥ +0.10; T2 backoff − L0 ≥ +0.03 AND L1 − placebo ≥ +0.03. **PREDICTIONS:** T1 FAIL (~0.55); T2 FAIL narrowly (the relation pays, but sparse keys on new text dilute it).
+
+### 2026-10-31 11:43 — G-TREE2 VERDICT (.cache/gsm_role_tree_rel.txt): **T1 FAIL, T2 FAIL**. G-TREE3 PINNED.
+TEST: prior 0.466 / L0 0.518 / L1 (tok, next, qnoun) 0.511 / placebo 0.506 / backoff 0.512 (L2 seen 0.273). CFNUM backoff 0.636, CFNAME 0.631. T1 +0.045 (bar +0.10) FAIL; T2 backoff − L0 −0.006, L1 − placebo +0.006 FAIL. PREDICTIONS T1 FAIL ✓, T2 FAIL ✓. Running total 37/56.
+**READ:** exact-match keys, local or relational, carry roles to the counterfactuals of memorized text but not to new problems; the hash key is too brittle. The closing of this FORM: exact keys.
+**G-TREE3 PINNED (the Live Oak's KNN; `scripts/gsm_role_knn.py`, zero-GPU):** KEY = the numeral word's state from the student (gsmb_student_states.npy), VALUE = the certified role; cosine KNN over TRAIN numeral words (centered on the TRAIN mean), k 25, similarity-weighted vote, TRAIN read leave-one-problem-out. The keys are the student's and the values are the answer key's, so it is not circular. Instrument read beside it: the same on the BANKED Llama states (no new Llama compute). **BARS:** T1 TEST KNN − prior ≥ +0.10; T2 TEST KNN − G-TREE L0 (0.518) ≥ +0.03. **PREDICTIONS:** T1 PASS; T2 PASS; the student within 0.03 of Llama.
+
+### 2026-10-31 11:44 — G-TREE3 VERDICT (.cache/gsm_role_knn_{gsmb_student_states,gsmb_trunk_states}.txt): **T1 FAIL, T2 PASS**
+| keys | TRAIN (leave-problem-out) | TEST | CFNUM | CFNAME |
+|---|---|---|---|---|
+| prior | 0.456 | 0.466 | 0.421 | 0.418 |
+| exact-key tree (G-TREE backoff) | 0.537 | 0.521 | 0.632 | 0.634 |
+| **KNN on the STUDENT's states** | 0.572 | **0.550** | 0.557 | 0.552 |
+| KNN on the banked LLAMA states (instrument) | 0.557 | 0.540 | 0.562 | 0.559 |
+- **T1 TEST KNN − prior +0.083 (bar +0.10): FAIL.** **T2 KNN − exact tree L0 +0.032 (bar +0.03): PASS** (narrowly).
+- **READ 1, the student's keys beat Llama's** (+0.010 TEST, +0.015 TRAIN): the student is bidirectional, so a numeral's state has read the question at the end of the problem; Llama's native causal state cannot. This is the first bench read where the retired teacher is the weaker instrument.
+- **READ 2, two memories:** the exact-key tree recognizes TEXT (CFs 0.63, where the problem itself is memorized), while the KNN generalizes MEANING (TEST 0.55, beyond what any exact key reaches). The Live Oak wants both: exact keys for recall of seen text, KNN for new text. No local key, exact or soft, reaches +0.10 alone: the remaining role signal is in the composition, the reader's job.
+- PREDICTIONS: T1 PASS ✗, T2 PASS ✓, student within 0.03 of Llama ✓ (above it). Running total 39/59.
+- **NEXT FORM, named (GPU/CPU training, needs the word):** THE TREE AS A ROAD INTO THE BT. Each numeral word's input gets the tree's role-vote distribution (exact-key counts + the KNN vote; leave-one-problem-out on TRAIN rows), entered without a gain (the mandatory-road law). Bars to pin at registration against BT18S.

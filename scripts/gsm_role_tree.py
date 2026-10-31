@@ -28,8 +28,23 @@ def roles(it):
     return out
 
 
+REL = os.environ.get("GT_KEYS") == "REL"   # G-TREE2: the RELATIONAL key (the numeral's unit x the question's target noun)
+
+
+def qnoun(it):
+    """the word after 'how many' / 'how much' in the last sentence ('#' if none)"""
+    t, sid = it["toks"], it["sid"]; last = max(sid)
+    for j in range(len(t) - 2):
+        if sid[j] == last and t[j] == "how" and t[j + 1] in ("many", "much"): return t[j + 2]
+    return "#"
+
+
 def keys(it, i, rng):
     t = it["toks"]; g = lambda j: t[j] if 0 <= j < len(t) else "#"
+    if REL:
+        q = qnoun(it)
+        return {"L0": (g(i), g(i + 1)), "L1": (g(i), g(i + 1), q), "L2": (g(i - 1), g(i), g(i + 1), q),
+                "L1P": (g(i), g(i + 1), t[int(rng.integers(len(t)))])}
     return {"L0": (g(i), g(i + 1)), "L1": (g(i - 1), g(i), g(i + 1)), "L2": (g(i - 1), g(i), g(i + 1), g(i + 2)),
             "L1P": (g(i), g(i + 1), t[int(rng.integers(len(t)))])}
 
@@ -80,4 +95,4 @@ if __name__ == "__main__":
     T1 = t["BACKOFF"] - t["PRIOR"] >= 0.10; T2 = t["BACKOFF"] - t["L0"] >= 0.03 and t["L1"] - t["L1P"] >= 0.03
     L += [f"T1 THE TREE KNOWS ROLES: TEST backoff {t['BACKOFF']:.3f} - prior {t['PRIOR']:.3f} = {t['BACKOFF'] - t['PRIOR']:+.3f} (bar +0.10) -> {'PASS' if T1 else 'FAIL'}",
           f"T2 CONTEXT PAYS: backoff - L0 {t['BACKOFF'] - t['L0']:+.3f} (bar +0.03); L1 - placebo {t['L1'] - t['L1P']:+.3f} (bar +0.03) -> {'PASS' if T2 else 'FAIL'}"]
-    print("\n".join(L)); open(".cache/gsm_role_tree.txt", "w").write("\n".join(L) + "\n")
+    print("\n".join(L)); open(f".cache/gsm_role_tree{'_rel' if REL else ''}.txt", "w").write("\n".join(L) + "\n")
