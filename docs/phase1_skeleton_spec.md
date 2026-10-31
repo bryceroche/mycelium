@@ -54683,3 +54683,17 @@ NMDB@30k frozen CLK3_241 head: 0.3637 → **0.3627** (paired −0.0010, SE 0.002
 **FORM (`gsm_breath_reader.py`, all default-off):** (1) `BT_D=512 BT_NH=8 BT_DB=64`: the breath expands to 512 and collapses to a 64-d silhouette (was 192 → 32); 6.59M params (BT18S 1.22M). (2) `BT_CYCLOCK`: the breath's SLOT QUERIES turn by the T6 gears × the cycle index (keys fixed, no new weights; the breaths stay weight-tied, and the clock lets them orient across cycles). In training the cycle is read off the mask level the step imitates (⌊6·(1 − masked fraction)⌋). (3) `BT_ZOOM`: coarse-to-fine silhouette: 5 coarse atoms (the op + stop; Welford) and the 37 fine atoms; log p(type) = log p(op) + log p(type | op); at inference an UNSURE fine type (p(type | op) < 0.5) ZOOMS OUT the kind mask to the op's union of kinds (the BT autopsy's failure: a wrong fine type masked gold out). Smokes: D192 + clock + zoom, 300 steps → type 0.22 / op 0.33–0.35 (the 10-step all-STOP read was the init prior: STOP alone in its group); D512 ≈ 2.4 s/step at 6 threads → ~12 h per seed.
 **ARM BT3** = BT18S + all three, 18k, seeds 0/1, the student's states, weights saved, then the oracle-type read on BT3's weights. One combined arm (the word was for the set; the CPU fits one pair overnight): **attribution among the three is NOT read here**.
 **BARS (vs BT18S, same input):** C0 ORIG step ≥ 0.90 both (else VOID). **Z1 THE SILHOUETTE GENERALIZES:** TEST type accuracy BT3 − BT18S ≥ +0.05 on both seeds (BT18S 0.261 / 0.232). **Z2 TEST step:** BETTER ≥ +0.02 both / EQUIVALENT mean ≥ −0.010 / WORSE. **PREDICTIONS:** C0 PASS; Z1 FAIL (+0.02–0.03: coarse helps the op, but the fine type's kinds are where it memorizes); Z2 EQUIVALENT.
+
+### 2026-10-31 15:13 — THE TREE ROAD VERDICT (BT-TREE vs BT18S; the student's states, 18k; weights .cache/gsmb_breath_BTTREE_s{0,1}.pt): **C0 PASS, R1 FAIL, R2 PASS**
+| read | BT-TREE s0 / s1 | BT18S s0 / s1 | diff (s0 / s1) | STU-TICK |
+|---|---|---|---|---|
+| ORIG step | 0.939 / 0.937 | 0.939 / 0.921 | 0 / +0.016 | 0.954 / 0.955 |
+| TEST step | 0.132 / 0.129 | 0.120 / 0.114 | **+0.012 / +0.015** | 0.132 / 0.124 |
+| TEST op | 0.441 / 0.451 | 0.454 / 0.411 | −0.013 / +0.040 | 0.449 / 0.473 |
+| TEST pointers | 0.188 / 0.178 | 0.174 / 0.165 | **+0.014 / +0.013** | 0.198 / 0.187 |
+| TEST type | 0.257 / 0.264 | 0.261 / 0.232 | −0.004 / +0.032 | — |
+| CFNUM / CFNAME answer | 0.487 / 0.490 · 0.387 / 0.372 | 0.496 / 0.477 · 0.363 / 0.359 | ≈0 · +0.019 | 0.559 / 0.552 · 0.499 / 0.486 |
+- **C0: PASS** (0.939 / 0.937). **R1 TEST op ≥ +0.02 both: FAIL** (−0.013 / +0.040: the seeds disagree). **R2 TEST step mean ≥ +0.010: PASS (+0.0135)**, and positive on both seeds.
+- **READ:** the road pays where it was not predicted, in the POINTERS (+0.014 / +0.013, both seeds), not reliably in the op. A numeral's role vote (op × side or 'none') tells the pointer which numerals are distractors and which side they take, which is a pointer fact. Fitting is faster (12k: 0.896 / 0.899 vs 0.871 / 0.873). With the road, the BT ties STU-TICK on TEST step (0.132 / 0.129 vs 0.132 / 0.124): the breath stops trailing the simpler reader, but the silhouette (TEST type ≈ 0.26) is unmoved.
+- PREDICTIONS: C0 PASS ✓; R1 FAIL ✓; R2 FAIL ✗. Running total 52/74.
+- **NEXT FORM:** BT3 (staged, starting now) is the silhouette's form. The road is cheap and positive, so it joins the BT stack forward (BT3 runs without it, so its comparison with BT18S stays clean).
