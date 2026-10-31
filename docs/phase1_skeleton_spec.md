@@ -54643,3 +54643,15 @@ NMDB@30k frozen CLK3_241 head: 0.3637 → **0.3627** (paired −0.0010, SE 0.002
 - **THE COST, where predicted:** the counterfactual reads drop 0.07–0.08 in answers. Those are the binding reads (the same text with swapped numbers / names, graded on recomputed gold), and they suffer from the student's distribution gap: it never saw GSM8K prose in distillation. ORIG answers −0.043 too.
 - PREDICTIONS: S0 PASS ✓; CF answers drop by more than 0.05 ✓. Running total 46/66.
 - **NEXT FORM, named (for the CF cost):** distill the student on GSM8K text. The teacher signal comes from the BANKED gsmb_trunk_states (native causal word states, no new Llama compute); its loss is a word-level head beside the BP token loss. Bars to pin at registration: the CF answer gap closes to ≥ −0.020 with TEST step held.
+
+### 2026-10-31 13:08 — QUEUE 2 (2) VERDICT, THE SEED TWIN (unit lfq2 done 13:08): **PRIMARY PASS, PARITY PASS — parity CLAIMED on two seeds**
+| arm | states | best val (test23) | masked wild |
+|---|---|---|---|
+| HCN_241 | NMDB30 student | 0.9201 | 0.3784 |
+| **HCN_242** | NMDB30 student | 0.9201 | **0.3642** |
+| HCT_241 | banked teacher | 0.9013 | 0.3808 |
+| HCT_242 | banked teacher | 0.9128 | 0.3803 |
+- **PRIMARY HCN_242 ≥ 0.3593: PASS** (+0.005). **PARITY HCN_242 − HCT_242 ≥ −0.020: PASS: −0.0161** (paired SE 0.0093, z 1.73; discordant 199/166). With seed 241 (−0.0024), the parity bar holds on BOTH seeds; mean gap −0.009.
+- **READ, the variance:** the student-state arm moves with the seed (HCN_241 − HCN_242 +0.0141, SE 0.0075, z 1.89), while the teacher-state arm does not (HCT +0.0005, z 0.07). The head finds a less stable basin on the student's states: the same mean level, a wider spread. So the 0.3813 owned-table read (on seed 241's head) is the good seed, not the expected value; the honest expectation is ≈ 0.371 ± 0.007.
+- PREDICTIONS: PRIMARY PASS ✓, PARITY PASS ✓. Running total 48/68.
+- **NEXT FORM, named:** the variance is the thing to shrink. The CF cost (S0) and this spread share a cause candidate, the student's narrow distillation diet. The GSM8K-text distillation form (named at S0) is read on both.
