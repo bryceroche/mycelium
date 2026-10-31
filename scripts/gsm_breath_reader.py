@@ -31,13 +31,19 @@ from mycelium import rotor_clock as CK
 
 SEED = int(os.environ.get("BT_SEED", "0")); TAG = os.environ.get("BT_TAG", f"BT_s{SEED}")
 ORACLE = os.environ.get("BT_ORACLE") == "1"          # the oracle-type read: the gold step type is the silhouette's class (inference only)
-LOAD = os.environ.get("BT_LOAD", "")
-ROLE = os.environ.get("BT_ROLE") == "1"              # THE TREE ROAD (ledger 10-31): each word += Linear(14 -> D)(its tree role feats)                 # score saved weights (.cache/gsmb_breath_{TAG}.pt) instead of training
+LOAD = os.environ.get("BT_LOAD", "")                 # score saved weights (.cache/gsmb_breath_{TAG}.pt) instead of training
+ROLE = os.environ.get("BT_ROLE") == "1"              # THE TREE ROAD (ledger 10-31): each word += Linear(14 -> D)(its tree role feats)
+CYCLOCK = os.environ.get("BT_CYCLOCK") == "1"        # (ledger 10-31) slot queries turn by the T6 gears x the CYCLE index (keys fixed)
+ZOOM = os.environ.get("BT_ZOOM") == "1"              # (ledger 10-31) coarse-to-fine silhouette: p(type) = p(op) p(type | op); unsure -> op-level mask
+ZOOM_TAU = 0.5
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
-D, NH, NLE, NLB, DB, NCYC = 192, 4, 2, 2, 32, 6
+D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
+NLE, NLB, NCYC = 2, 2, 6
 K, NC, H, OMAX, PB = TR.K, TR.NC, TR.H, TR.OMAX, TR.PB
 KINDS = "tsc"; TYPES = [(o, a, b) for o in GD.OPS for a in KINDS for b in KINDS]; STOP = len(TYPES); NT = STOP + 1
 LEVMAX, NCAP = 8, 2000
+NOP = len(GD.OPS) + 1                                 # the coarse atoms: the op, + stop
+PARENT = np.array([GD.OPS.index(o) for o, _, _ in TYPES] + [NOP - 1])
 SPLITS = TR.SPLITS
 
 
@@ -92,6 +98,8 @@ def make_net():
     for j, (_, a, b) in enumerate(TYPES):
         kmask[j, 0, KINDS.index(a)] = True; kmask[j, 1, KINDS.index(b)] = True
     kmask[STOP] = True
+    par = torch.as_tensor(PARENT); grp = torch.zeros(NOP, NT, dtype=torch.bool); grp[par, torch.arange(NT)] = True
+    kmask_op = torch.stack([kmask[grp[g]].any(0) for g in range(NOP)])                    # the op-level mask: the union of its types' kinds
 
     def rot(z, a):                                                                         # z (..., 2P) as P planes; a (..., P)
         c, s_ = a.cos(), a.sin(); re, im = z[..., 0::2], z[..., 1::2]
@@ -123,6 +131,8 @@ def make_net():
             s.down = nn.Sequential(nn.LayerNorm(D), nn.Linear(D, DB)); s.up = nn.Linear(DB, D); s.upc = nn.Linear(DB, D)
             s.tau = nn.Parameter(torch.zeros(1))
             s.register_buffer("C", torch.randn(NT, DB) * 0.1); s.register_buffer("Cn", torch.zeros(NT))   # the atoms (Welford)
+            if ZOOM:                                                                           # the coarse atoms (Welford over the op)
+                s.register_buffer("Cc", torch.randn(NOP, DB) * 0.1); s.register_buffer("Ccn", torch.zeros(NOP)); s.tauc = nn.Parameter(torch.zeros(1))
             s.phi = nn.Parameter(torch.rand(NT, 2, NPA - NTK) * 2 * math.pi)                   # type-role phases on the bus planes
             s.ln = nn.LayerNorm(D); s.qa = nn.Linear(D, D); s.qb = nn.Linear(D, D); s.kt = nn.Linear(D, D); s.ks = nn.Linear(D, D)
             s.kc = nn.Parameter(torch.randn(NC, D) * 0.02); s.pc = nn.Parameter(torch.zeros(1))
@@ -138,7 +148,7 @@ def make_net():
             for blk in s.enc: xq = blk(xq, xq, aq, aq, mask)
             return xq
 
-        def breath(s, t, xq, nb, cond):
+        def breath(s, t, xq, nb, cond, cyc=None):
             """one cycle: every slot proposed in parallel. nb = notebook tensors; cond (B, K) = the step type the keys condition on
             (gold in training, the snapped prediction at inference; None = the snapped prediction)."""
             B, Lq, _ = xq.shape; L = Lq + K
@@ -148,10 +158,15 @@ def make_net():
             h = s.slotk.weight[None] + torch.where(com[..., None], re, s.maskv) + s.cfp(cf) + s.lev(lev) + s.cons(cons[:, Lq:].long())
             xk_q = xq + s.cons(cons[:, :Lq].long())
             sa = t["sid"][:, Lq:, None].float() * w; ka = t["sid"][..., None].float() * w
+            if CYCLOCK: sa = sa + cyc.float()[:, None, None] * w                               # the cycle stamp on the queries only
             mask = torch.zeros(B, 1, K, L).masked_fill(t["pad"][:, None, None, :], -1e4)
             for blk in s.core: h = blk(h, torch.cat([xk_q, h], 1), sa, ka, mask)
             z = s.down(h)                                                                      # THE SILHOUETTE
             logit = -((z[:, :, None] - s.C[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tau.exp()
+            if ZOOM:                                                                           # zoom: log p(op) + log p(type | op)
+                lc_ = (-((z[:, :, None] - s.Cc[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tauc.exp()).log_softmax(-1)
+                lse = torch.stack([logit.masked_fill(~grp[g], -1e9).logsumexp(-1) for g in range(NOP)], -1)
+                lfine = logit - lse[..., par]; logit = lc_[..., par] + lfine
             p = logit.softmax(-1)
             c = logit.argmax(-1) if cond is None else cond
             rr = p.gather(-1, c[..., None])                                                    # the radius: type confidence
@@ -168,6 +183,9 @@ def make_net():
 
             kt = s.kt(xk_q); ksl = tickrot(s.ks(hu)); cnt = cons.float()
             km = kmask.to(c.device)[c]                                                         # (B, K, 2, 3)
+            if ZOOM and cond is None:                                                          # unsure of the fine type -> zoom out to the op
+                unsure = lfine.gather(-1, c[..., None])[..., 0].exp() < ZOOM_TAU
+                km = torch.where(unsure[..., None, None], kmask_op[par[c]], km)
             outs = []
             for role, proj in ((0, s.qa), (1, s.qb)):
                 q = bind(proj(hu), role)
@@ -212,7 +230,8 @@ def train_step(net, opt, its, states, tree, rng):
     masked[np.arange(len(E)), rng.integers(0, np.minimum(m + 1, K))] = True                   # at least one supervised slot masked
     nb = nb_tensors(notebook(E, L, progs, ~masked, gt, np.ones((len(E), K), np.float32)))
     xq = net.read(t); gtt = torch.as_tensor(gt)
-    logit, pa, pb, z, _ = net.breath(t, xq, nb, gtt)
+    cyc = torch.as_tensor(np.clip(np.floor(NCYC * (1 - rr[:, 0])), 0, NCYC - 1).astype(np.int64))   # the cycle this mask level imitates
+    logit, pa, pb, z, _ = net.breath(t, xq, nb, gtt, cyc)
     mk = torch.as_tensor(masked); am = t["am"] & mk
     lo = F.cross_entropy(logit[mk], gtt[mk])                                                  # gravity: own atom vs the other 36
     for p, V in ((pa, t["va"]), (pb, t["vb"])):
@@ -224,6 +243,10 @@ def train_step(net, opt, its, states, tree, rng):
         nn_ = net.Cn + cnt; upd = cnt > 0                                                     # Chan's merge of a batch into the mean
         net.C[upd] += (sm[upd] - cnt[upd, None] * net.C[upd]) / nn_[upd, None]
         net.Cn.copy_(nn_.clamp(max=NCAP))                                                     # capped: the atom keeps following
+        if ZOOM:
+            to = torch.as_tensor(PARENT)[tt]; cnt = torch.bincount(to, minlength=NOP).float(); sm = torch.zeros(NOP, DB).index_add_(0, to, zz)
+            nn_ = net.Ccn + cnt; upd = cnt > 0
+            net.Cc[upd] += (sm[upd] - cnt[upd, None] * net.Cc[upd]) / nn_[upd, None]; net.Ccn.copy_(nn_.clamp(max=NCAP))
     return float(lo.detach())
 
 
@@ -243,7 +266,7 @@ def score(net, its, states, tree, seed=0):
             gt0 = gold(E)[1]
             for c in range(NCYC):
                 nb = nb_tensors(notebook(E, L, progs, com, typ, rad))
-                logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None)
+                logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None, torch.full((B,), c))
                 ty = gt0 if ORACLE else logit.argmax(-1).numpy()
                 pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if ORACLE else p.max(-1).values.numpy()
                 ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
