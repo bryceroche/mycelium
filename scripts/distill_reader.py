@@ -34,6 +34,8 @@ D, NL = int(os.environ.get("DR_D", 512)), int(os.environ.get("DR_LAYERS", 6))
 NH, HD = D // 64, 64
 FF = int(os.environ.get("DR_FF", 1408))          # 0 = THE MLP-FREE STUDENT (ledger 10-30): no feed-forward anywhere
 DBIN = os.environ.get("DR_DB") == "1"              # + the reader DB row (reader_db_build.py) as a mandatory road at the input
+GSM = os.environ.get("DR_GSM") == "1"              # + GSM8K TRAIN text (ledger 10-31): a native head on the BANKED trunk word states
+WARM = os.environ.get("DR_WARM", "")               # continue from this checkpoint (every key must match)
 SAVE_AT = int(os.environ.get("DR_SAVE_AT", 0))     # an extra snapshot at this step (-> ..._{TAG}_s{step}.safetensors)
 DBNPY, DBP = ".cache/readerdb_{split}.npy", 256
 STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
@@ -91,6 +93,10 @@ def init_params(mean_out):
 
 
 def forward(p, x0, am, db=None):
+    return _rms_norm(body(p, x0, am, db), p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
+
+
+def body(p, x0, am, db=None):
     B = x0.shape[0]
     x = x0.cast(dtypes.float) @ p["w_in"]
     if db is not None:
@@ -107,7 +113,7 @@ def forward(p, x0, am, db=None):
         if FF:
             h2 = _rms_norm(x, p[f"fn{i}"], EPS)
             x = x + ((h2 @ p[f"wg{i}"]).silu() * (h2 @ p[f"wu{i}"])) @ p[f"wd{i}"]
-    return _rms_norm(x, p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
+    return x
 
 
 def addmask(tm):
@@ -180,7 +186,11 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
         for r, i in enumerate(sl):
             n = len(enc[i].ids); ids[r, :n] = enc[i].ids; m[r, :n] = 1
             if DBIN: db[r, :n] = RDB.lookup(store, RDB.row_keys(ids[r], n)) * dscale     # as built: backoff, N >= 3
-        o = forward(p, Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None).realize().numpy()
+        xin = (Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None)
+        if os.environ.get("DR_HEAD") == "nat":   # the GSM form's native head (trained on the banked trunk word states)
+            o = (_rms_norm(body(p, *xin), p["fnorm"], EPS) @ p["w_nat"] + p["b_nat"]).realize().numpy()
+        else:
+            o = forward(p, *xin).realize().numpy()
         assert np.isfinite(o).all()
         for r, i in enumerate(sl): st[start[i]:start[i + 1]] = o[r, al[i]].astype(np.float16)
     st.flush(); print(f"[gsm] {len(uniq)} texts, {int(start[-1])} words -> {args.gsm} ({CKPT})", flush=True); sys.exit(0)
@@ -201,7 +211,45 @@ tsm = np.asarray(teach[smp]).astype(np.float32); msm = mask[smp] > 0
 mean_out = tsm[msm].mean(0); var_t = float(tsm[msm].var(0).mean())
 print(f"[distill] rows {len(ids)} train {len(tr_idx)} val {len(va_idx)} | teacher per-dim var {var_t:.4f} | D {D} layers {NL} FF {FF} "
       f"steps {STEPS} batch {BATCH} lr {LR} db {DBIN}", flush=True)
-p = init_params(mean_out); params = list(p.values())
+p = init_params(mean_out)
+if WARM:
+    ld = safe_load(WARM); assert set(ld) == set(p), f"warm keys differ: {set(ld) ^ set(p)}"
+    p = {k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in p}; print(f"[distill] WARM from {WARM}", flush=True)
+if GSM:   # GSM8K TRAIN texts only (CF and TEST texts fenced); targets = the banked native word states (no Llama compute)
+    import gsm_bench_data as GD, gsm_trunk_states as GTS
+    from tokenizers import Tokenizer
+    Dt, Qt = GTS.texts(); gidx = json.load(open(GTS.OUT_IDX)); gst = np.load(GTS.OUT_NPY, mmap_mode="r")
+    fence = set(q for sp in ("CFNUM", "CFNAME", "TEST") for q in Qt[sp])
+    gtx = {}
+    for q, s0 in zip(Qt["TRAIN"], gidx["TRAIN"]):
+        assert q not in fence, "a GSM8K TRAIN text is also a CF/TEST text"
+        gtx[q] = s0
+    gq = list(gtx); gtok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json"); genc = [gtok.encode(q) for q in gq]
+    g_ids = np.zeros((len(gq), T_ALG), np.int32); g_mask = np.zeros((len(gq), T_ALG), np.float32); g_al = []
+    for r, (q, e) in enumerate(zip(gq, genc)):
+        g_ids[r, :len(e.ids)] = e.ids; g_mask[r, :len(e.ids)] = 1; g_al.append(np.array(GTS.align(q, e.offsets, len(e.ids))))
+    g_s0 = np.array([gtx[q] for q in gq])
+    gva = np.array([int(hashlib.sha1(q.encode()).hexdigest(), 16) % 50 == 0 for q in gq]); g_tr, g_va = np.nonzero(~gva)[0], np.nonzero(gva)[0][:64]
+    gsmp = np.concatenate([np.asarray(gst[g_s0[r]:g_s0[r] + len(g_al[r])], np.float32) for r in g_tr[:400]])
+    mean_nat = gsmp.mean(0); INV_VARN = 1.0 / float(gsmp.var(0).mean())
+    if DBIN:
+        import reader_db_build as RDB
+        _, _, g_dscale, g_store = RDB.load_store()
+    sd_out = p["w_out"].numpy()
+    p["w_nat"] = Tensor(sd_out, dtype=dtypes.float).contiguous().realize(); p["b_nat"] = Tensor(mean_nat, dtype=dtypes.float).contiguous().realize()
+    print(f"[distill] GSM: {len(gq)} TRAIN texts (train {len(g_tr)} val {len(g_va)}), fenced {len(fence)} CF/TEST texts; native var "
+          f"{1 / INV_VARN:.4f}", flush=True)
+
+    def gsm_rows(rows):
+        """-> (EMB rows, mask, word mask, dense native targets, db rows) for GSM text rows"""
+        tm = np.zeros((len(rows), T_ALG), np.float32); tg = np.zeros((len(rows), T_ALG, H_TRUNK), np.float16)
+        db = np.zeros((len(rows), T_ALG, DBP), np.float16)
+        for j, r in enumerate(rows):
+            al = g_al[r]; tm[j, al] = 1; tg[j, al] = gst[g_s0[r]:g_s0[r] + len(al)]
+            if DBIN:
+                n = int(g_mask[r].sum()); db[j, :n] = RDB.lookup(g_store, RDB.row_keys(g_ids[r], n)) * g_dscale
+        return (EMB[g_ids[rows]], g_mask[rows], tm, tg) + ((db,) if DBIN else ())
+params = list(p.values())
 for t in params:
     t.requires_grad = True
 n_par = sum(int(np.prod(t.shape)) for t in params); print(f"[distill] trainable params {n_par:,} (+ frozen embedding)", flush=True)
@@ -209,11 +257,11 @@ opt = AdamW(params, lr=LR, weight_decay=0.01)
 INV_VAR = 1.0 / var_t
 
 
-def loss_fn(out, tgt, tm):
+def loss_fn(out, tgt, tm, inv=None):
     # .contiguous() = schedule boundaries: without them tinygrad fuses the w_out matmul's reduction under the per-row
     # mean and recomputes per-row/per-batch reductions inside the backward's elementwise kernels (13.7 s/step -> 0.28)
     out = out.contiguous(); tgt = tgt.cast(dtypes.float); n = tm.sum().contiguous()
-    mse = (((out - tgt) ** 2).mean(-1) * tm).sum() / n * INV_VAR
+    mse = (((out - tgt) ** 2).mean(-1) * tm).sum() / n * (INV_VAR if inv is None else inv)
     cos = (out * tgt).sum(-1).contiguous() / ((out * out).sum(-1).sqrt().contiguous() * (tgt * tgt).sum(-1).sqrt().contiguous() + 1e-6)
     return mse + ((1 - cos) * tm).sum() / n, mse
 
@@ -234,6 +282,26 @@ def _eval(x0, am, tm, tgt, db):
     return loss.realize(), mse.realize()
 
 
+def nat(x0, am, db):
+    return _rms_norm(body(p, x0, am, db), p["fnorm"], EPS) @ p["w_nat"] + p["b_nat"]
+
+
+def _train_g(x0, am, tm, tgt, db, gx0, gam, gtm, gtgt, gdb):
+    with Tensor.train():
+        loss, mse = loss_fn(forward(p, x0, am, db), tgt, tm); gloss, gmse = loss_fn(nat(gx0, gam, gdb), gtgt, gtm, INV_VARN)
+        tot = loss + gloss
+        opt.zero_grad(); tot.backward()
+        ok = tot.isfinite().cast(dtypes.float).contiguous()
+        for t in params:
+            t.grad = t.grad * ok
+        opt.step()
+        return loss.realize(), mse.realize(), gloss.realize(), gmse.realize()
+
+
+if GSM:
+    assert DBIN, "the GSM form continues the DB student"
+    train_g = TinyJit(lambda *a: _train_g(*a))
+    eval_g = TinyJit(lambda gx0, gam, gtm, gtgt, gdb: [t.realize() for t in loss_fn(nat(gx0, gam, gdb), gtgt, gtm, INV_VARN)])
 if DBIN:
     train_step = TinyJit(lambda x0, am, tm, tgt, db: _train(x0, am, tm, tgt, db))
     eval_step = TinyJit(lambda x0, am, tm, tgt, db: _eval(x0, am, tm, tgt, db))
@@ -255,7 +323,8 @@ def loader():
     rng = np.random.default_rng(2)
     while True:
         idx = rng.choice(tr_idx, BATCH, replace=False); idx = np.sort(idx)
-        Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb[idx]),) if DBIN else ()))
+        Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb[idx]),) if DBIN else ())
+              + (gsm_rows(np.sort(rng.choice(g_tr, BATCH, replace=False))) if GSM else ()))
 
 
 threading.Thread(target=loader, daemon=True).start()
@@ -263,18 +332,28 @@ VB = [va_idx[i:i + BATCH] for i in range(0, len(va_idx) - BATCH + 1, BATCH)]
 t0 = time.time(); hist = []
 for step in range(STEPS):
     ta = time.time(); bi, bm, bt, *bd = Q.get(); tb = time.time()
+    if GSM: bd, gb = bd[:1], bd[1:]
     xs = [Tensor(bi, dtype=dtypes.half), addmask(bm), Tensor(bm, dtype=dtypes.float), Tensor(bt, dtype=dtypes.half)] + [Tensor(d, dtype=dtypes.half) for d in bd]
+    if GSM:
+        gx, gm, gtm, gtg, gdb = gb
+        xs += [Tensor(gx, dtype=dtypes.half), addmask(gm), Tensor(gtm, dtype=dtypes.float), Tensor(gtg, dtype=dtypes.half), Tensor(gdb, dtype=dtypes.half)]
     xs = [x.contiguous().realize() for x in xs]; tc = time.time()
-    loss, mse = train_step(*xs)
+    if GSM: loss, mse, gloss, gmse = train_g(*xs)
+    else: loss, mse = train_step(*xs)
     if PROF:
         loss.numpy(); print(f"[prof] step {step}: queue wait {tb - ta:.3f}s, inputs {tc - tb:.3f}s, train_step {time.time() - tc:.3f}s", flush=True)
     if step % 200 == 0 or step == STEPS - 1:
         lv = float(loss.numpy()); assert math.isfinite(lv), f"non-finite loss at step {step}"
-        msg = f"[distill] step {step} (queue {Q.qsize()}) loss {lv:.4f} mse {float(mse.numpy()):.4f} | {(time.time() - t0) / (step + 1):.3f}s/step"
+        msg = f"[distill] step {step} (queue {Q.qsize()}) loss {lv:.4f} mse {float(mse.numpy()):.4f}" + (
+            f" gsm mse {float(gmse.numpy()):.4f}" if GSM else "") + f" | {(time.time() - t0) / (step + 1):.3f}s/step"
         if step % 2000 == 0 or step == STEPS - 1:
             vl = [eval_step(*batch_of(b)) for b in VB]
             vloss = float(np.mean([float(a.numpy()) for a, _ in vl])); vmse = float(np.mean([float(b.numpy()) for _, b in vl]))
             msg += f" | VAL loss {vloss:.4f} mse {vmse:.4f}"; hist.append(dict(step=step, val_loss=vloss, val_mse=vmse))
+            if GSM:
+                gv = [eval_g(*[Tensor(a, dtype=dtypes.half) if k in (0, 3, 4) else (addmask(a) if k == 1 else Tensor(a, dtype=dtypes.float))
+                              for k, a in enumerate(gsm_rows(g_va[i:i + BATCH]))]) for i in range(0, len(g_va) - BATCH + 1, BATCH)]
+                gvm = float(np.mean([float(b.numpy()) for _, b in gv])); msg += f" | GSM VAL native mse {gvm:.4f}"; hist[-1]["gsm_val_mse"] = gvm
         print(msg, flush=True)
     if SAVE_AT and step + 1 == SAVE_AT:
         safe_save({k: v.realize() for k, v in p.items()}, CKPT.replace(".safetensors", f"_s{SAVE_AT}.safetensors"))
