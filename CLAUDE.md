@@ -231,3 +231,53 @@ core, sanctioned only as monitor/segmenter. Details: archived CLAUDE
   critique products.
 - Bryce wants root-cause fixes, not workarounds. The gut is 16-for-16: when it
   fires, audit — the drawer usually has something in it.
+
+## 8. Bryce's core theories + the Breathing Transformer (design constitution, 2026-10-30)
+
+Bryce's statement of what Mycelium IS (full text: memory `user_core_theories_2026_10_30.md`). Like the twelve hills, it
+governs what gets BUILT; bars govern what gets CLAIMED.
+
+**Core theories.**
+- Traditional ML trains on the **SQL cross join** of concepts (why the whole internet isn't enough data). Complex planes give
+  **clean binding and unbinding** (phase angle + conjugate multiplication), so we never train on the cross join. The superpower is
+  NOT superposition (~20 items per bus before degradation) — it is clean, on-demand bind/unbind.
+- The transformer MLP stores concept keys (e.g. "Michael Jordan") in combinations of near-perpendicular dimensions. Move world
+  knowledge and memorization OUT of the MLP and INTO **the Tree** — a literal database, coarse-to-fine granularity levels.
+- **Abstract reasoning = zooming out on the Tree**, merging macro understanding with micro composite keys (slot id, token id,
+  T6 stamp, tree level) that bypass the U-Net compression and rejoin via the skip connection.
+- **SNAP** cleans the state between hops — autotune: recognize the key, snap the note to the codebook centroid.
+- **The T6 clock tracks address and order**; its stamp is part of the volatile per-problem composite key.
+- **The core rhythm is ALTERNATION** between continuous neural space and the discrete symbolic CSP solver. Beam search across top choices.
+- **Decomposition is the namesake**: mycelium breaks matter into atoms; the atoms are Tree centroids (lego bricks, not whole models).
+
+**The Breathing Transformer.**
+- **MHA without the MLP.** MHA reads text and compresses it into composite keys; MHA for reading comprehension, binding for
+  composition; keep the MHA reader and build structure at the joins.
+- **The Live Oak Tree:** BIRCH decides when to add children; Welford stats maintain centroids at every level; MHA searches it by
+  KNN (a filing cabinet with KNN message passing). **Overfit the facts to the Tree** (it is a lookup table; memorize aggressively);
+  **generalize the reader.** Storage is separate from reasoning; every data point on a correct chain updates the Welford stats;
+  branch growth should plateau as the tree matures. Unknown entities met in wild text enter the DB via a stored procedure.
+- **Volatile per-problem composite keys** (slot id, token id, T6 stamp, tree level) are made by phase binding and unbinding and
+  snapped on; **phase binding is a network switch** — attention masks open when phase frequencies align.
+- **U-Net per cycle:** expand and collapse the representation each breath, with the **silhouette of the dancer** (segment +
+  classify) at the bottleneck; only ID tags travel the skip, never full facts. **Nazaré:** the rule through the bottleneck and the
+  tags through the skip rejoin in phase — aligned they stack into a massive signal, misaligned they cancel; wave energy funnels
+  into the bottleneck, coupled with beam mass.
+- **Six breath cycles; rotate the QUERIES, not the attention planes**; the T6 clock lets the model orient itself across them.
+- **Three-rotor stack on disjoint planes:** temporal T6 clock, spatial RoPE, rotational T256 bus (+ the notebook). **The conjugate
+  is a mathematical mirror** (never 1/z; radius = confidence). **Möbius** = the zoom function for Tree search.
+- **Diffusion-inspired:** every breath advances every step in parallel; breaths never specialize; heads may.
+- **Data:** GSM8K text, not home-grown problems — the goal is NL comprehension, graded on intermediate gold answers. Build
+  something too small to memorize GSM8K that instead pulls from the entity DB by binding; train and test on the same set (the
+  counterfactual fixture is how that is graded honestly). Regularization / dropout on the READER.
+
+**Reconciliation with the ledger (where a line above meets a banked result; the build follows the ruling column):**
+| Constitution line | Banked result / ruling | Built form |
+|---|---|---|
+| 60° per breath; gears 30/60/180 | T2s: single 60° rotation 0.918 vs breath label 1.000; T2t multi-speed 1.000; THE T6 RULING (10-26) | queries rotated by the six T6 gears 180/60/30/15/7.5/3.75°; rel-DSL ROTATE/ROTQ cost −0.018/−0.021 (not in that stack) |
+| "overfit is the point" + "regularization/dropout" | not a conflict | overfit the TREE; regularize the READER |
+| T6 tracks address + order (storage dropped) | clock capacity 10-16: rotation adds no storage; registers do (theta-gamma 200 @ 1.00) | stamp = address/order; capacity = clock-selected registers |
+| ~20 items per complex plane | measured ~20–30 keys per VECTOR / bus (crosstalk ~1/√P) | bind on demand; registers for capacity |
+| MLP stores "Michael Jordan" keys | literature (superposition), not tested by us; ours: every learned nonlinear combiner memorizes (composition law); attention also recalls (eq_slot N1) | NO-MLP ruling + Tree |
+| BIRCH branches plateau | M-CEIL M3 FAIL as pinned; plateau visible at T 0.1 (0.82 of tokens stop above the deepest level, −0.012 R²) | shrinkage N/(N+κ) is the next form |
+| unknown entities via stored procedure | custody: the answer key gates permanent tree writes | wild entities enter PROVISIONAL, promoted on a correct chain (the NLB TREE form) |
