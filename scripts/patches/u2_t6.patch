@@ -1,0 +1,167 @@
+diff --git a/scripts/distill_reader.py b/scripts/distill_reader.py
+index 5a0e9d2a..60dd9344 100644
+--- a/scripts/distill_reader.py
++++ b/scripts/distill_reader.py
+@@ -27,13 +27,16 @@ from tinygrad import Tensor, dtypes, TinyJit, Device
+ from tinygrad.nn.optim import AdamW
+ from tinygrad.nn.state import safe_save, safe_load
+ from phase1_algebra_head import tokenize, T_ALG, H_TRUNK, STATES_NPZ, STATES_NPY
+-from mycelium.llama_loader import load_llama_weights, _build_rope_freqs, _apply_rope, _rms_norm
++from mycelium.llama_loader import load_llama_weights, _build_rope_freqs, _apply_rope, _rms_norm, _rotate_half
++from mycelium import rotor_clock as CK
+ 
+ TAG = os.environ.get("DR_TAG", "s6x512")
+ D, NL = int(os.environ.get("DR_D", 512)), int(os.environ.get("DR_LAYERS", 6))
+ NH, HD = D // 64, 64
+ FF = int(os.environ.get("DR_FF", 1408))          # 0 = THE MLP-FREE STUDENT (ledger 10-30): no feed-forward anywhere
+ DBIN = os.environ.get("DR_DB") == "1"              # + the reader DB row (reader_db_build.py) as a mandatory road at the input
++T6 = os.environ.get("DR_T6") == "1"                # (ledger 10-31, U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
++# SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
+ GSM = os.environ.get("DR_GSM") == "1"              # + GSM8K TRAIN text (ledger 10-31): a native head on the BANKED trunk word states
+ WARM = os.environ.get("DR_WARM", "")               # continue from this checkpoint (every key must match)
+ SAVE_AT = int(os.environ.get("DR_SAVE_AT", 0))     # an extra snapshot at this step (-> ..._{TAG}_s{step}.safetensors)
+@@ -72,6 +75,16 @@ else:
+     # (a device-side EMB[ids] lowers to a compare-and-reduce over the whole 128k-row table: ~2e12 ops per batch, 16 s/step)
+     del sd
+ COS, SIN = _build_rope_freqs(HD, T_ALG, 500000.0)
++SPD = np.radians(np.asarray(CK.t6_plane_speeds(HD // 4), np.float32))
++
++
++def t6_rot(sent, tm):
++    """sent, tm (B, T) -> (cos, sin) (B, 1, T, HD) in _apply_rope's half-split layout: sentence planes then offset planes"""
++    T = sent.shape[1]; i = np.arange(T)[None]; chg = np.ones_like(sent, bool); chg[:, 1:] = sent[:, 1:] != sent[:, :-1]
++    off = i - np.maximum.accumulate(np.where(chg, i, 0), 1)
++    a = np.concatenate([sent[..., None] * SPD, off[..., None] * SPD], -1) * (tm[..., None] > 0)     # (B, T, HD/2)
++    a = np.concatenate([a, a], -1)[:, None].astype(np.float32)
++    return np.cos(a), np.sin(a)
+ 
+ 
+ def init_params(mean_out):
+@@ -92,11 +105,11 @@ def init_params(mean_out):
+     return p
+ 
+ 
+-def forward(p, x0, am, db=None):
+-    return _rms_norm(body(p, x0, am, db), p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
++def forward(p, x0, am, db=None, rc=None):
++    return _rms_norm(body(p, x0, am, db, rc), p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
+ 
+ 
+-def body(p, x0, am, db=None):
++def body(p, x0, am, db=None, rc=None):
+     B = x0.shape[0]
+     x = x0.cast(dtypes.float) @ p["w_in"]
+     if db is not None:
+@@ -106,7 +119,8 @@ def body(p, x0, am, db=None):
+         q = (h @ p[f"wq{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
+         k = (h @ p[f"wk{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
+         v = (h @ p[f"wv{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
+-        q, k = _apply_rope(q, k, COS, SIN, T_ALG)
++        if rc is None: q, k = _apply_rope(q, k, COS, SIN, T_ALG)
++        else: q, k = q * rc[0] + _rotate_half(q) * rc[1], k * rc[0] + _rotate_half(k) * rc[1]   # THE T6 ADDRESS (no RoPE)
+         sc = (q @ k.transpose(-2, -1)) * (1 / math.sqrt(HD)) + am
+         a = sc.clip(-1e4, 1e4).softmax(-1)
+         x = x + (a @ v).transpose(1, 2).reshape(B, T_ALG, D) @ p[f"wo{i}"]
+@@ -157,10 +171,12 @@ if args.export:
+     st = np.lib.format.open_memmap(d_npy, mode="w+", dtype=np.float16, shape=(len(ids), T_ALG, H_TRUNK))
+     edb = np.load(DBNPY.format(split=os.environ.get("DR_DBSRC", args.src)), mmap_mode="r") if DBIN else None   # DR_DBSRC: other db rows
+     if DBIN: assert edb.shape == (len(ids), T_ALG, DBP), f"db rows {edb.shape} vs {len(ids)} rows"
++    esent = np.load(STATES_NPZ.format(split=args.src))["sent"] if T6 else None
+     for s0 in range(0, len(ids), 8):
+         sl = slice(s0, min(s0 + 8, len(ids)))
++        rc = tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(esent[sl], mask[sl])) if T6 else None
+         o = forward(p, Tensor(EMB[ids[sl]], dtype=dtypes.half), addmask(mask[sl]),
+-                    Tensor(np.asarray(edb[sl]), dtype=dtypes.half) if DBIN else None).realize().numpy()
++                    Tensor(np.asarray(edb[sl]), dtype=dtypes.half) if DBIN else None, rc).realize().numpy()
+         assert np.isfinite(o).all()
+         st[sl] = (o * mask[sl][:, :, None]).astype(np.float16)
+     st.flush(); print(f"[export] {args.export} -> {args.out}: {len(ids)} rows (pads zero)", flush=True); sys.exit(0)
+@@ -169,6 +185,7 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
+     import gsm_bench_data as GD, gsm_trunk_states as GTS
+     from tokenizers import Tokenizer
+     assert os.path.exists(CKPT) and not os.path.exists(args.gsm), f"need {CKPT}; refusing to overwrite {args.gsm}"
++    assert not T6, "the T6 student's GSM8K export needs GSM8K sentence indices (not built yet)"
+     Dt, Q = GTS.texts(); tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
+     uniq = list(dict.fromkeys(q for sp in Q.values() for q in sp)); enc = [tok.encode(q) for q in uniq]
+     assert max(len(e.ids) for e in enc) <= T_ALG
+@@ -203,6 +220,8 @@ assert teach.shape == (len(ids), T_ALG, H_TRUNK)
+ tdb = np.load(DBNPY.format(split=TRAIN_SPLIT), mmap_mode="r") if DBIN else None   # TRAIN rows are leave-one-out
+ if DBIN: assert tdb.shape == (len(ids), T_ALG, DBP)
+ ztm = np.load(STATES_NPZ.format(split=TRAIN_SPLIT))["tokmask"]; assert (ztm.astype(np.float32) == mask).all(), "tokmask mismatch"
++tsent = np.load(STATES_NPZ.format(split=TRAIN_SPLIT))["sent"] if T6 else None
++if T6: assert DBIN and not GSM, "the T6 form is the DB student's (U2); GSM8K sentence indices are not built"
+ import hashlib
+ val = np.array([int(hashlib.sha1(s["text"].encode()).hexdigest(), 16) % 100 == 0 for s in samples])   # 1% by TEXT identity
+ tr_idx, va_idx = np.nonzero(~val)[0], np.nonzero(val)[0][:256]
+@@ -266,9 +285,9 @@ def loss_fn(out, tgt, tm, inv=None):
+     return mse + ((1 - cos) * tm).sum() / n, mse
+ 
+ 
+-def _train(x0, am, tm, tgt, db):
++def _train(x0, am, tm, tgt, db, cs=None, sn=None):
+     with Tensor.train():
+-        out = forward(p, x0, am, db); loss, mse = loss_fn(out, tgt, tm)
++        out = forward(p, x0, am, db, None if cs is None else (cs, sn)); loss, mse = loss_fn(out, tgt, tm)
+         opt.zero_grad(); loss.backward()
+         ok = loss.isfinite().cast(dtypes.float).contiguous()                # single-kernel guard (a boundary, or the loss is recomputed per grad element)
+         for t in params:
+@@ -277,8 +296,8 @@ def _train(x0, am, tm, tgt, db):
+         return loss.realize(), mse.realize()
+ 
+ 
+-def _eval(x0, am, tm, tgt, db):
+-    out = forward(p, x0, am, db); loss, mse = loss_fn(out, tgt, tm)
++def _eval(x0, am, tm, tgt, db, cs=None, sn=None):
++    out = forward(p, x0, am, db, None if cs is None else (cs, sn)); loss, mse = loss_fn(out, tgt, tm)
+     return loss.realize(), mse.realize()
+ 
+ 
+@@ -302,7 +321,10 @@ if GSM:
+     assert DBIN, "the GSM form continues the DB student"
+     train_g = TinyJit(lambda *a: _train_g(*a))
+     eval_g = TinyJit(lambda gx0, gam, gtm, gtgt, gdb: [t.realize() for t in loss_fn(nat(gx0, gam, gdb), gtgt, gtm, INV_VARN)])
+-if DBIN:
++if T6:
++    train_step = TinyJit(lambda x0, am, tm, tgt, db, cs, sn: _train(x0, am, tm, tgt, db, cs, sn))
++    eval_step = TinyJit(lambda x0, am, tm, tgt, db, cs, sn: _eval(x0, am, tm, tgt, db, cs, sn))
++elif DBIN:
+     train_step = TinyJit(lambda x0, am, tm, tgt, db: _train(x0, am, tm, tgt, db))
+     eval_step = TinyJit(lambda x0, am, tm, tgt, db: _eval(x0, am, tm, tgt, db))
+ else:
+@@ -313,7 +335,8 @@ else:
+ def batch_of(idx):
+     idx = np.sort(idx)
+     return (Tensor(EMB[ids[idx]], dtype=dtypes.half), addmask(mask[idx]), Tensor(mask[idx], dtype=dtypes.float),
+-            Tensor(np.asarray(teach[idx]), dtype=dtypes.half)) + ((Tensor(np.asarray(tdb[idx]), dtype=dtypes.half),) if DBIN else ())
++            Tensor(np.asarray(teach[idx]), dtype=dtypes.half)) + ((Tensor(np.asarray(tdb[idx]), dtype=dtypes.half),) if DBIN else ()) + (
++            tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(tsent[idx], mask[idx])) if T6 else ())
+ 
+ 
+ Q = queue.Queue(maxsize=6)
+@@ -324,7 +347,7 @@ def loader():
+     while True:
+         idx = rng.choice(tr_idx, BATCH, replace=False); idx = np.sort(idx)
+         Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb[idx]),) if DBIN else ())
+-              + (gsm_rows(np.sort(rng.choice(g_tr, BATCH, replace=False))) if GSM else ()))
++              + (gsm_rows(np.sort(rng.choice(g_tr, BATCH, replace=False))) if GSM else ()) + (t6_rot(tsent[idx], mask[idx]) if T6 else ()))
+ 
+ 
+ threading.Thread(target=loader, daemon=True).start()
+@@ -333,7 +356,9 @@ t0 = time.time(); hist = []
+ for step in range(STEPS):
+     ta = time.time(); bi, bm, bt, *bd = Q.get(); tb = time.time()
+     if GSM: bd, gb = bd[:1], bd[1:]
++    if T6: bd, rcs = bd[:1], bd[1:]
+     xs = [Tensor(bi, dtype=dtypes.half), addmask(bm), Tensor(bm, dtype=dtypes.float), Tensor(bt, dtype=dtypes.half)] + [Tensor(d, dtype=dtypes.half) for d in bd]
++    if T6: xs += [Tensor(a, dtype=dtypes.float) for a in rcs]
+     if GSM:
+         gx, gm, gtm, gtg, gdb = gb
+         xs += [Tensor(gx, dtype=dtypes.half), addmask(gm), Tensor(gtm, dtype=dtypes.float), Tensor(gtg, dtype=dtypes.half), Tensor(gdb, dtype=dtypes.half)]
+@@ -359,6 +384,6 @@ for step in range(STEPS):
+         safe_save({k: v.realize() for k, v in p.items()}, CKPT.replace(".safetensors", f"_s{SAVE_AT}.safetensors"))
+         print(f"[distill] snapshot at step {SAVE_AT}", flush=True)
+ safe_save({k: v.realize() for k, v in p.items()}, CKPT)
+-json.dump(dict(tag=TAG, D=D, layers=NL, ff=FF, db=DBIN, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
++json.dump(dict(tag=TAG, D=D, layers=NL, ff=FF, db=DBIN, t6=T6, gsm=GSM, warm=WARM, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
+                var_t=var_t, hist=hist, seconds=time.time() - t0), open(META, "w"), indent=1)
+ print(f"[distill] saved {CKPT} in {time.time() - t0:.0f}s", flush=True)
