@@ -54609,3 +54609,12 @@ TEST: prior 0.466 / L0 0.518 / L1 (tok, next, qnoun) 0.511 / placebo 0.506 / bac
 - **READ 2, two memories:** the exact-key tree recognizes TEXT (CFs 0.63, where the problem itself is memorized), while the KNN generalizes MEANING (TEST 0.55, beyond what any exact key reaches). The Live Oak wants both: exact keys for recall of seen text, KNN for new text. No local key, exact or soft, reaches +0.10 alone: the remaining role signal is in the composition, the reader's job.
 - PREDICTIONS: T1 PASS ✗, T2 PASS ✓, student within 0.03 of Llama ✓ (above it). Running total 39/59.
 - **NEXT FORM, named (GPU/CPU training, needs the word):** THE TREE AS A ROAD INTO THE BT. Each numeral word's input gets the tree's role-vote distribution (exact-key counts + the KNN vote; leave-one-problem-out on TRAIN rows), entered without a gain (the mandatory-road law). Bars to pin at registration against BT18S.
+
+### 2026-10-31 11:48 — Q2 VERDICT (HCN = the B2 form on NMDB@30k; unit lfgpu, .cache/sharp_HCN.{safetensors,log}, ps_headcont_HCN.npz): **PRIMARY PASS, PARITY PASS — the MLP-free reader reaches the teacher's level on wild**
+Warm 165/165 keys from CLK3_241, 12k steps, LR 5e-5, best val test23NMDB30 **0.9201** (HCT's test23BP 0.9013; HCS's test23STU 0.9163).
+- **Masked wild HCN 0.3784** (fields pres 0.912 ftype 0.861 res 0.816 dig 0.514 op 0.731 args 0.441).
+- **PRIMARY HCN ≥ 0.3593: PASS** (+0.019). **PARITY HCN − HCT ≥ −0.020: PASS: −0.0024** (paired SE 0.0096, z 0.25; discordant 198/193). It is a statistical tie with the Llama-read continuation, and HCN also sits 0.0009 under CLK3_241 itself (0.3793).
+- Reads: HCN − HCS (the SwiGLU student continued) **+0.0132** (SE 0.0093, z 1.42); HCN − NMDB30 frozen +0.0146 (SE 0.0079, z 1.86). The MLP-free + DB reader outreads the MLP student after the same continuation.
+- PREDICTIONS: PRIMARY PASS ✓ (~0.37 predicted, 0.378); PARITY PASS ✓ (−0.010 predicted, −0.002); HCN ≥ HCS ✓. Running total 42/62.
+- **SCOPE:** one seed, one fixture (the 311-row wild holdout, 2,051 slots); HCT is the banked 10-27 control (same recipe, not re-run). This retires the trunk on the parser bench by measurement, not just by ruling: a 22.0M attention-only reader + the Tree's DB row + the same head reads wild at the trunk's level. The deployed manifest is untouched (a generation built on it needs its battery: the bigtest, the vote, the panel).
+- **NEXT FORM, named:** the seed twin (HCN seed 242, from CLK3_242's body if banked) before any battery; and the student + head as the research chassis going forward.
