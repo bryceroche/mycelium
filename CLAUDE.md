@@ -99,7 +99,7 @@ pure prose at 340 epochs is poison −243 — tune between).
 - **THE NO-MLP RULING (2026-10-29)**: nothing Mycelium builds or trains carries a
   feed-forward MLP. Memory = the SQLite tree (`mycelium/tree_db.py`); binding = phase
   binding / conjugate unbind; composition = attention. Exceptions ONLY: the frozen Llama
-  trunk (teacher/instrument until a distilled MLP-free student passes its bars) and
+  trunk (teacher/instrument until a distilled MLP-free student passes its bars — it did, 10-31: RETIRED, see below) and
   MLP/vanilla arms as MEASUREMENT CONTROLS (never built forward, never promoted).
   Evidence: N2 (param-matched NOMLP = CLOCK), the composition law. Ledger 10-29.
 - **THE ALTERNATION RULING (2026-10-29)**: the core rhythm is alternation between the
@@ -108,6 +108,11 @@ pure prose at 340 epochs is poison −243 — tune between).
   reasoning state); the next breath reads it. Evidence: NOTEBOOK 0.994 vs VANILLA
   0.724 at depth 5-9 from depth <= 2 training (rel-DSL). Definition:
   `docs/breathing_transformer.md`.
+- **THE LLAMA RETIREMENT RULING (2026-10-31)**: Llama is retired from the research line: no new Llama forward passes. The
+  reader is the MLP-free student NMDB@30k (`.cache/distill_reader_nmdb768x8_s30000.safetensors`; 22.0M, attention + the Tree's
+  DB row; frozen-head wild swap 0.3637 ≥ 0.3593 PASS); benches read ITS states (GSM8K: `RD_STATES=gsmb_student_states.npy`).
+  Banked teacher artifacts stay as history/instruments; the embedding table is still a lookup loaded from Llama's file (fold+prune
+  = how the student owns it); the deployed manifest moves only by a battery. All in on the Breathing Transformer. Ledger 10-31.
 - **THE ATOMS + DIFFUSION RULING (2026-10-30)**: the tree stores ATOMS (step types, 2-4 op fragments),
   never per-problem graphs; radius = confidence, unbind = conjugate (never 1/z); the three rotors (T6 / RoPE / T256)
   own DISJOINT complex planes; the silhouette is PER STEP (bottleneck classifies the step against atom centroids, the
