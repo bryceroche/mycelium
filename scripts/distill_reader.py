@@ -19,7 +19,7 @@ os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "9"); os
 os.environ.setdefault("ALG_HW", "512"); os.environ.setdefault("ALG_WIDE", "1")
 ap = argparse.ArgumentParser()
 ap.add_argument("--export", default=""); ap.add_argument("--src", default=""); ap.add_argument("--out", default="")
-ap.add_argument("--padzero", default=""); ap.add_argument("--gsm", default="")
+ap.add_argument("--padzero", default=""); ap.add_argument("--gsm", default=""); ap.add_argument("--table", default="")
 args = ap.parse_args()
 assert os.environ.get("DEV") in ("PCI+AMD", "CPU"), "DEV=PCI+AMD (never bare AMD) or CPU"
 import numpy as np
@@ -39,7 +39,7 @@ DBNPY, DBP = ".cache/readerdb_{split}.npy", 256
 STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
 TRAIN_JSONL, TRAIN_SPLIT = ".cache/form_mix_pm35c.jsonl", "formpm35cBP"
 CKPT, META = f".cache/distill_reader_{TAG}.safetensors", f".cache/distill_reader_{TAG}.json"
-if (args.export or args.gsm) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
+if (args.export or args.gsm or args.table) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
 EPS = 1e-5
 PROF = bool(int(os.environ.get("DR_PROF", "0")))
 
@@ -58,10 +58,17 @@ def padzero(src, out):
 if args.padzero:
     assert args.out; padzero(args.padzero, args.out); sys.exit(0)
 
-sd = load_llama_weights(".cache/llama-3.2-1b-weights/model.safetensors")
-EMB = sd["model.embed_tokens.weight"].to(Device.DEFAULT).cast(dtypes.half).realize().numpy()   # frozen lookup, gathered on the HOST
-# (a device-side EMB[ids] lowers to a compare-and-reduce over the whole 128k-row table: ~2e12 ops per batch, 16 s/step)
-del sd
+TABLE = os.environ.get("DR_TABLE", "")   # THE STUDENT'S OWN TABLE (ledger 10-31, Llama retired): folded + pruned, Llama's file never opened
+if TABLE and (args.export or args.gsm):
+    _t = np.load(TABLE); EMB = np.zeros((int(_t["V"]), int(_t["rows"].shape[1])), np.float16); EMB[_t["keep"]] = _t["rows"]
+    for _j, _i in enumerate(_t["oov_ids"]):
+        EMB[_i] = EMB[_t["pieces"][_t["piece_ptr"][_j]:_t["piece_ptr"][_j + 1]]].astype(np.float32).mean(0).astype(np.float16)
+    print(f"[table] {TABLE}: {len(_t['keep'])} owned rows x {EMB.shape[1]} + {len(_t['oov_ids'])} composed (no Llama file)", flush=True)
+else:
+    sd = load_llama_weights(".cache/llama-3.2-1b-weights/model.safetensors")
+    EMB = sd["model.embed_tokens.weight"].to(Device.DEFAULT).cast(dtypes.half).realize().numpy()   # frozen lookup, gathered on the HOST
+    # (a device-side EMB[ids] lowers to a compare-and-reduce over the whole 128k-row table: ~2e12 ops per batch, 16 s/step)
+    del sd
 COS, SIN = _build_rope_freqs(HD, T_ALG, 500000.0)
 
 
@@ -107,14 +114,27 @@ def addmask(tm):
     return Tensor(np.where(tm[:, None, None, :] > 0, 0.0, -1e4).astype(np.float32), dtype=dtypes.float)
 
 
+def owned(p):
+    """a loaded ckpt read through the student's own table: the table is already folded, so w_in is the identity"""
+    if TABLE: p["w_in"] = Tensor.eye(D, dtype=dtypes.float).contiguous().realize()
+    return p
+
+
+if args.table:   # write the student's own table: EMB @ w_in folded, pruned to reader_vocab's kept rows (+ the piece map)
+    assert os.path.exists(CKPT) and not os.path.exists(args.table), f"need {CKPT}; refusing to overwrite {args.table}"
+    w_in = safe_load(CKPT)["w_in"].to(Device.DEFAULT).cast(dtypes.float).numpy(); z = np.load(os.environ.get("DR_VOCAB_K", ".cache/reader_vocab_k.npz"))
+    rows = (EMB[z["keep"]].astype(np.float32) @ w_in).astype(np.float16)
+    np.savez(args.table, V=len(EMB), keep=z["keep"], rows=rows, oov_ids=z["oov_ids"], piece_ptr=z["piece_ptr"], pieces=z["pieces"], ckpt=CKPT)
+    print(f"[table] {CKPT} -> {args.table}: {rows.shape[0]} x {rows.shape[1]} owned rows ({rows.size / 1e6:.1f}M)", flush=True); sys.exit(0)
+
 if args.export:
     assert args.src and args.out and os.path.exists(CKPT), "need --src, --out and a trained checkpoint"
     d_npy = STATES_NPY.format(split=args.out); assert not os.path.exists(d_npy), f"{d_npy} exists -- refusing to overwrite"
     samples, ids, mask, _ = tokenize(args.export)
     ztm = np.load(STATES_NPZ.format(split=args.src))["tokmask"]
     assert ztm.shape == mask.shape and (ztm.astype(np.float32) == mask).all(), "tokmask mismatch vs the source split"
-    ld = safe_load(CKPT); p = {k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld}
-    VOCAB = os.environ.get("DR_VOCAB", "full")
+    ld = safe_load(CKPT); p = owned({k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld})
+    VOCAB = os.environ.get("DR_VOCAB", "full"); assert not (TABLE and VOCAB != "full"), "DR_TABLE is already folded"
     if VOCAB != "full":   # THE SHRUNK READER (ledger 10-27): fold EMB @ w_in into one fp16 V x D table (exact up to fp16 storage);
         # "prune" keeps reader_vocab.py's K and gives every dropped token the MEAN of its fallback pieces' rows
         EMB = (EMB.astype(np.float32) @ p["w_in"].numpy()).astype(np.float16)
@@ -149,7 +169,7 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
     al = [GTS.align(q, e.offsets, len(e.ids)) for q, e in zip(uniq, enc)]; start = np.cumsum([0] + [len(a) for a in al])
     pos = {q: int(start[i]) for i, q in enumerate(uniq)}
     assert {sp: [pos[q] for q in Q[sp]] for sp in Q} == json.load(open(GTS.OUT_IDX)), "word index differs from the banked trunk's"
-    ld = safe_load(CKPT); p = {k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld}
+    ld = safe_load(CKPT); p = owned({k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld})
     if DBIN:
         import reader_db_build as RDB
         _, _, dscale, store = RDB.load_store()
