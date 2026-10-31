@@ -54618,3 +54618,6 @@ Warm 165/165 keys from CLK3_241, 12k steps, LR 5e-5, best val test23NMDB30 **0.9
 - PREDICTIONS: PRIMARY PASS ✓ (~0.37 predicted, 0.378); PARITY PASS ✓ (−0.010 predicted, −0.002); HCN ≥ HCS ✓. Running total 42/62.
 - **SCOPE:** one seed, one fixture (the 311-row wild holdout, 2,051 slots); HCT is the banked 10-27 control (same recipe, not re-run). This retires the trunk on the parser bench by measurement, not just by ruling: a 22.0M attention-only reader + the Tree's DB row + the same head reads wild at the trunk's level. The deployed manifest is untouched (a generation built on it needs its battery: the bigtest, the vote, the panel).
 - **NEXT FORM, named:** the seed twin (HCN seed 242, from CLK3_242's body if banked) before any battery; and the student + head as the research chassis going forward.
+
+### 2026-10-31 11:48 — Q1 READ (shrunk wild DB rows, κ*=0.5; unit lfgpu done): **no effect, within ±0.010 as predicted**
+NMDB@30k frozen CLK3_241 head: 0.3637 → **0.3627** (paired −0.0010, SE 0.0021; 10/8 discordant). HCN head: 0.3784 → **0.3798** (+0.0015, SE 0.0019; 6/9). The reader barely notices the blending, consistent with W1′ (+0.002 R²). Prediction (within ±0.010) ✓. Running total 43/63. Coverage, not blending, is the DB's lever on wild.
