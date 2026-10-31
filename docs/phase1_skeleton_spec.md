@@ -54570,3 +54570,21 @@ Verdict `scripts/gsm_llamafree_verdict.py`. Running total 32/50 before these 11 
 - READ (the κ sweep, never used for selection): even the wild-best κ (4) reads 0.4817, +0.007. Blending is not the lever; COVERAGE is. Wild text simply lacks matching nodes in a tree grown from templated algebra.
 - PREDICTIONS: W1′ FAIL ✓, W3 PASS ✓. Running total 34/52. The shrunk-row swap read follows in unit lfgpu (after HCN).
 - **NEXT FORM, named (patience charter):** grow the tree on the register it must read. Under the retirement ruling the new CFs come from the STUDENT's own states over wild-register / GSM8K text (certifier 'student-reader', a separate store, never mixed with the teacher's CFs or answer-key facts), with the train-time rows leave-one-out as before. It needs its own registration (what the student writes into its own memory can teach it nothing new unless the reads gain), so it is not fired.
+
+### 2026-10-31 11:41 — G-TREE PINNED (Bryce: "i love this idea of building the database from GSM8K. the whole point is aggressively memorizing and over fitting the data in the Tree database!"; zero-GPU read, fires now)
+**Critique on record (of the relayed "Self-Taught Memory" frame):** a tree of the STUDENT's own output states, fed back as its input, is circular. It stores a smoothed copy of what the student already computes, so it can pool contexts but cannot add facts. (The NMDB row helped because it stored the TEACHER's states, knowledge from outside the student.) The facts worth overfitting are the ones the ANSWER KEY certifies: which role each numeral plays in the gold program. That tree is Llama-free and custody-clean (certifier = the answer key), and it is what "overfit the Tree, generalize the reader" means on this bench. The relay's "green light" is not a word; Bryce's message approves the idea, so the zero-GPU read below fires and any training arm that consumes the tree waits for the word.
+**G-TREE** (`scripts/gsm_role_tree.py`): for every numeral word of every TRAIN problem, the ROLE of its first use in the gold program (op × side for −,/; op for the commutative +,*; 'none' = a distractor). Counts keyed L0 (tok, next) / L1 (prev, tok, next) / L2 (prev, tok, next, next2); PLACEBO L1 = (tok, next, a random word of the same problem); backoff N ≥ 2 → else the prior. TRAIN read leave-one-out; TEST plain; CFNUM/CFNAME = memorization transfer (by design).
+**BARS:** T1 THE TREE KNOWS ROLES: TEST backoff − prior ≥ +0.10. T2 CONTEXT PAYS: TEST backoff − L0 ≥ +0.03 AND L1 − placebo ≥ +0.03. **PREDICTIONS:** T1 PASS; T2 FAIL (the unit noun after the numeral carries most of it; on unseen text the wider keys rarely hit).
+
+### 2026-10-31 11:42 — G-TREE VERDICT (.cache/gsm_role_tree.txt; seconds of CPU): **T1 FAIL, T2 FAIL**
+TRAIN 5,337 problems, 23,167 numeral words; roles * 10,555 / + 3,586 / /B 2,516 / none 2,055 / /A 1,882 / −B 1,342 / −A 1,231.
+| split | prior | L0 | L1 | placebo L1 | backoff | L2 node seen |
+|---|---|---|---|---|---|---|
+| TRAIN (LOO) | 0.456 | 0.536 | 0.536 | 0.522 | 0.537 | — |
+| TEST | 0.466 | 0.518 | 0.524 | 0.506 | 0.521 | 0.377 |
+| CFNUM | 0.421 | 0.550 | 0.613 | 0.536 | 0.632 | 1.000 |
+| CFNAME | 0.418 | 0.544 | 0.614 | 0.522 | 0.634 | 0.980 |
+- **T1: FAIL** (TEST backoff − prior +0.055, bar +0.10). **T2: FAIL** (backoff − L0 +0.003; L1 − placebo +0.019).
+- **READ:** a numeral's role is NOT a phrase-level fact. Even leave-one-out on TRAIN (where wider contexts recur across problems) the window adds nothing past (tok, next). Memorization transfers to the counterfactuals (0.63, +0.21 over the prior: the tree recognizes the text), which is the "overfit the tree" half working. But on new text a local window knows only +0.05. The role lives in the RELATION between the numeral and the question (B-PLAN: the root op is readable from the question, 0.52 vs placebo 0.36).
+- PREDICTIONS: T1 PASS ✗, T2 FAIL ✓. Running total 35/54.
+- **NEXT FORM, named:** G-TREE2, the RELATIONAL key: (the numeral's unit noun, the question's target noun) and (the numeral's verb, the question's verb). It is a binding key, two words from two places joined, which is what phase binding makes on demand. Same bars, zero-GPU, fires on registration.
