@@ -30,6 +30,8 @@ import gsm_bench_data as GD
 from mycelium import rotor_clock as CK
 
 SEED = int(os.environ.get("BT_SEED", "0")); TAG = os.environ.get("BT_TAG", f"BT_s{SEED}")
+ORACLE = os.environ.get("BT_ORACLE") == "1"          # the oracle-type read: the gold step type is the silhouette's class (inference only)
+LOAD = os.environ.get("BT_LOAD", "")                 # score saved weights (.cache/gsmb_breath_{TAG}.pt) instead of training
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, NLE, NLB, DB, NCYC = 192, 4, 2, 2, 32, 6
 K, NC, H, OMAX, PB = TR.K, TR.NC, TR.H, TR.OMAX, TR.PB
@@ -224,10 +226,12 @@ def score(net, its, states, tree, seed=0):
             IA = np.zeros((B, K), np.int64); IB = np.zeros((B, K), np.int64); cyc = np.full((B, K), -1)
             progs = [[(".", None, None)] * K for _ in range(B)]
             dec = lambda i: ("t", int(i)) if i < L else (("s", int(i - L)) if i < L + K else ("c", int(i - L - K)))
+            gt0 = gold(E)[1]
             for c in range(NCYC):
                 nb = nb_tensors(notebook(E, L, progs, com, typ, rad))
-                logit, pa, pb, _, p = net.breath(t, xq, nb, None)
-                ty = logit.argmax(-1).numpy(); pt = p.max(-1).values.numpy()
+                logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None)
+                ty = gt0 if ORACLE else logit.argmax(-1).numpy()
+                pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if ORACLE else p.max(-1).values.numpy()
                 ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
                 ca = pa.softmax(-1).max(-1).values.numpy(); cb = pb.softmax(-1).max(-1).values.numpy()
                 conf = np.where(ty == STOP, pt, pt * ca * cb)                                     # the radius of each proposal
@@ -270,6 +274,7 @@ if __name__ == "__main__":
     net = make_net(); opt = torch.optim.AdamW(net.parameters(), lr=LR); npar = sum(p.numel() for p in net.parameters())
     print(f"[bt] {TAG} D {D} reader {NLE} + breath {NLB} (weight-tied x {NCYC} cycles) silhouette {DB} atoms {NT} | params {npar}", flush=True)
     t0 = time.time(); curve = []
+    if LOAD: net.load_state_dict(torch.load(LOAD)); STEPS = 0; print(f"[bt] {TAG} loaded {LOAD} (oracle type {ORACLE})", flush=True)
     for step in range(1, STEPS + 1):
         its = [train[int(i)] for i in rng.integers(0, len(train), BATCH)]
         lo = train_step(net, opt, its, states, tree, rng)
@@ -278,8 +283,9 @@ if __name__ == "__main__":
             curve.append(dict(step=step, loss=lo, **{f"{k}_{m}": float(v[m].mean()) for k, v in r.items() for m in ("ans", "step_all")}))
             print(f"[bt] {TAG} step {step} loss {lo:.4f} " + " ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} "
                   f"type {v['type_ok'].mean():.3f}" for k, v in r.items()) + f" ({time.time() - t0:.0f}s)", flush=True)
+    if os.environ.get("BT_SAVE") == "1": torch.save(net.state_dict(), f".cache/gsmb_breath_{TAG}.pt")
     net.eval(); R = {k: score(net, Dt[k], states, tree) for k in SPLITS}
-    out = dict(tag=TAG, arm="BT", seed=SEED, d=D, params=npar, steps=STEPS, curve=curve,
+    out = dict(tag=TAG, arm="BT", seed=SEED, d=D, params=npar, steps=STEPS, curve=curve, oracle=ORACLE, load=LOAD,
                **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                **{f"{k}_commit_share": np.bincount(v["commit_cycle"][v["commit_cycle"] >= 0], minlength=NCYC).tolist() for k, v in R.items()},
                **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()},

@@ -43,7 +43,8 @@ def load():
         for it, s in zip(its, idx[sp]):
             it["st0"] = s
             nl = {n.lower(): n for n in it["names"]}; it["surf"] = [nl.get(x, x) if f else x for x, f in zip(it["toks"], it["isn"])]
-    return Dt, np.load(GD.V1.C("gsmb_trunk_states.npy"), mmap_mode="r")
+    # RD_STATES (ledger 10-31, Llama retired): the reader's word states; default = the banked Llama trunk's
+    return Dt, np.load(GD.V1.C(os.environ.get("RD_STATES", "gsmb_trunk_states.npy")), mmap_mode="r")
 
 
 def load_tree():

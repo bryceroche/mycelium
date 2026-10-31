@@ -19,7 +19,7 @@ os.environ.setdefault("ALG2", "1"); os.environ.setdefault("ALG_FTYPES", "9"); os
 os.environ.setdefault("ALG_HW", "512"); os.environ.setdefault("ALG_WIDE", "1")
 ap = argparse.ArgumentParser()
 ap.add_argument("--export", default=""); ap.add_argument("--src", default=""); ap.add_argument("--out", default="")
-ap.add_argument("--padzero", default="")
+ap.add_argument("--padzero", default=""); ap.add_argument("--gsm", default="")
 args = ap.parse_args()
 assert os.environ.get("DEV") in ("PCI+AMD", "CPU"), "DEV=PCI+AMD (never bare AMD) or CPU"
 import numpy as np
@@ -39,7 +39,7 @@ DBNPY, DBP = ".cache/readerdb_{split}.npy", 256
 STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
 TRAIN_JSONL, TRAIN_SPLIT = ".cache/form_mix_pm35c.jsonl", "formpm35cBP"
 CKPT, META = f".cache/distill_reader_{TAG}.safetensors", f".cache/distill_reader_{TAG}.json"
-if args.export and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
+if (args.export or args.gsm) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
 EPS = 1e-5
 PROF = bool(int(os.environ.get("DR_PROF", "0")))
 
@@ -129,7 +129,7 @@ if args.export:
         p["w_in"] = Tensor.eye(D, dtype=dtypes.float).contiguous().realize()
     shutil.copyfile(STATES_NPZ.format(split=args.src), STATES_NPZ.format(split=args.out))
     st = np.lib.format.open_memmap(d_npy, mode="w+", dtype=np.float16, shape=(len(ids), T_ALG, H_TRUNK))
-    edb = np.load(DBNPY.format(split=args.src), mmap_mode="r") if DBIN else None
+    edb = np.load(DBNPY.format(split=os.environ.get("DR_DBSRC", args.src)), mmap_mode="r") if DBIN else None   # DR_DBSRC: other db rows
     if DBIN: assert edb.shape == (len(ids), T_ALG, DBP), f"db rows {edb.shape} vs {len(ids)} rows"
     for s0 in range(0, len(ids), 8):
         sl = slice(s0, min(s0 + 8, len(ids)))
@@ -138,6 +138,32 @@ if args.export:
         assert np.isfinite(o).all()
         st[sl] = (o * mask[sl][:, :, None]).astype(np.float16)
     st.flush(); print(f"[export] {args.export} -> {args.out}: {len(ids)} rows (pads zero)", flush=True); sys.exit(0)
+
+if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the GSM8K bench, laid out as gsm_trunk_states.py's
+    import gsm_bench_data as GD, gsm_trunk_states as GTS
+    from tokenizers import Tokenizer
+    assert os.path.exists(CKPT) and not os.path.exists(args.gsm), f"need {CKPT}; refusing to overwrite {args.gsm}"
+    Dt, Q = GTS.texts(); tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
+    uniq = list(dict.fromkeys(q for sp in Q.values() for q in sp)); enc = [tok.encode(q) for q in uniq]
+    assert max(len(e.ids) for e in enc) <= T_ALG
+    al = [GTS.align(q, e.offsets, len(e.ids)) for q, e in zip(uniq, enc)]; start = np.cumsum([0] + [len(a) for a in al])
+    pos = {q: int(start[i]) for i, q in enumerate(uniq)}
+    assert {sp: [pos[q] for q in Q[sp]] for sp in Q} == json.load(open(GTS.OUT_IDX)), "word index differs from the banked trunk's"
+    ld = safe_load(CKPT); p = {k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld}
+    if DBIN:
+        import reader_db_build as RDB
+        _, _, dscale, store = RDB.load_store()
+    st = np.lib.format.open_memmap(args.gsm, mode="w+", dtype=np.float16, shape=(int(start[-1]), H_TRUNK))
+    for s0 in range(0, len(uniq), 8):
+        sl = range(s0, min(s0 + 8, len(uniq))); ids = np.zeros((len(sl), T_ALG), np.int32); m = np.zeros((len(sl), T_ALG), np.float32)
+        db = np.zeros((len(sl), T_ALG, DBP), np.float16)
+        for r, i in enumerate(sl):
+            n = len(enc[i].ids); ids[r, :n] = enc[i].ids; m[r, :n] = 1
+            if DBIN: db[r, :n] = RDB.lookup(store, RDB.row_keys(ids[r], n)) * dscale     # as built: backoff, N >= 3
+        o = forward(p, Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None).realize().numpy()
+        assert np.isfinite(o).all()
+        for r, i in enumerate(sl): st[start[i]:start[i + 1]] = o[r, al[i]].astype(np.float16)
+    st.flush(); print(f"[gsm] {len(uniq)} texts, {int(start[-1])} words -> {args.gsm} ({CKPT})", flush=True); sys.exit(0)
 
 # ---- train ------------------------------------------------------------------------------------------------------
 assert not os.path.exists(CKPT), f"{CKPT} exists -- refusing to overwrite"
