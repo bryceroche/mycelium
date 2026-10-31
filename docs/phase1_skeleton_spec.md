@@ -54533,3 +54533,19 @@ Predictions: C0 PASS ✗; D1 EQUIVALENT ✓ (as a read); D2 FAIL ✓ (as a read)
 3. The atoms were NOT written to the SQLite tree (the design said "after training"): a VOID model's centroids do not enter the permanent tree (custody). They are kept in the run JSON (atoms_C / atoms_n).
 4. Gap in the build, on record: the script saved no weights, so no post-hoc read (e.g., a soft kind mask, or the oracle type) is possible on these runs.
 **NEXT FORM, named (one registered rescue):** **BT18** — identical arm, 18,000 steps (3× budget, matching the supervision lost to masking), checkpoints saved; bars unchanged (C0 / D1 / D2). If C0 passes, the oracle-type read (gold silhouette at inference) prices the silhouette's ceiling on the keys directly. Needs the word.
+
+### 2026-10-31 10:37 — STEP 2 VERDICT (THE MLP-FREE STUDENT, unit nomlp, done 05:31; .cache/run_nomlp.log, ps_nomlp_{NM,NMDB}{30,60}.npz): **NMDB PASSES the frozen-head swap bar at both snapshots; NM FAILS at both**
+Masked wild, CLK3_241's FROZEN head, n=2051 paired slots (teacher 0.3793, SwiGLU student 0.3554). BAR ≥ 0.3593 (= within 0.020 of the teacher).
+| arm @ step | VAL loss / mse | swap fac-exact | vs teacher (paired SE, z) | vs SwiGLU | bar |
+|---|---|---|---|---|---|
+| NM @ 30k | 0.1837 / 0.1312 | 0.3540 | −0.0254 (0.0084, 3.00) | −0.0015 | FAIL |
+| NM @ 60k | 0.1742 / 0.1245 | 0.3540 | −0.0254 (0.0085, 2.99) | −0.0015 | FAIL |
+| **NMDB @ 30k** | 0.1677 / 0.1199 | **0.3637** | −0.0156 (0.0092, 1.69) | +0.0083 | **PASS** (+0.0044, 9 slots) |
+| **NMDB @ 60k** | 0.1616 / 0.1157 | **0.3593** | −0.0200 (0.0090, 2.21) | +0.0039 | **PASS** (by 1 slot: 737/2051) |
+- Fields NMDB@30k: pres 0.902 ftype 0.859 res 0.809 op 0.733; dig 0.481 / args 0.439 carry the remaining gap (as with the SwiGLU student).
+- Paired between arms (reads): NMDB − NM +0.0098 @30k (SE 0.0083, z 1.18), +0.0054 @60k (z 0.66) — same direction at both snapshots, under one SE each. NMDB30 − NMDB60 +0.0044 (SE 0.0064): the later snapshot is not better.
+- **GROWTH CHART:** G1 val still falling at 60k — YES, slowly (NM −0.0095, NMDB −0.0061 over the second 30k; NMDB's minimum 0.1606 at 56–58k). G2 NMDB val mse < NM — YES at both (0.1199 vs 0.1312; 0.1157 vs 0.1245). G3 at 30k vs the SwiGLU student (mse 0.154, swap 0.3554): both MLP-free arms beat it on val mse; on the swap NM ties (−0.0015) and NMDB leads (+0.0083).
+- **READ (the texture):** val mse keeps falling, but the swap stops moving after 30k (NM 0.3540 → 0.3540; NMDB 0.3637 → 0.3593). Below mse ~0.12 the remaining wild gap is not mse-shaped: the head reads digits/args off directions the mse barely weights.
+- **PREDICTIONS:** both arms FAIL the frozen head ✗ (NMDB passed); NMDB beats NM on val and swap ✓; NM@30k trails the SwiGLU student ✗ (it beat it on val mse and tied the swap). Running total 32/50.
+- **WHAT IT MEANS (scope):** the first MLP-free reader (attention + the Tree's DB row as a mandatory road, 22.0M params) to read wild through the deployed-lineage frozen head within the registered 0.020 of the Llama trunk. Narrow: 9 slots of margin at 30k, 1 slot at 60k; paired vs the teacher still −0.016/−0.020. The DB is teacher-derived (built from training states, certifier llama-teacher), and no trunk runs at inference. Trunk retirement under the NO-MLP ruling is Bryce's word, not this entry's; the manifest is untouched (research chassis).
+- **NEXT FORM, named (patience charter):** the B2 form on NMDB@30k — gentle head continuation on its states, bars PRIMARY ≥ 0.3593 / PARITY HCS − HCT ≥ −0.020 (how the SwiGLU student closed its gap). In parallel, zero-GPU: the DB shrinkage N/(N+κ) (Step 1's W1 FAIL) → rebuilt wild rows → re-export NMDB@30k on them, a pure-inference read.
