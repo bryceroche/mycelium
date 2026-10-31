@@ -31,7 +31,8 @@ from mycelium import rotor_clock as CK
 
 SEED = int(os.environ.get("BT_SEED", "0")); TAG = os.environ.get("BT_TAG", f"BT_s{SEED}")
 ORACLE = os.environ.get("BT_ORACLE") == "1"          # the oracle-type read: the gold step type is the silhouette's class (inference only)
-LOAD = os.environ.get("BT_LOAD", "")                 # score saved weights (.cache/gsmb_breath_{TAG}.pt) instead of training
+LOAD = os.environ.get("BT_LOAD", "")
+ROLE = os.environ.get("BT_ROLE") == "1"              # THE TREE ROAD (ledger 10-31): each word += Linear(14 -> D)(its tree role feats)                 # score saved weights (.cache/gsmb_breath_{TAG}.pt) instead of training
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, NLE, NLB, DB, NCYC = 192, 4, 2, 2, 32, 6
 K, NC, H, OMAX, PB = TR.K, TR.NC, TR.H, TR.OMAX, TR.PB
@@ -111,6 +112,7 @@ def make_net():
     class Net(nn.Module):
         def __init__(s):
             super().__init__()
+            s.role = nn.Linear(14, D, bias=False) if ROLE else None   # a mandatory road, no gain
             s.inp = nn.Sequential(nn.LayerNorm(H), nn.Linear(H, D)); s.isn = nn.Embedding(2, D); s.isnum = nn.Embedding(2, D)
             s.off = nn.Embedding(OMAX, D); s.idp = nn.Linear(2 * PB, D); s.gp = nn.Linear(3, D)
             s.enc = nn.ModuleList([Attn() for _ in range(NLE)])                                # THE READER (once per problem)
@@ -130,6 +132,7 @@ def make_net():
             th = torch.gather(t["theta"], 1, t["nid"].clamp(min=0)[..., None].expand(-1, -1, PB))
             x = torch.where(t["isn"][..., None], s.idp(torch.cat([th.cos(), th.sin()], -1)), x)
             x = x + s.isn(t["isn"].long()) + s.isnum(t["isnum"].long()) + s.gp(t["g"]) + s.off(t["off"])
+            if ROLE: x = x + s.role(t["role"])
             Lq = x.shape[1] - K; xq = x[:, :Lq]; aq = t["sid"][:, :Lq, None].float() * w
             mask = torch.zeros(x.shape[0], 1, Lq, Lq).masked_fill(t["pad"][:, None, None, :Lq], -1e4)
             for blk in s.enc: xq = blk(xq, xq, aq, aq, mask)
@@ -188,9 +191,20 @@ def nb_tensors(arrs):
     return (torch.as_tensor(typ), torch.as_tensor(r), torch.as_tensor(cf), torch.as_tensor(lev), torch.as_tensor(cons))
 
 
+def batch(its, states, tree, rng):
+    """TR.batch + (BT_ROLE) the tree's role feats per word (.cache/gsmb_role_feats.npy, laid out as the states memmap)"""
+    import torch
+    t, E = TR.batch(its, states, tree, rng)
+    if ROLE:
+        r = np.zeros(t["pad"].shape + (14,), np.float32)
+        for b, it in enumerate(its): n = len(it["toks"]); r[b, :n] = RF[it["st0"]:it["st0"] + n]
+        t["role"] = torch.as_tensor(r)
+    return t, E
+
+
 def train_step(net, opt, its, states, tree, rng):
     import torch, torch.nn.functional as F
-    t, E = TR.batch(its, states, tree, rng); L = t["pad"].shape[1]
+    t, E = batch(its, states, tree, rng); L = t["pad"].shape[1]
     for b, it in enumerate(its): E[b]["vals"] = it["vals"]
     progs, gt = gold(E)
     m = np.array([e["m"] for e in E]); rr = rng.random(len(E))[:, None]
@@ -219,7 +233,7 @@ def score(net, its, states, tree, seed=0):
     with torch.no_grad():
         for s0 in range(0, len(its), 128):
             part = its[s0:s0 + 128]
-            t, E = TR.batch(part, states, tree, np.random.default_rng(10_000 * seed + s0)); L = t["pad"].shape[1]; B = len(part)
+            t, E = batch(part, states, tree, np.random.default_rng(10_000 * seed + s0)); L = t["pad"].shape[1]; B = len(part)
             for b, it in enumerate(part): E[b]["vals"] = it["vals"]
             xq = net.read(t)
             com = np.zeros((B, K), bool); typ = np.zeros((B, K), np.int64); rad = np.zeros((B, K), np.float32)
@@ -271,6 +285,7 @@ if __name__ == "__main__":
     import torch
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "6"))); torch.manual_seed(SEED); rng = np.random.default_rng(SEED)
     Dt, states = TR.load(); tree = TR.load_tree(); train = Dt["TRAIN"]
+    RF = np.load(GD.V1.C("gsmb_role_feats.npy"), mmap_mode="r") if ROLE else None
     net = make_net(); opt = torch.optim.AdamW(net.parameters(), lr=LR); npar = sum(p.numel() for p in net.parameters())
     print(f"[bt] {TAG} D {D} reader {NLE} + breath {NLB} (weight-tied x {NCYC} cycles) silhouette {DB} atoms {NT} | params {npar}", flush=True)
     t0 = time.time(); curve = []
