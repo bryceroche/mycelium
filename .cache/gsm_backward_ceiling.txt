@@ -1,0 +1,8 @@
+B-PLAN on TEST (1012 problems; TRAIN 5337); distinct TRAIN skeletons 2167; TEST skeletons seen in TRAIN 0.699
+  P1 QUESTION        : skeleton top-1 0.035 top-5 0.071 | root op 0.521
+  P1 FIRST (placebo) : skeleton top-1 0.020 top-5 0.052 | root op 0.364
+  P1 WHOLE TEXT      : skeleton top-1 0.022 top-5 0.062 | root op 0.392
+  prior (5 most frequent TRAIN skeletons): top-5 0.111 | root op prior '+' 0.333
+  P2 LEAF FILL (gold skeleton, injective numeral fill; 0 problems over 200000 fills skipped): gold reachable 0.426; distinct answers median 2 (p25 0, p75 6); median by program length 1:4 2:3 3:3 4:0 5+:0
+P1 THE GOAL CARRIES THE PLAN: question top-5 0.071 (bar 0.50), vs placebo +0.019 (bar +0.10) -> FAIL
+P2 THE FILL IS A SMALL SEARCH: reachable 0.426 (bar 0.70), median width 2 (bar 24) -> FAIL
