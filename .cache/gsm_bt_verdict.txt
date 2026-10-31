@@ -1,0 +1,15 @@
+BT params 1221538; TICK D 192 params 1189526
+  ORIG_step_all      BT 0.765 / 0.769  (TICK 0.973 / 0.972)
+  ORIG_ans           BT 0.519 / 0.528  (TICK 0.938 / 0.929)
+  TEST_step_all      BT 0.117 / 0.127  (TICK 0.131 / 0.128)
+  TEST_step_op       BT 0.431 / 0.447  (TICK 0.455 / 0.474)
+  TEST_step_ptr      BT 0.176 / 0.173  (TICK 0.202 / 0.194)
+  TEST_ans           BT 0.016 / 0.029  (TICK 0.048 / 0.047)
+  CFNUM_ans          BT 0.336 / 0.346  (TICK 0.636 / 0.637)
+  CFNAME_ans         BT 0.246 / 0.278  (TICK 0.562 / 0.560)
+  TEST_num_for_slot  BT 0.378 / 0.372  (TICK 0.293 / 0.319)
+  TEST_type_ok       BT 0.252 / 0.268 | ORIG 0.791 / 0.792
+  TEST commit share by cycle [40, 187, 224, 981, 1663, 883] | [50, 216, 260, 979, 1625, 848]
+C0 FIT GATE: ORIG step 0.765 / 0.769 (bar 0.90 both) -> VOID
+D1 TEST STEP: BT - TICK -0.0146 / -0.0015 (mean -0.0080) -> EQUIVALENT-OR-BETTER [VOID: read only]
+D2 SILHOUETTE FIXES THE KEYS: TEST pointers BT - TICK -0.0254 / -0.0204 (bar +0.03 both) -> FAIL [VOID: read only]
