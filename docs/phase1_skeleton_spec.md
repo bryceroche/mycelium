@@ -54818,3 +54818,14 @@ Training: val mse 0.1236 at 29999 (NMDB30 0.1199, U2 0.1238). HY tracked U2 step
 - PREDICTIONS: PRIMARY PASS ✗; PARITY PASS ✗; val within ±0.002 ✗ (+0.0037). Running total 57/87.
 - **READ:** keeping RoPE's micro band exactly did NOT recover anything measurable. HY ≈ U2 on wild (tie), on val (0.1236 vs 0.1238), and on the whole curve. So the 09:42 critique's mechanism (the missing micro band / resolution) is refuted for this cost, and so is the relay's. Whatever costs U2 and HY about 0.013–0.019 wild is SHARED: (a) planes that turn where RoPE is idle, or (b) the T6 code path itself, or (c) the run-to-run spread of the student, which no read has measured on the SAME recipe. NMDB's own 60k snapshot read 0.3593, 0.0044 below its 30k (0.3637), and the HCN seed twin spread was 0.014. HY0 (queued, 10k, val only) separates (a) from (b) on the val curve. **(c) needs a replication:** NMDB's recipe re-run to 30k with a different loader seed, then exported and read. Named, not fired: without it, a −0.013 student-vs-student wild read cannot be told from the spread.
 - The reader stays NMDB30. The 'T6 inside the reader' line is not closed: its forms so far cost the same as each other, and the cause is not yet attributed.
+
+### 2026-11-01 14:37 — BT3N VERDICT (the attribution arm: BT18S + CYCLOCK + ZOOM at BT18S's size, 1.22M; 18k, seeds 0/1): **A1 PASS — the organs carry about half of BT3's gain**
+| read | BT3N s0 / s1 | BT18S s0 / s1 | BT3 s0 / s1 |
+|---|---|---|---|
+| TEST step | **0.138 / 0.131** | 0.120 / 0.114 | 0.158 / 0.155 |
+| TEST type | 0.279 / 0.275 | 0.261 / 0.232 | 0.306 / 0.289 |
+| TEST pointers | 0.188 / 0.181 | 0.174 / 0.165 | 0.201 / 0.203 |
+| CFNUM / CFNAME answer | 0.525 / 0.443 · 0.396 / 0.364 | 0.496 / 0.477 · 0.363 / 0.359 | 0.700 / 0.691 · 0.610 / 0.602 |
+- **A1: TEST step mean +0.0177 vs BT18S (bar ≥ +0.010): PASS**, positive on both seeds (+0.018 / +0.017). The clock + zoom share of BT3's +0.0395 is **0.45**; width + waist carry the other 0.55.
+- PREDICTION A1 FAIL ✗. Running total 57/88.
+- **READ:** the per-cycle T6 clock and the coarse-to-fine zoom pay at the small size: TEST type +0.031 mean, about as much as BT3's whole silhouette gain (+0.051). So most of the TYPE lift is the organs'. The CF answers do not move at small size (CFNUM −0.003 mean, CFNAME +0.019). BT3's large CF gain (+0.20 / +0.25) is WIDTH's. Width buys counterfactual robustness; the organs buy transfer of the step type.
