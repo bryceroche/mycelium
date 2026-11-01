@@ -39,7 +39,7 @@ ZOOM_TAU = 0.5
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
-NLE, NLB, NCYC = 2, 2, 6
+NLE, NLB, NCYC = int(os.environ.get("BT_NLE", 2)), int(os.environ.get("BT_NLB", 2)), 6   # (ledger 11-01: reader / breath depth knobs)
 K, NC, H, OMAX, PB = TR.K, TR.NC, TR.H, TR.OMAX, TR.PB
 KINDS = "tsc"; TYPES = [(o, a, b) for o in GD.OPS for a in KINDS for b in KINDS]; STOP = len(TYPES); NT = STOP + 1
 LEVMAX, NCAP = 8, 2000
