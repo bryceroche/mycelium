@@ -35,7 +35,10 @@ D, NL = int(os.environ.get("DR_D", 512)), int(os.environ.get("DR_LAYERS", 6))
 NH, HD = D // 64, 64
 FF = int(os.environ.get("DR_FF", 1408))          # 0 = THE MLP-FREE STUDENT (ledger 10-30): no feed-forward anywhere
 DBIN = os.environ.get("DR_DB") == "1"              # + the reader DB row (reader_db_build.py) as a mandatory road at the input
-T6 = os.environ.get("DR_T6") == "1"                # (ledger 10-31, U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
+T6 = os.environ.get("DR_T6") in ("1", "2")         # (ledger 10-31, U2; DR_T6=2 = HY, ledger 11-01: RoPE kept on planes [0:24), T6 x the SENTENCE on
+# RoPE's 8 idle planes [24:32) -- they turn < 0.014 rad over the whole 256-token window at theta 500000)
+HY = os.environ.get("DR_T6") == "2"
+# (U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
 # SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
 GSM = os.environ.get("DR_GSM") == "1"              # + GSM8K TRAIN text (ledger 10-31): a native head on the BANKED trunk word states
 WARM = os.environ.get("DR_WARM", "")               # continue from this checkpoint (every key must match)
@@ -76,12 +79,22 @@ else:
     del sd
 COS, SIN = _build_rope_freqs(HD, T_ALG, 500000.0)
 SPD = np.radians(np.asarray(CK.t6_plane_speeds(HD // 4), np.float32))
+NRP = 24                                                                     # HY: RoPE keeps planes [0:NRP)
+_ang = np.outer(np.arange(T_ALG, dtype=np.float32), 1.0 / (500000.0 ** (np.arange(0, HD // 2, dtype=np.float32) * 2 / HD)))
+RC, RS = np.cos(_ang), np.sin(_ang)                                          # HY: _build_rope_freqs's angles, on the host
+SPD8 = np.radians(np.asarray(CK.t6_plane_speeds(HD // 2 - NRP), np.float32))
 
 
 def t6_rot(sent, tm):
     """sent, tm (B, T) -> (cos, sin) (B, 1, T, HD) in _apply_rope's half-split layout: sentence planes then offset planes"""
     T = sent.shape[1]; i = np.arange(T)[None]; chg = np.ones_like(sent, bool); chg[:, 1:] = sent[:, 1:] != sent[:, :-1]
     off = i - np.maximum.accumulate(np.where(chg, i, 0), 1)
+    if HY:                                                                                            # RoPE micro | T6 macro, disjoint planes
+        c, sn = np.broadcast_to(RC[None, :T], sent.shape + (HD // 2,)).copy(), np.broadcast_to(RS[None, :T], sent.shape + (HD // 2,)).copy()
+        a6 = sent[..., None] * SPD8
+        c[..., NRP:], sn[..., NRP:] = np.cos(a6), np.sin(a6)
+        c, sn = np.concatenate([c, c], -1)[:, None].astype(np.float32), np.concatenate([sn, sn], -1)[:, None].astype(np.float32)
+        return c, sn
     a = np.concatenate([sent[..., None] * SPD, off[..., None] * SPD], -1) * (tm[..., None] > 0)     # (B, T, HD/2)
     a = np.concatenate([a, a], -1)[:, None].astype(np.float32)
     return np.cos(a), np.sin(a)
