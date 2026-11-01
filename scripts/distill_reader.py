@@ -35,9 +35,10 @@ D, NL = int(os.environ.get("DR_D", 512)), int(os.environ.get("DR_LAYERS", 6))
 NH, HD = D // 64, 64
 FF = int(os.environ.get("DR_FF", 1408))          # 0 = THE MLP-FREE STUDENT (ledger 10-30): no feed-forward anywhere
 DBIN = os.environ.get("DR_DB") == "1"              # + the reader DB row (reader_db_build.py) as a mandatory road at the input
-T6 = os.environ.get("DR_T6") in ("1", "2")         # (ledger 10-31, U2; DR_T6=2 = HY, ledger 11-01: RoPE kept on planes [0:24), T6 x the SENTENCE on
+T6 = os.environ.get("DR_T6") in ("1", "2", "3")         # (ledger 10-31, U2; DR_T6=2 = HY, ledger 11-01: RoPE kept on planes [0:24), T6 x the SENTENCE on
 # RoPE's 8 idle planes [24:32) -- they turn < 0.014 rad over the whole 256-token window at theta 500000)
 HY = os.environ.get("DR_T6") == "2"
+T9 = os.environ.get("DR_T6") == "3"   # (ledger 11-01) T6 offset | T6 sentence | gears 7-9 x token | quiet planes
 # (U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
 # SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
 GSM = os.environ.get("DR_GSM") == "1"              # + GSM8K TRAIN text (ledger 10-31): a native head on the BANKED trunk word states
@@ -89,9 +90,15 @@ def t6_rot(sent, tm):
     """sent, tm (B, T) -> (cos, sin) (B, 1, T, HD) in _apply_rope's half-split layout: sentence planes then offset planes"""
     T = sent.shape[1]; i = np.arange(T)[None]; chg = np.ones_like(sent, bool); chg[:, 1:] = sent[:, 1:] != sent[:, :-1]
     off = i - np.maximum.accumulate(np.where(chg, i, 0), 1)
+    if T9:                                                                                            # the clock owns every plane
+        G = np.radians(np.asarray(CK.T6_SPEEDS, np.float32)); S9 = 360.0 / np.asarray([192.0, 768.0, 3072.0], np.float32)
+        a = np.concatenate([off[..., None] * G, sent[..., None] * G, i[..., None].repeat(sent.shape[0], 0) * np.radians(S9),
+                            np.zeros(sent.shape + (HD // 2 - 15,), np.float32)], -1) * (tm[..., None] > 0)
+        a = np.concatenate([a, a], -1)[:, None].astype(np.float32)
+        return np.cos(a), np.sin(a)
     if HY:                                                                                            # RoPE micro | T6 macro, disjoint planes
         c, sn = np.broadcast_to(RC[None, :T], sent.shape + (HD // 2,)).copy(), np.broadcast_to(RS[None, :T], sent.shape + (HD // 2,)).copy()
-        a6 = sent[..., None] * SPD8
+        a6 = sent[..., None] * SPD8 * (0.0 if os.environ.get("DR_HY0") == "1" else 1.0)   # HY0 (ledger 11-01): speeds 0 = NMDB math
         c[..., NRP:], sn[..., NRP:] = np.cos(a6), np.sin(a6)
         c, sn = np.concatenate([c, c], -1)[:, None].astype(np.float32), np.concatenate([sn, sn], -1)[:, None].astype(np.float32)
         return c, sn
