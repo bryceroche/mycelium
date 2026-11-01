@@ -54735,3 +54735,21 @@ Training: val mse 0.1238 at 29999 vs NMDB30's 0.1199 (+0.0039). The gap narrowed
 - **READ:** a validation gap of 0.004 cost 0.019 on wild through a FROZEN head. The head was tuned to the teacher's RoPE coordinates, and the student imitates them less exactly without RoPE, in exactly the coordinates the head reads. This is the never-mix-coordinates law again (G2's −0.008 came from a val change of about the same size). The verdict is scoped: **T6-for-RoPE in the reader costs the frozen parser 0.019**. It does NOT say the T6 address reads worse; that needs a head trained on its states.
 - **This FAIL closes the form "drop RoPE, read through the frozen head".** It does not close the T6 line (patience charter).
 - **NEXT FORM, named (one rescue, not fired, needs the word):** **U2-HC**, the B2 form on NMDBT6. Run HCN's head continuation recipe (warm from CLK3_241, 12k, LR 5e-5) on NMDBT6 states. Bar: HCN-T6 − HCN (0.3784) ≥ −0.010 paired. It separates "the clock reads worse" from "the frozen head's coordinates moved". If it fails, the constitution's form follows: RoPE keeps the offset planes and T6 takes the sentence planes, on DISJOINT planes (the three-rotor stack as §8 writes it, spatial RoPE kept).
+
+### 2026-10-31 21:26 — BT3 VERDICT (BT18S's arm + BT_D 512 / BT_NH 8 / waist BT_DB 64 + BT_CYCLOCK + BT_ZOOM; student states, 18k, seeds 0/1; weights .cache/gsmb_breath_BT3_s{0,1}.pt; .cache/gsm_bt3_verdict.txt): **C0 PASS, Z1 FAIL (by 0.005 on seed 0), Z2 BETTER**
+| read | BT3 s0 / s1 | BT18S s0 / s1 | BT-TREE s0 / s1 | STU-TICK | BT3 ORACLE type |
+|---|---|---|---|---|---|
+| ORIG step | 0.958 / 0.952 | 0.939 / 0.921 | 0.939 / 0.937 | 0.954 / 0.955 | 0.993 / 0.992 |
+| TEST type | **0.306 / 0.289** | 0.261 / 0.232 | 0.257 / 0.264 | — | 1.000 |
+| TEST op | 0.477 / 0.454 | 0.454 / 0.411 | 0.441 / 0.451 | 0.449 / 0.473 | 1.000 |
+| TEST pointers | 0.201 / 0.203 | 0.174 / 0.165 | 0.188 / 0.178 | 0.198 / 0.187 | 0.469 / 0.461 |
+| TEST step | **0.158 / 0.155** | 0.120 / 0.114 | 0.132 / 0.129 | 0.132 / 0.124 | 0.469 / 0.461 |
+| TEST answer | 0.050 / 0.057 | 0.022 / 0.021 | — | 0.043 / 0.046 | 0.223 / 0.231 |
+| CFNUM / CFNAME answer | **0.700 / 0.691 · 0.610 / 0.602** | 0.496 / 0.477 · 0.363 / 0.359 | 0.487 / 0.490 · 0.387 / 0.372 | 0.559 / 0.552 · 0.499 / 0.486 | 0.887 / 0.867 · 0.857 / 0.823 |
+- **C0 FIT: PASS** (0.958 / 0.952; curve 0.49 → 0.82 → 0.89 → 0.94 → 0.95 → 0.95 per 3k).
+- **Z1 TEST type ≥ +0.05 both: FAIL** (+0.0455 / +0.0571). The silhouette moved about +0.05 on both seeds, and seed 0 missed by 0.005. The bar stands.
+- **Z2 TEST step: BETTER** (+0.0380 / +0.0410 vs BT18S). It is also the FIRST BT arm above STU-TICK, by +0.026 / +0.031 on both seeds (BT-TREE tied it), with no tree road in this arm.
+- PREDICTIONS: C0 PASS ✓; Z1 FAIL ✓; Z2 EQUIVALENT ✗ (it was better). Running total 56/82.
+- **CONFOUND, on record:** BT3 has 6.59M params against BT18S's 1.22M (BT_D 512 widened the arm). The +0.04 is the sum of width, waist, clock and zoom; the read does not split them. Its CF answers beating STU-TICK by +0.14 / +0.11 (a 1.2M-free TICK) is notable: the counterfactual numbers and names are where it gains most, which a memorizing wider net would NOT do. Tagged: regime = student states, 18k, no road.
+- **ORACLE:** with the gold type, TEST step reaches 0.469 / 0.461 (BT18S oracle 0.42–0.44): the ceiling rose with the arm. The silhouette (TEST type 0.30 vs ORIG 0.96) is still the wall: 0.31 of the oracle's 0.47 is left on the table by type alone.
+- **NEXT FORM, named (not fired):** (a) BT3 + the tree road (the road paid +0.0135 alone on BT18S; it joins the stack per the 15:13 entry); (b) the attribution split (BT3 with BT_D 256 at BT18S width, same waist/clock/zoom) if a claim on the organs is wanted. Recommended: (a) as the build, (b) only if the organs must be claimed.
