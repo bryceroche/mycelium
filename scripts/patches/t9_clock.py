@@ -2,12 +2,14 @@
 [0:6) the six T6 gears x the OFFSET in the sentence | [6:12) the six T6 gears x the SENTENCE index | [12:15) gears 7-9 x the absolute
 TOKEN index, periods 192 / 768 / 3072 tokens (the slow distance band RoPE's planes ~8-14 cover) | [15:32) the QUIET planes, speed 0
 (position-free content channels, RoPE's planes ~15-31 rotate < 0.6 rad over the window). No duplicate gear anywhere; no RoPE.
+Also adds DR_HY0=1 (with DR_T6=2): the sentence speeds set to 0, i.e. NMDB's exact math through the T6 code path.
 APPLY ONLY after unit lfhy's last distill_reader launch (it re-launches the script for its export). Refuses if already applied."""
 import sys
 p = sys.argv[1] if len(sys.argv) > 1 else "scripts/distill_reader.py"; s = open(p).read()
 assert "T9 =" not in s, "already applied"
 r = [('HY = os.environ.get("DR_T6") == "2"\n',
       'HY = os.environ.get("DR_T6") == "2"\nT9 = os.environ.get("DR_T6") == "3"   # (ledger 11-01) T6 offset | T6 sentence | gears 7-9 x token | quiet planes\n'),
+     ('        a6 = sent[..., None] * SPD8\n', '        a6 = sent[..., None] * SPD8 * (0.0 if os.environ.get("DR_HY0") == "1" else 1.0)   # HY0 (ledger 11-01): speeds 0 = NMDB math\n'),
      ('T6 = os.environ.get("DR_T6") in ("1", "2")', 'T6 = os.environ.get("DR_T6") in ("1", "2", "3")'),
      ('    if HY:                                                                                            # RoPE micro | T6 macro, disjoint planes\n',
       '    if T9:                                                                                            # the clock owns every plane\n'
