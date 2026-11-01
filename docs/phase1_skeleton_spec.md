@@ -54711,3 +54711,18 @@ Training: BP val mse 0.1229 (warm) → 0.1254 at 6k; GSM8K val native mse 0.442 
 - **READ:** both heads lose about 0.01 on wild. The shared body moved toward GSM8K's native word states, and the BP head (still trained on its loss every step) did not fully hold the coordinates the parser heads were tuned to. Every reader change moves the head's coordinates: this is the never-mix-generations law at the reader level. NMDBG's parser use would need its own head continuation; G1 (the CF gap) is still training.
 - PREDICTION G2 PASS ✗. Running total 52/75.
 - **NEXT FORM (named; it depends on G1):** if G1 shows the CF gap closes, the body change is worth having, and the parser takes the B2 form on NMDBG (head continuation: the expected cost after any reader change). If G1 does not close it, the GSM8K diet is not worth the parser's coordinates and NMDB30 stays the reader.
+
+### 2026-10-31 18:13 — GSM8K-TEXT FORM, G1 VERDICT (G-TICK on NMDBG's native-head GSM8K states; unit lfcpu2 done; .cache/gsm_tree_g_verdict.txt): **G1 FAIL — the CF gap closes by a third to a half**
+| read (means of 2 seeds) | G − LLAMA | STU − LLAMA (S0) | G − STU |
+|---|---|---|---|
+| CFNUM answer | **−0.054** | −0.081 | +0.027 |
+| CFNAME answer | **−0.033** | −0.069 | +0.036 |
+| CFNUM / CFNAME step | −0.032 / −0.019 | −0.057 / −0.054 | +0.025 / +0.035 |
+| TEST step | +0.000 | −0.002 | +0.002 |
+| ORIG answer | −0.042 | −0.043 | +0.001 |
+G-TICK s0 / s1: ORIG step 0.952 / 0.960; CFNUM 0.567 / 0.598; CFNAME 0.509 / 0.547; TEST step 0.128 / 0.132.
+- **G1: FAIL** (bars ≥ −0.020 on both CF answers; TEST held, +0.000). The GSM8K diet closed **33%** (CFNUM) and **52%** (CFNAME) of the counterfactual gap, with CFNAME step at −0.019 (within the bar on steps, not on answers), and no cost on TEST.
+- PREDICTION: G1 FAIL with the gap closing about half (~−0.04) ✓. Running total 53/76.
+- **CONSEQUENCE (the conditional pinned at G2):** G1 did not close, so NMDB30 stays the PARSER's reader (NMDBG cost the parser 0.008–0.012). On the GSM8K bench, NMDBG's native-head states are strictly better than NMDB30's (CF +0.03, TEST equal), so the BT line may read them (a bench choice, recorded here; the running BT3 / U1 arms stay on NMDB30's states for their clean comparisons).
+- **READ:** the remaining CF gap (−0.03 to −0.05) after 8k steps of GSM8K word-state distillation means imitation of Llama's states on TRAIN text transfers only partly to the swapped text. What is left is the reader's job (binding the swapped number or name), not the diet's.
+- **NEXT FORM, named:** a longer GSM8K diet is the obvious lever and the weak one (the GSM val mse was flattening, 0.285 → 0.275 over the last 4k). The stronger one is the counterfactual-ness itself: distill on GSM8K TRAIN texts with their NUMBERS AND NAMES RE-SAMPLED (the CF generator applied to TRAIN text, with the teacher's banked states, NOT available for re-sampled text, so this needs either the student's own states as the target, which is circular, or a different target). Open; it needs a design pass before registration.
