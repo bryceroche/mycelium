@@ -54753,3 +54753,17 @@ Training: val mse 0.1238 at 29999 vs NMDB30's 0.1199 (+0.0039). The gap narrowed
 - **CONFOUND, on record:** BT3 has 6.59M params against BT18S's 1.22M (BT_D 512 widened the arm). The +0.04 is the sum of width, waist, clock and zoom; the read does not split them. Its CF answers beating STU-TICK by +0.14 / +0.11 is notable: the counterfactual numbers and names are where it gains most, which a memorizing wider net would NOT do. Tagged: regime = student states, 18k, no road.
 - **ORACLE:** with the gold type, TEST step reaches 0.469 / 0.461 (BT18S oracle 0.42–0.44): the ceiling rose with the arm. The silhouette (TEST type 0.30 vs ORIG 0.96) is still the wall: 0.31 of the oracle's 0.47 is left on the table by type alone.
 - **NEXT FORM, named (not fired):** (a) BT3 + the tree road (the road paid +0.0135 alone on BT18S; it joins the stack per the 15:13 entry); (b) the attribution split (BT3 with BT_D 256 at BT18S width, same waist/clock/zoom) if a claim on the organs is wanted. Recommended: (a) as the build, (b) only if the organs must be claimed.
+
+### 2026-10-31 23:00 — U1 VERDICT (unit lfu1 done; U1 = BT-TREE + BT_T6OFF: the learned in-sentence offset table replaced by T6 offset planes; 18k, seeds 0/1, student states; .cache/gsm_u1_verdict.txt): **C0 PASS, U1 PASS**
+| read | U1 s0 / s1 | BT-TREE s0 / s1 | mean diff |
+|---|---|---|---|
+| ORIG step | 0.918 / 0.940 | 0.939 / 0.937 | −0.009 |
+| TEST step | 0.124 / 0.126 | 0.132 / 0.129 | **−0.0053** |
+| TEST op / pointers | 0.418 / 0.438 · 0.169 / 0.178 | 0.441 / 0.451 · 0.188 / 0.178 | −0.018 · −0.010 |
+| TEST answer | 0.022 / 0.033 | 0.025 / 0.026 | +0.002 |
+| CFNUM / CFNAME answer | 0.425 / 0.503 · 0.300 / 0.397 | 0.487 / 0.490 · 0.387 / 0.372 | −0.025 · −0.031 |
+- **C0: PASS** (0.918 / 0.940). **U1 TEST step ≥ BT-TREE − 0.010: PASS (−0.0053).**
+- PREDICTION PASS ✓. Running total 57/83.
+- **READ:** the BT's last learned position table goes, and the clock carries position within the bar. The BT now has NO learned position anywhere: sentence and offset are both T6 planes. The cost is small and lands on seed 0 (CF answers −0.06 / −0.09 on s0, +0.01 / +0.03 on s1: the seeds disagree, so the CF cost is unbarred and not claimed either way).
+- **CONTRAST WITH U2 (19:47):** in the BT, which is trained from scratch on its own states, T6 replaces learned position at parity. In the reader, T6 replacing RoPE cost 0.019 on wild, but through a FROZEN head tuned to RoPE coordinates. Together they point to coordinate dependence, not the clock, as U2's cost. U2-HC (named) is the test.
+- **BUILD CONSEQUENCE:** BT_T6OFF joins the BT stack forward (compatibility ruling: equal score, the conforming organ wins). With the road and BT3's knobs, the next BT is BT3 + ROAD + T6OFF.
