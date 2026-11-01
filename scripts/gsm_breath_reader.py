@@ -36,6 +36,7 @@ ROLE = os.environ.get("BT_ROLE") == "1"              # THE TREE ROAD (ledger 10-
 CYCLOCK = os.environ.get("BT_CYCLOCK") == "1"        # (ledger 10-31) slot queries turn by the T6 gears x the CYCLE index (keys fixed)
 ZOOM = os.environ.get("BT_ZOOM") == "1"              # (ledger 10-31) coarse-to-fine silhouette: p(type) = p(op) p(type | op); unsure -> op-level mask
 ZOOM_TAU = 0.5
+T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
 NLE, NLB, NCYC = 2, 2, 6
@@ -93,6 +94,11 @@ def make_net():
     import torch, torch.nn as nn, torch.nn.functional as F
     DH = D // NH; NPA = D // 2; NTK = NPA // 3
     w = torch.as_tensor(np.radians(CK.t6_plane_speeds(DH // 2)), dtype=torch.float32)      # attention space: the T6 clock, per head
+    wh = torch.as_tensor(np.radians(CK.t6_plane_speeds(DH // 4)), dtype=torch.float32)
+
+    def ang(sid, off):                                                                     # (B, L) x2 -> (B, L, DH/2) attention angles
+        if not T6OFF: return sid[..., None].float() * w
+        return torch.cat([sid[..., None].float() * wh, off[..., None].float() * wh], -1)    # sentence planes | offset planes
     wt = torch.as_tensor(np.radians(CK.t6_plane_speeds(NTK)), dtype=torch.float32)        # pointer space: the step tick's planes
     kmask = torch.zeros(NT, 2, 3, dtype=torch.bool)                                       # type x operand -> allowed kind (t, s, c)
     for j, (_, a, b) in enumerate(TYPES):
@@ -122,7 +128,7 @@ def make_net():
             super().__init__()
             s.role = nn.Linear(14, D, bias=False) if ROLE else None   # a mandatory road, no gain
             s.inp = nn.Sequential(nn.LayerNorm(H), nn.Linear(H, D)); s.isn = nn.Embedding(2, D); s.isnum = nn.Embedding(2, D)
-            s.off = nn.Embedding(OMAX, D); s.idp = nn.Linear(2 * PB, D); s.gp = nn.Linear(3, D)
+            s.off = None if T6OFF else nn.Embedding(OMAX, D); s.idp = nn.Linear(2 * PB, D); s.gp = nn.Linear(3, D)
             s.enc = nn.ModuleList([Attn() for _ in range(NLE)])                                # THE READER (once per problem)
             s.cons = nn.Embedding(2, D)                                                        # the notebook's consumed marks
             s.slotk = nn.Embedding(K, D); s.maskv = nn.Parameter(torch.zeros(D)); s.cfp = nn.Linear(3, D)
@@ -141,9 +147,9 @@ def make_net():
             x = s.inp(t["x"])
             th = torch.gather(t["theta"], 1, t["nid"].clamp(min=0)[..., None].expand(-1, -1, PB))
             x = torch.where(t["isn"][..., None], s.idp(torch.cat([th.cos(), th.sin()], -1)), x)
-            x = x + s.isn(t["isn"].long()) + s.isnum(t["isnum"].long()) + s.gp(t["g"]) + s.off(t["off"])
+            x = x + s.isn(t["isn"].long()) + s.isnum(t["isnum"].long()) + s.gp(t["g"]) + (0 if T6OFF else s.off(t["off"]))
             if ROLE: x = x + s.role(t["role"])
-            Lq = x.shape[1] - K; xq = x[:, :Lq]; aq = t["sid"][:, :Lq, None].float() * w
+            Lq = x.shape[1] - K; xq = x[:, :Lq]; aq = ang(t["sid"][:, :Lq], t["off"][:, :Lq])
             mask = torch.zeros(x.shape[0], 1, Lq, Lq).masked_fill(t["pad"][:, None, None, :Lq], -1e4)
             for blk in s.enc: xq = blk(xq, xq, aq, aq, mask)
             return xq
@@ -157,7 +163,7 @@ def make_net():
             re = s.reent(r[..., None] * s.C[typ.clamp(min=0)])                                  # committed: atom x radius
             h = s.slotk.weight[None] + torch.where(com[..., None], re, s.maskv) + s.cfp(cf) + s.lev(lev) + s.cons(cons[:, Lq:].long())
             xk_q = xq + s.cons(cons[:, :Lq].long())
-            sa = t["sid"][:, Lq:, None].float() * w; ka = t["sid"][..., None].float() * w
+            sa = ang(t["sid"][:, Lq:], t["off"][:, Lq:]); ka = ang(t["sid"], t["off"])
             if CYCLOCK: sa = sa + cyc.float()[:, None, None] * w                               # the cycle stamp on the queries only
             mask = torch.zeros(B, 1, K, L).masked_fill(t["pad"][:, None, None, :], -1e4)
             for blk in s.core: h = blk(h, torch.cat([xk_q, h], 1), sa, ka, mask)
