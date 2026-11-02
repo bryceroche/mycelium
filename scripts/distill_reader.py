@@ -38,6 +38,8 @@ DBIN = os.environ.get("DR_DB") == "1"              # + the reader DB row (reader
 T6 = os.environ.get("DR_T6") in ("1", "2", "3")         # (ledger 10-31, U2; DR_T6=2 = HY, ledger 11-01: RoPE kept on planes [0:24), T6 x the SENTENCE on
 # RoPE's 8 idle planes [24:32) -- they turn < 0.014 rad over the whole 256-token window at theta 500000)
 HY = os.environ.get("DR_T6") == "2"
+T9NS = os.environ.get("DR_T9NS") == "1"   # (ledger 11-01) T9 with its 6 sentence planes QUIET (the sentence-address test)
+RSEED = int(os.environ.get("DR_SEED", "0"))   # (ledger 11-01) the replication: init seed RSEED, loader seed 2 + RSEED (0 = the banked runs)
 T9 = os.environ.get("DR_T6") == "3"   # (ledger 11-01) T6 offset | T6 sentence | gears 7-9 x token | quiet planes
 # (U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
 # SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
@@ -92,7 +94,7 @@ def t6_rot(sent, tm):
     off = i - np.maximum.accumulate(np.where(chg, i, 0), 1)
     if T9:                                                                                            # the clock owns every plane
         G = np.radians(np.asarray(CK.T6_SPEEDS, np.float32)); S9 = 360.0 / np.asarray([192.0, 768.0, 3072.0], np.float32)
-        a = np.concatenate([off[..., None] * G, sent[..., None] * G, i[..., None].repeat(sent.shape[0], 0) * np.radians(S9),
+        a = np.concatenate([off[..., None] * G, sent[..., None] * G * (0.0 if T9NS else 1.0), i[..., None].repeat(sent.shape[0], 0) * np.radians(S9),
                             np.zeros(sent.shape + (HD // 2 - 15,), np.float32)], -1) * (tm[..., None] > 0)
         a = np.concatenate([a, a], -1)[:, None].astype(np.float32)
         return np.cos(a), np.sin(a)
@@ -108,7 +110,7 @@ def t6_rot(sent, tm):
 
 
 def init_params(mean_out):
-    rng = np.random.default_rng(0)
+    rng = np.random.default_rng(RSEED)
     nrm = lambda *s: Tensor(rng.normal(0, 1 / math.sqrt(s[0]), s).astype(np.float32), dtype=dtypes.float).contiguous()
     p = {"w_in": nrm(H_TRUNK, D), **({"w_db": nrm(DBP, D)} if DBIN else {}), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
          "w_out": nrm(D, H_TRUNK), "b_out": Tensor(mean_out.astype(np.float32), dtype=dtypes.float).contiguous()}
@@ -363,7 +365,7 @@ Q = queue.Queue(maxsize=6)
 
 
 def loader():
-    rng = np.random.default_rng(2)
+    rng = np.random.default_rng(2 + RSEED)
     while True:
         idx = rng.choice(tr_idx, BATCH, replace=False); idx = np.sort(idx)
         Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb[idx]),) if DBIN else ())
