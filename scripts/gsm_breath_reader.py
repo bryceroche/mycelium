@@ -36,6 +36,7 @@ ROLE = os.environ.get("BT_ROLE") == "1"              # THE TREE ROAD (ledger 10-
 CYCLOCK = os.environ.get("BT_CYCLOCK") == "1"        # (ledger 10-31) slot queries turn by the T6 gears x the CYCLE index (keys fixed)
 ZOOM = os.environ.get("BT_ZOOM") == "1"              # (ledger 10-31) coarse-to-fine silhouette: p(type) = p(op) p(type | op); unsure -> op-level mask
 ZOOM_TAU = 0.5
+SOFT = os.environ.get("BT_SOFT") == "1"              # (ledger 11-01) the soft notebook: uncommitted slots show sum_t p(t) C_t, tau by cycle
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -133,6 +134,7 @@ def make_net():
             s.cons = nn.Embedding(2, D)                                                        # the notebook's consumed marks
             s.slotk = nn.Embedding(K, D); s.maskv = nn.Parameter(torch.zeros(D)); s.cfp = nn.Linear(3, D)
             s.lev = nn.Embedding(LEVMAX + 1, D); s.reent = nn.Linear(DB, D)
+            s.sre = nn.Linear(DB, D, bias=False) if SOFT else None                             # the soft notebook's road (no bias: sp=0 is the old breath)
             s.core = nn.ModuleList([Attn() for _ in range(NLB)])                               # THE BREATH (weight-tied over cycles)
             s.down = nn.Sequential(nn.LayerNorm(D), nn.Linear(D, DB)); s.up = nn.Linear(DB, D); s.upc = nn.Linear(DB, D)
             s.tau = nn.Parameter(torch.zeros(1))
@@ -154,14 +156,15 @@ def make_net():
             for blk in s.enc: xq = blk(xq, xq, aq, aq, mask)
             return xq
 
-        def breath(s, t, xq, nb, cond, cyc=None):
+        def breath(s, t, xq, nb, cond, cyc=None, sp=None):
             """one cycle: every slot proposed in parallel. nb = notebook tensors; cond (B, K) = the step type the keys condition on
             (gold in training, the snapped prediction at inference; None = the snapped prediction)."""
             B, Lq, _ = xq.shape; L = Lq + K
             typ, r, cf, lev, cons = nb
             com = typ >= 0
             re = s.reent(r[..., None] * s.C[typ.clamp(min=0)])                                  # committed: atom x radius
-            h = s.slotk.weight[None] + torch.where(com[..., None], re, s.maskv) + s.cfp(cf) + s.lev(lev) + s.cons(cons[:, Lq:].long())
+            unc = s.maskv if sp is None else s.maskv + s.sre(sp @ s.C)                        # uncommitted: the mask + what the BT believes
+            h = s.slotk.weight[None] + torch.where(com[..., None], re, unc) + s.cfp(cf) + s.lev(lev) + s.cons(cons[:, Lq:].long())
             xk_q = xq + s.cons(cons[:, :Lq].long())
             sa = ang(t["sid"][:, Lq:], t["off"][:, Lq:]); ka = ang(t["sid"], t["off"])
             if CYCLOCK: sa = sa + cyc.float()[:, None, None] * w                               # the cycle stamp on the queries only
@@ -209,6 +212,11 @@ def make_net():
     return Net()
 
 
+def TAU(cyc):
+    """the coarse-to-fine schedule: tau 2.0 at cycle 0 -> 0.5 at the last (a (B,) float tensor)"""
+    return 2.0 ** (1.0 - 2.0 * cyc.float() / (NCYC - 1))
+
+
 def nb_tensors(arrs):
     import torch
     typ, r, cf, lev, cons = arrs
@@ -237,7 +245,12 @@ def train_step(net, opt, its, states, tree, rng):
     nb = nb_tensors(notebook(E, L, progs, ~masked, gt, np.ones((len(E), K), np.float32)))
     xq = net.read(t); gtt = torch.as_tensor(gt)
     cyc = torch.as_tensor(np.clip(np.floor(NCYC * (1 - rr[:, 0])), 0, NCYC - 1).astype(np.int64))   # the cycle this mask level imitates
-    logit, pa, pb, z, _ = net.breath(t, xq, nb, gtt, cyc)
+    sp = None
+    if SOFT and rng.random() < 0.5:                                                           # self-conditioning: the model's own detached belief
+        with torch.no_grad():
+            l0 = net.breath(t, xq, nb, gtt, cyc)[0]
+            sp = (l0 / TAU(cyc)[:, None, None]).softmax(-1)
+    logit, pa, pb, z, _ = net.breath(t, xq, nb, gtt, cyc, sp)
     mk = torch.as_tensor(masked); am = t["am"] & mk
     lo = F.cross_entropy(logit[mk], gtt[mk])                                                  # gravity: own atom vs the other 36
     for p, V in ((pa, t["va"]), (pb, t["vb"])):
@@ -270,9 +283,11 @@ def score(net, its, states, tree, seed=0):
             progs = [[(".", None, None)] * K for _ in range(B)]
             dec = lambda i: ("t", int(i)) if i < L else (("s", int(i - L)) if i < L + K else ("c", int(i - L - K)))
             gt0 = gold(E)[1]
+            sp = None
             for c in range(NCYC):
                 nb = nb_tensors(notebook(E, L, progs, com, typ, rad))
-                logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None, torch.full((B,), c))
+                logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None, torch.full((B,), c), sp)
+                if SOFT and c + 1 < NCYC: sp = (logit / TAU(torch.full((B,), c + 1))[:, None, None]).softmax(-1)   # next cycle reads it
                 ty = gt0 if ORACLE else logit.argmax(-1).numpy()
                 pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if ORACLE else p.max(-1).values.numpy()
                 ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
