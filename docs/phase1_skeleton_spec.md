@@ -54909,3 +54909,13 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
 - **TW1, THE SENTENCE CLAIM SEEDED:** NMDBT9NSR1 − NMDBT9R1 ≥ +0.010 paired (seed 1), with seed 0 already at +0.0205. Both seeds ≥ +0.010 makes 'the sentence-index rotation costs the reader' a seeded claim. **PREDICTION:** PASS.
 - **TW2, RoPE-FREE PARITY SEEDED:** NMDBT9NSR1 − NMDBR1 ≥ −0.010 paired (same seed), with seed 0 already at +0.0034 vs NMDB30. **PREDICTION:** PASS.
 - Read beside: the two-seed means of T9-NS, T9 and NMDB; and the reader yardstick for any RoPE-retirement ruling = the two-seed mean.
+
+### 2026-11-02 08:20 — B3 VERDICT (BT4 + a 3-layer breath, 7.62M; 18k, seeds 0/1): **S1 FAIL**
+| read | B3 s0 / s1 | BT4 s0 / s1 | mean diff |
+|---|---|---|---|
+| TEST step | 0.163 / 0.168 | 0.167 / 0.150 | **+0.0072** (−0.004 / +0.019) |
+| TEST type | 0.290 / 0.303 | 0.303 / 0.291 | −0.0003 |
+| TEST pointers | 0.210 / 0.217 | 0.214 / 0.197 | +0.008 |
+| CFNUM / CFNAME answer | 0.731 / 0.741 · 0.636 / 0.680 | 0.719 / 0.738 · 0.644 / 0.644 | +0.008 · +0.014 |
+- **S1: mean +0.0072, the seeds disagree (−0.004 / +0.019): FAIL.** PREDICTION FAIL ✓. Running total 65/100.
+- **READ:** a third breath layer (weight-tied over 6 cycles, so +6 hops) moves nothing reliable: the type is flat (−0.0003), and the step gain lives on one seed (s1, where BT4's own s1 read low at 0.150). Not adopted (size rule).
