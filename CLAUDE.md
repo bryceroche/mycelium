@@ -301,7 +301,7 @@ contradiction may break a branch; soft evidence only ever biases (neural propose
 | Component | Continuous mirror | Discrete mirror | Status / evidence |
 |---|---|---|---|
 | **Clock** | the gears turning (phase rotation inside attention) | the **odometer**: each gear snapped to its tick; mixed radix 2·3·2·2·2·2 (periods 2..96) -- digits for the Tree's exact composite keys | one source `rotor_clock.py`; toys: rotation reaches label accuracy with range (T2s/T2t) |
-| **Reader rotor** | RoPE spread / **T9-NS** (offset gears + slow gears 7–9 + quiet planes) | -- | **T9-NS = the first RoPE-free reader at parity** (wild 0.3671 vs NMDB30 0.3637, 11-02); the **sentence address belongs in the BT, not the reader** (it cost every reader form ~0.02; the BT took it at parity, U1). Seed twins running before any RoPE ruling |
+| **Reader rotor** | RoPE spread / **T9-NS** (offset gears + slow gears 7–9 + quiet planes) | -- | **T9-NS = RoPE-free reader at two-seed parity** (wild means 0.3579 vs NMDB 0.3589, TW2 PASS 11-02); the sentence-cost claim did NOT replicate (TW1 FAIL: seed 1 −0.0010; seed spread up to 0.0185). The BT carries the sentence clock at parity (U1). RoPE ruling = Bryce's, on TW2 + CY (GSM8K task read) |
 | **Breathing Transformer** | **BT5 soft notebook**: uncommitted slots carry Σ p(type)·atom, sharpened coarse-to-fine by τ 2.0 → 0.5 over the six cycles (diffusion self-conditioning) | snap to the codebook centroid + commit | one weight-tied network, temperature = the bridge; BT5 running |
 | **Confidence** | radius | commit / no-commit | conjugate mirror rule |
 | **Tree lookup** | KNN on soft keys | exact-key backoff | soft keys beat exact (G-TREE3 +0.032) |
