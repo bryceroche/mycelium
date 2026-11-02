@@ -54886,3 +54886,14 @@ Training: val mse 0.1232 at 29999 (NMDB30 0.1199). Curve: step 20 1.2168, 4k 0.1
 
 ### 2026-11-02 01:02 — custody note: bt5_soft applied to gsm_breath_reader.py the same minute lfbt4 launched BT4H16_s1
 lfbt5 polls every 120 s for the launch line, so the patch may have landed before or after H16_s1's Python read the file. Either way H16_s1 is unaffected: with BT_SOFT unset the patch is behavior-neutral (`sp=None` → `unc = s.maskv`, the old breath exactly; `s.sre` is None, so no new parameter; the training branch is gated on SOFT). Recorded rather than relaunched.
+
+### 2026-11-02 01:09 — R4 VERDICT (BT4 + a 4-layer reader, 8.67M; 18k, seeds 0/1): **S1 FAIL (the reader depth does not buy TEST)**
+| read | R4 s0 / s1 | BT4 s0 / s1 | mean diff |
+|---|---|---|---|
+| ORIG step | 0.968 / 0.962 | 0.965 / 0.964 | +0.001 |
+| TEST step | 0.168 / 0.152 | 0.167 / 0.150 | **+0.0014** |
+| TEST type | 0.304 / 0.277 | 0.303 / 0.291 | −0.0067 |
+| TEST op / pointers | 0.466 / 0.430 · 0.213 / 0.211 | 0.475 / 0.468 · 0.214 / 0.197 | −0.024 · +0.007 |
+| CFNUM / CFNAME answer | 0.780 / 0.760 · 0.698 / 0.670 | 0.719 / 0.738 · 0.644 / 0.644 | **+0.042 · +0.040** |
+- **S1: TEST step mean +0.0014 (bar +0.010, both > 0): FAIL.** PREDICTION FAIL ✓. Running total 63/98.
+- **READ:** two more reader layers buy no transfer to unseen text (TEST step +0.001, TEST type −0.007), as predicted: the wall is the step type, not composition depth. They DO lift the counterfactual answers on both seeds (+0.04 / +0.04; unbarred, consistent on both seeds, so it banks as a read). That is the same signature width had at BT3: capacity buys robustness to swapped numbers and names, never TEST transfer. **Size adoption rule (pinned 11-01): not adopted**; BT4 (2-layer reader) stays.
