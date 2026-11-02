@@ -54932,3 +54932,10 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
 - **Queue:** the export waits on the GPU lock behind lfq5. The BT arms wait until ≤ 2 BT processes hold the cores (H16_s1 ends first). Expected landing: late on 11-03.
 **THE ODOMETER (code, zero-GPU; staged until lfq5's last launch, since `rotor_clock.py` is imported by its arms):** `t6_odometer(tick)` returns the T6 gears snapped to ticks as mixed-radix digits (2·3·2·2·2·2 = 96 distinct readings per revolution), with `odometer_tick(digits)` as its inverse. Selftest: unique and round-tripping over 0..95, wrapping at 96. This is the discrete mirror (CLAUDE.md §9). Its first consumer, odometer digits in the Tree's exact keys, gets its own registration with bars. Nothing is claimed by the code itself.
 **Still DESIGN (not fired; each needs bars before it runs):** U3 (T256 codes on the bus), CF-resampled distillation, MCTS/beam on the parse side with the solver certifying, the UNSAT circuit breaker.
+
+### 2026-11-02 11:04 — H16 VERDICT (BT4 with 16 heads in place of 8, same width D 512, 6.57M; 18k, seeds 0/1): **S1 FAIL**
+- C0 fit: 0.957 / 0.962 (PASS).
+- **S1:** TEST step 0.166 / 0.158 vs BT4's 0.167 / 0.150, a difference of −0.0015 / +0.0083 (mean +0.0034; bar +0.010 with both seeds > 0). **FAIL.**
+- **Reads:** TEST type +0.0072 mean (0.314 / 0.294 vs 0.303 / 0.291), op +0.005, ptr ±0. CFNUM answers 0.725 / 0.757 vs 0.719 / 0.738; CFNAME answers 0.632 / 0.653 vs 0.644 / 0.644. TEST answers 0.063 / 0.059 vs 0.077 / 0.051.
+- **READ:** none of the three size axes buys TEST step. Head count joins reader depth (R4 +0.0014) and breath depth (B3 +0.0072, seeds disagree): all three sit inside ±0.01 of BT4. The BT forward stays BT4 at 8 heads × 2 + 2 layers. What has moved TEST so far is organs (clock + zoom, the tree road), not size. (The CY pin's line "R4/B3/H16 all within ±0.01" was written before H16 s1 finished; it holds as measured.)
+- PREDICTION: FAIL ✓. Running total 66/101. lfbt4 is done; BT5 (lfbt5) and CY (lfcy) run on.
