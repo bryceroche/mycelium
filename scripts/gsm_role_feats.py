@@ -11,14 +11,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); sys.path.insert(
 import gsm_bench_data as GD
 from gsm_role_tree import roles, keys
 
-OUT, KNN_K, MINN = GD.V1.C("gsmb_role_feats.npy"), 25, 2
+OUT, KNN_K, MINN = GD.V1.C(os.environ.get("RF_OUT", "gsmb_role_feats.npy")), 25, 2   # RF_OUT / RF_STATES (ledger 11-02 CY): another reader's KNN half
 LABS = ["*", "+", "-A", "-B", "/A", "/B", "none"]
 
 
 if __name__ == "__main__":
     assert not os.path.exists(OUT), f"refusing to overwrite {OUT}"
     D = json.load(open(GD.OUT)); idx = json.load(open(GD.V1.C("gsmb_trunk_index.json")))
-    S = np.load(GD.V1.C("gsmb_student_states.npy"), mmap_mode="r"); li = {l: j for j, l in enumerate(LABS)}
+    S = np.load(GD.V1.C(os.environ.get("RF_STATES", "gsmb_student_states.npy")), mmap_mode="r"); li = {l: j for j, l in enumerate(LABS)}
     rk = lambda sp, it, i: keys(it, i, np.random.default_rng(zlib.crc32(f"{sp}|{it['gid']}|{i}".encode())))
     # the exact-key tree and the KNN bank, both from TRAIN
     C = {lv: collections.defaultdict(lambda: np.zeros(len(LABS))) for lv in ("L0", "L1", "L2")}; prior = np.zeros(len(LABS))

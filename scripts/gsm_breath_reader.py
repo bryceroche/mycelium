@@ -329,7 +329,7 @@ if __name__ == "__main__":
     import torch
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "6"))); torch.manual_seed(SEED); rng = np.random.default_rng(SEED)
     Dt, states = TR.load(); tree = TR.load_tree(); train = Dt["TRAIN"]
-    RF = np.load(GD.V1.C("gsmb_role_feats.npy"), mmap_mode="r") if ROLE else None
+    RF = np.load(GD.V1.C(os.environ.get("BT_ROLEF", "gsmb_role_feats.npy")), mmap_mode="r") if ROLE else None   # BT_ROLEF: ledger 11-02 CY
     net = make_net(); opt = torch.optim.AdamW(net.parameters(), lr=LR); npar = sum(p.numel() for p in net.parameters())
     print(f"[bt] {TAG} D {D} reader {NLE} + breath {NLB} (weight-tied x {NCYC} cycles) silhouette {DB} atoms {NT} | params {npar}", flush=True)
     t0 = time.time(); curve = []

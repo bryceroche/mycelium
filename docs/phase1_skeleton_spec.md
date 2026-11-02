@@ -54919,3 +54919,16 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
 | CFNUM / CFNAME answer | 0.731 / 0.741 · 0.636 / 0.680 | 0.719 / 0.738 · 0.644 / 0.644 | +0.008 · +0.014 |
 - **S1: mean +0.0072, the seeds disagree (−0.004 / +0.019): FAIL.** PREDICTION FAIL ✓. Running total 65/100.
 - **READ:** a third breath layer (weight-tied over 6 cycles, so +6 hops) moves nothing reliable: the type is flat (−0.0003), and the step gain lives on one seed (s1, where BT4's own s1 read low at 0.150). Not adopted (size rule).
+
+### 2026-11-02 09:07 — WORD GIVEN ("word given for the whole queue!"): CY, THE CLOCK YARDSTICK (GPU export + CPU, unit lfcy), PINNED; the odometer staged as code
+**Why this one first:** every clock-reader verdict so far reads the wild fac-exact read through a frozen head. That head was trained on another reader's coordinates, so the wild read measures how well a reader fits that head as much as how good the reader is. A RoPE-retirement ruling should also stand on a TASK read whose head trains on the reader's own states. The GSM8K BT bench is exactly that (its head trains from scratch per states file).
+**CY:** `distill_reader.py --gsm` on NMDBT9NS (seed 0, 30k final; NMDB's comparator states came from its s30000 snapshot, the same step) → .cache/gsmb_t9ns_states.npy. Then the tree road's role feats are rebuilt with the KNN half on those states (`RF_STATES`/`RF_OUT`, new default-off knobs; the exact-key half is the same tree) → .cache/gsmb_role_feats_t9ns.npy (`BT_ROLEF`, a new default-off knob). Then BT4 UNCHANGED on them: 18k, seeds 0/1, weights saved (BT4T9NS). The knobs were added after both CPU chains' last launch, and `gsm_breath_reader.py` has no pending launcher.
+- **C0 FIT:** ORIG step ≥ 0.90 on both seeds, else VOID.
+- **Y1 PARITY:** TEST step_all mean(BT4T9NS) − mean(BT4) ≥ −0.010.
+- **Y2 BETTER:** the same mean ≥ +0.010 with both seeds > 0.
+- **Reads (unbarred):** TEST type/op/ptr; CFNUM/CFNAME answers.
+- **PREDICTIONS:** C0 PASS, Y1 PASS, Y2 FAIL. (The sentence address was a cost on wild, but TEST step sits near its floor for every reader we have tried: R4/B3/H16 all landed within ±0.01.)
+- Verdict: `scripts/gsm_cy_verdict.py`. Running total 65/100 before these 3.
+- **Queue:** the export waits on the GPU lock behind lfq5. The BT arms wait until ≤ 2 BT processes hold the cores (H16_s1 ends first). Expected landing: late on 11-03.
+**THE ODOMETER (code, zero-GPU; staged until lfq5's last launch, since `rotor_clock.py` is imported by its arms):** `t6_odometer(tick)` returns the T6 gears snapped to ticks as mixed-radix digits (2·3·2·2·2·2 = 96 distinct readings per revolution), with `odometer_tick(digits)` as its inverse. Selftest: unique and round-tripping over 0..95, wrapping at 96. This is the discrete mirror (CLAUDE.md §9). Its first consumer, odometer digits in the Tree's exact keys, gets its own registration with bars. Nothing is claimed by the code itself.
+**Still DESIGN (not fired; each needs bars before it runs):** U3 (T256 codes on the bus), CF-resampled distillation, MCTS/beam on the parse side with the solver certifying, the UNSAT circuit breaker.
