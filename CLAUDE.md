@@ -286,3 +286,34 @@ governs what gets BUILT; bars govern what gets CLAIMED.
 | MLP stores "Michael Jordan" keys | literature (superposition), not tested by us; ours: every learned nonlinear combiner memorizes (composition law); attention also recalls (eq_slot N1) | NO-MLP ruling + Tree |
 | BIRCH branches plateau | M-CEIL M3 FAIL as pinned; plateau visible at T 0.1 (0.82 of tokens stop above the deepest level, −0.012 R²) | shrinkage N/(N+κ) is the next form |
 | unknown entities via stored procedure | custody: the answer key gates permanent tree writes | wild entities enter PROVISIONAL, promoted on a correct chain (the NLB TREE form) |
+
+## 9. Building the Bridge between continuous and discrete — the Mirror Components (Bryce, 2026-11-01)
+
+The core rhythm (the ALTERNATION RULING) seen component by component: every organ has a **continuous mirror** (soft,
+differentiable, holds possibilities open) and a **discrete mirror** (committed, exact, certifiable), and the system alternates
+across a **bridge** between them. Full discussion + evidence: ledger 2026-11-01/02; memory `project_bridge_mirror_components.md`.
+
+**The bridge (every row has the same four parts):** (1) a QUANTIZER (snap / commit / prune); (2) a CONFIDENCE DIAL deciding when
+to quantize (radius, temperature, determinedness); (3) a GRADIENT PATH across it (soft mixture / straight-through); (4) a
+WRITE-BACK so the next breath reads what was decided (the notebook). **The bridge rule: only a PROOF crosses hard** -- a solver
+contradiction may break a branch; soft evidence only ever biases (neural proposes, symbolic disposes, between cycles too).
+
+| Component | Continuous mirror | Discrete mirror | Status / evidence |
+|---|---|---|---|
+| **Clock** | the gears turning (phase rotation inside attention) | the **odometer**: each gear snapped to its tick; mixed radix 2·3·2·2·2·2 (periods 2..96) -- digits for the Tree's exact composite keys | one source `rotor_clock.py`; toys: rotation reaches label accuracy with range (T2s/T2t) |
+| **Reader rotor** | RoPE spread / **T9-NS** (offset gears + slow gears 7–9 + quiet planes) | -- | **T9-NS = the first RoPE-free reader at parity** (wild 0.3671 vs NMDB30 0.3637, 11-02); the **sentence address belongs in the BT, not the reader** (it cost every reader form ~0.02; the BT took it at parity, U1). Seed twins running before any RoPE ruling |
+| **Breathing Transformer** | **BT5 soft notebook**: uncommitted slots carry Σ p(type)·atom, sharpened coarse-to-fine by τ 2.0 → 0.5 over the six cycles (diffusion self-conditioning) | snap to the codebook centroid + commit | one weight-tied network, temperature = the bridge; BT5 running |
+| **Confidence** | radius | commit / no-commit | conjugate mirror rule |
+| **Tree lookup** | KNN on soft keys | exact-key backoff | soft keys beat exact (G-TREE3 +0.032) |
+| **Tree levels / growth** | shrinkage blend n/(n+κ); Welford mean/var | hard deepest-node backoff; BIRCH child creation | κ* = 0.5 (the data chose ~hard) |
+| **Zoom** | p(op)·p(type given op) | fall back to the op-level mask | BT3N: clock + zoom carry 0.45 of BT3's gain |
+| **Binding (T256)** | free phase angles | codebook cleanup | U3 (design) |
+| **Factor graph / solving** | belief propagation; soft-violation energy | the CSP solver (GAC, forced-only commits) | June engine = learned BP; MCBP positive; MCTS/PUCT NEGATIVE on clean CSPs (CLOSED) -- MCTS/beam belongs on the PARSE side (choosing among the BT's top proposals), the solver as reward + certifier |
+| **CSP feedback between cycles** | dynamic attention-mask biases (built: the consumed-marks bias `pc × cnt`) | circuit breaker: one-hot toggle cutting beam branches | breaker fires only on a proof (UNSAT) |
+| **Search** | beam mass | top-k prune | the Nazaré coupling |
+| **Numbers** | magnitude phases (numeral θ) | exact executor values; certificates written back, never raw values | alternation ruling |
+
+**Measured on the way (11-01/02; ledger):** size does not buy TEST transfer (R4 4-layer reader, B3 3-layer breath: S1 FAIL; width
+and depth buy counterfactual robustness only); the organs (clock + zoom) buy step-type transfer; BT4 (BT3 + tree road + T6OFF: NO
+learned position anywhere) is the BT forward. **The run spread is ≈ 0.01 on wild** (the NMDB replication): reader claims need
+≥ 0.020 or seed twins (THE NUMBER law, reaffirmed).
