@@ -54835,3 +54835,21 @@ val mse: step 20 1.2086 vs NMDB's smoke 1.2083 | 2k 0.2339 vs 0.2335 | **4k 0.18
 - PREDICTION PATH CLEAN ✓. Running total 58/89.
 - **CONSEQUENCE (with HY 13:37):** HY's and U2's lag is caused by the **TURNING PLANES**: rotating planes that RoPE leaves idle. HY changed ONLY 8 such planes (sentence × gears up to 180°) and paid the same as U2, which turned all 32. The cost is present from step 20 (HY 1.2332 vs 1.2086). The quiet channels are load-bearing; even 8 of them turning costs the full price. **Prediction for T9 sharpens:** T9 keeps 17 quiet planes but turns 15 (6 offset + 6 sentence + 3 slow), so by this read T9 should ALSO lag. The DIAGNOSIS bar (T9 − T6 ≥ +0.010) now leans FAIL, unless the cost scales with the fast gears specifically (HY's sentence planes include the 180° and 60° gears).
 - **Engineering note:** lfq3's verdict snippet asked for step 10000; the last step logs as 9999 → KeyError → set -e stopped the chain before T9. T9 relaunched unchanged as unit lfq3b at 14:53 (the patch is already applied).
+
+### 2026-11-01 18:34 — T9 VERDICT (unit lfq3b done; NMDBT9 = T6 offset | T6 sentence | gears 7–9 × token | 17 quiet planes; no RoPE; 30k): **PRIMARY FAIL, PARITY FAIL, DIAGNOSIS FAIL**
+Training: val mse 0.1237 at 29999 (HY 0.1236, U2 0.1238, NMDB30 0.1199).
+- **PRIMARY: frozen CLK3_241 on NMDBT9 wild = 0.3467 < 0.3593: FAIL.**
+- **PARITY: NMDBT9 − NMDB30 = −0.0171** (paired SE 0.0074, z 2.29; 134 vs 99): **FAIL.**
+- **DIAGNOSIS: NMDBT9 − NMDBT6 = +0.0020** (z 0.27) **< +0.010: FAIL.** vs NMDBHY −0.0039 (z 0.54); vs the teacher −0.0327.
+- PREDICTIONS: PRIMARY ✗, PARITY ✗, DIAGNOSIS ✗. Running total 58/92.
+- **THE SYNTHESIS (U2, HY, T9, HY0 together):**
+| form | sentence-index planes | quiet planes | val mse @30k | wild frozen |
+|---|---|---|---|---|
+| NMDB30 (RoPE) | none | ~16 | 0.1199 | 0.3637 |
+| HY0 (NMDB math, T6 path, 10k) | none (speed 0) | ~16 | = NMDB to 3e-4 | — |
+| U2 | 16 | 0 | 0.1238 | 0.3447 |
+| HY | 8 | ~8 | 0.1236 | 0.3506 |
+| T9 | 6 | 17 | 0.1237 | 0.3467 |
+Three different plane layouts land on the SAME val mse (±0.0001) and the same wild band (0.345–0.351, pairwise ties at z < 0.8). The quiet-plane count (0, 8, 17) does NOT matter. The ONE thing all three costly forms share, and HY0 lacks, is **rotation by the SENTENCE INDEX**. That refutes this morning's 'quiet channels' mechanism (09:42, mine) as the cost; the 13:37 'turning planes' read narrows to: the cost is the sentence address itself. The val gap is systematic (0.0038 in three forms), not run noise.
+- **WHY, a reading (not yet tested):** the student is graded on IMITATING a teacher that has no notion of sentences. Any sentence-dependent rotation is an inductive bias the teacher lacks, and the student pays a fixed price to undo it in the coordinates it must match. That fits U1 (the BT, trained on the TASK, took T6 sentence + offset planes at parity). **The frozen-head swap measures Llama-likeness, which structurally penalizes any bias Llama lacks.** Since Llama is retired, that yardstick is the wrong one for judging the clock in the reader.
+- **NAMED (not fired):** (1) **T9-NS**: T9 with the 6 sentence planes made quiet (offset + slow + quiet only). Prediction: parity. It confirms or refutes 'the sentence address is the whole cost'. (2) The replication of NMDB (another loader seed, exported and read): still the run-spread floor every reader verdict needs. (3) A task-graded yardstick for the clock in the reader: the student's states read on the GSM8K BT bench (where the BT and the tree road live), not through a head tuned to Llama's coordinates.
