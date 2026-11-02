@@ -54853,3 +54853,17 @@ Training: val mse 0.1237 at 29999 (HY 0.1236, U2 0.1238, NMDB30 0.1199).
 Three different plane layouts land on the SAME val mse (±0.0001) and the same wild band (0.345–0.351, pairwise ties at z < 0.8). The quiet-plane count (0, 8, 17) does NOT matter. The ONE thing all three costly forms share, and HY0 lacks, is **rotation by the SENTENCE INDEX**. That refutes this morning's 'quiet channels' mechanism (09:42, mine) as the cost; the 13:37 'turning planes' read narrows to: the cost is the sentence address itself. The val gap is systematic (0.0038 in three forms), not run noise.
 - **WHY, a reading (not yet tested):** the student is graded on IMITATING a teacher that has no notion of sentences. Any sentence-dependent rotation is an inductive bias the teacher lacks, and the student pays a fixed price to undo it in the coordinates it must match. That fits U1 (the BT, trained on the TASK, took T6 sentence + offset planes at parity). **The frozen-head swap measures Llama-likeness, which structurally penalizes any bias Llama lacks.** Since Llama is retired, that yardstick is the wrong one for judging the clock in the reader.
 - **NAMED (not fired):** (1) **T9-NS**: T9 with the 6 sentence planes made quiet (offset + slow + quiet only). Prediction: parity. It confirms or refutes 'the sentence address is the whole cost'. (2) The replication of NMDB (another loader seed, exported and read): still the run-spread floor every reader verdict needs. (3) A task-graded yardstick for the clock in the reader: the student's states read on the GSM8K BT bench (where the BT and the tree road live), not through a head tuned to Llama's coordinates.
+
+### 2026-11-01 19:51 — BT4 VERDICT (BT3 + the tree road + T6OFF; 18k, seeds 0/1; weights .cache/gsmb_breath_BT4_s{0,1}.pt): **C0 PASS, B1 PASS, B2 FAIL**
+| read | BT4 s0 / s1 | BT3 s0 / s1 | mean diff |
+|---|---|---|---|
+| ORIG step | 0.965 / 0.964 | 0.958 / 0.952 | +0.010 |
+| TEST step | 0.167 / 0.150 | 0.158 / 0.155 | **+0.0021** |
+| TEST type | 0.303 / 0.291 | 0.306 / 0.289 | −0.0005 |
+| TEST pointers | 0.214 / 0.197 | 0.201 / 0.203 | +0.0035 |
+| TEST answer | 0.077 / 0.051 | 0.050 / 0.057 | +0.0105 |
+| CFNUM / CFNAME answer | 0.719 / 0.738 · 0.644 / 0.644 | 0.700 / 0.691 · 0.610 / 0.602 | **+0.033 · +0.038** |
+- **C0: PASS. B1 BUILD PARITY (≥ −0.010): PASS (+0.0021). B2 GAIN (≥ +0.010): FAIL.**
+- PREDICTIONS: B1 PASS ✓; B2 FAIL ✓ (predicted about +0.008; it came out +0.002). Running total 60/94.
+- **READ:** at BT3 width the tree road's TEST-step gain (+0.0135 on BT18S) mostly does not appear: width and the organs already carry what the road's role votes gave the pointers. The CF answers rise on BOTH seeds (+0.03 / +0.04), the road's answer-key-certified roles helping exactly where numbers and names are swapped. That is unbarred, but consistent on both seeds (twin rule struck: it banks as a read). The BT has NO learned position left (T6OFF), at parity.
+- **BUILD CONSEQUENCE:** BT4 is the BT going forward (conforming organs at no cost, a CF lift). The size arms (R4 / B3 / H16) are judged against it.
