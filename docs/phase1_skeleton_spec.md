@@ -55113,14 +55113,14 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
   - This is the first BP whose evidence the net cannot already hold, and the parse-side beam + circuit breaker in miniature.
   - The beliefs-as-attention-biases form stays named, but after BT7b it is not expected to add information either.
 
-### 2026-11-03 13:10 — BT7c-H0 PINNED: THE EXECUTOR HEADROOM READ (zero-training; before BT7c is built)
+### 2026-11-03 12:52 — BT7c-H0 PINNED: THE EXECUTOR HEADROOM READ (zero-training; before BT7c is built)
 
 Bryce asked whether CSP-solver feedback is what provides the adjustment between breaths. Yes: that is the alternation ruling, and the notebook's write-back plus the consumed-marks bias already carry the committed half of it. BT7c would add the executor's verdict on UNCOMMITTED candidates. The headroom corollary says: measure what such a factor could catch before building it.
 - **Read** (`scripts/gsm_bt7c_h0.py`, BT4T9NS_s0/s1 weights on T9-NS states, per the RoPE ruling): the BT6 gate commits (ρ0 fit on TRAIN[:600]). The executor runs the predicted program, and each gold step position gets three pre-named flags on its own value: hard (cannot execute — the UNSAT kind), neg (< 0), frac (non-integer). Gold false-flag rates come from the gold programs on TRAIN[:600].
 - **H0 bar:** at least one flag with a gold rate ≤ 0.02 on TRAIN[:600] must, on TEST, catch ≥ 0.10 of wrong steps with catch − false-flag-on-right-steps ≥ 0.05, on both seeds.
 - **Custody note:** the bar was written AFTER a 128-item smoke on seed 0. That smoke showed: hard ≈ 0 (the kind mask already keeps pointers on numbers and computed slots); neg gold 0.000, TEST catch 0.035 vs false 0.028; frac gold 0.054. The bar is the one I would have set anyway, but it is weaker evidence than a blind pin.
 - **PREDICTION:** H0 FAIL. The wrong steps on TEST mostly execute fine and look numerically ordinary (the TEST wall is type recognition, BT6). If it fails, the executor's leverage is NOT step-level value sanity; the next form is the program-level check (the answer key's own shape: a final value that is an integer and positive), or the solver's consistency across the whole graph.
-- **13:16 VERDICT: H0 FAIL** (predicted FAIL ✓; 78/120). `.cache/gsmb_bt7c_h0_BT4T9NS_s{0,1}.json`:
+- **12:54 VERDICT: H0 FAIL** (predicted FAIL ✓; 78/120). `.cache/gsmb_bt7c_h0_BT4T9NS_s{0,1}.json`:
   - **Eligible flags** (gold rate ≤ 0.02 on TRAIN[:600]): hard 0.000, neg 0.000. Frac (0.054) is not eligible.
   - **On TEST:**
 
@@ -55169,7 +55169,7 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
   - (a) MBR22 at 2 breaths (the settle reading: the same wild at half the loop compute? bar on parity).
   - (b) Reading breaths with a job: a Tree query per breath, re-queried where the delta stays high. The census says the loop has nothing to do after breath 2 unless something new enters it, and a query is exactly that new input.
 
-### 2026-11-03 13:35 — THE 8M ITERATION RIG (Bryce: "lets do 8m not 22m to iterate faster")
+### 2026-11-03 15:47 — THE 8M ITERATION RIG (Bryce: "lets do 8m not 22m to iterate faster")
 
 - **Ruling:** reader-architecture experiments run at 8M from now on. 22M is only for a form that has already won at 8M, as its confirmation.
   - The 8M rig is 2 tied layers (DR_LAYERS=2, DR_D=768).
@@ -55180,7 +55180,7 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
   - So the return per parameter is diminishing, but the 22M point is not waste. 8M is the right rig for iteration speed, not proven to be the "sweet spot" for fidelity.
 - **The named reader forms move to the rig:** (a) the 2-breath settle test, against MBR at 4 breaths; (b) reading breaths with a Tree query per breath.
 
-### 2026-11-03 13:38 — WORD GIVEN (Bryce: "word given for the parse-side beam"): BEAM PINNED (zero-training read; CPU)
+### 2026-11-03 15:48 — WORD GIVEN (Bryce: "word given for the parse-side beam"): BEAM PINNED (zero-training read; CPU)
 
 - **Read** (`scripts/gsm_beam_read.py`; BT4T9NS_s0/s1 weights on T9-NS states, the post-patch defaults):
   - The BT runs as always: the BT6 gate commits, with ρ0 fit on TRAIN[:600].
@@ -55196,11 +55196,11 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
 - **Pinned blind:** a 128-item smoke was running when this was written, and its output had not been seen.
 - **PREDICTIONS:** BEAM-H PASS; BEAM-1 FAIL (H0: numeric sanity doesn't separate right from wrong on TEST, and the breaker rarely fires because the kind mask prevents UNSAT).
 
-### 2026-11-03 13:50 — ALL IN ON 8M (Bryce: "forget about 22m lets go all in on 8m"); the 22M BEAM test cancelled; the 8M BEAM test launched (word given)
+### 2026-11-03 15:54 — ALL IN ON 8M (Bryce: "forget about 22m lets go all in on 8m"); the 22M BEAM test cancelled; the 8M BEAM test launched (word given)
 
 - **The 22M BEAM test was cancelled mid-search** (unit lfbeam stopped). Its BEAM=0 half had landed: 0.845 s/step steady on the MBR22 shape, 567 s wall for 601 steps. No checkpoint was left behind.
 - **The 8M BEAM speed test** (unit lfbeam8, `.cache/run_lfbeam8.log`) is the same protocol on the 8M MBR shape (DR_LAYERS=2, 8.07M): BEAM=0 vs 2, steady s/step over steps 200→400. Timing only, no bar.
-- **The 8M rig (13:35) is now THE line, not just a rig:** no further 22M reader runs are planned. The 22M results stay banked.
+- **The 8M rig (15:47) is now THE line, not just a rig:** no further 22M reader runs are planned. The 22M results stay banked.
 - **Open, Bryce's call:** the BT benches still read NMDBT9NS (22M) states under the RoPE ruling. Moving them to an 8M reader's states needs a GSM8K export from the 8M reader and a parity read; it is not done by this entry.
 
 ### 2026-11-03 15:57 — BEAM VERDICT: BEAM-H PASS, BEAM-1 PASS (1/2 predicted; BEAM-1 predicted FAIL) — 81/124
@@ -55218,3 +55218,4 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
   - (a) **BEAM-2, the beam inside the alternation:** the solver's chosen program is written back into the notebook and the BT breathes again (the post-hoc approximation removed).
   - (b) **A wider beam / λ beyond the grid edge** (λ_int hit 8, the top): read the oracle at 16 and 32 and a λ = ∞ hard-integer arm.
   - (c) **Training-time use:** the beam's solver-chosen programs as self-training targets on TRAIN only. This needs the custody gate: only answer-key-certified programs, the existing law.
+- **Ledger-time correction (15:59, read off the box):** five headers written this afternoon carried guessed times (13:10, 13:16, 13:35, 13:38, 13:50) instead of box times — the rule "a ledger time is read off the box" was broken. They are corrected to times anchored by the commits (b40ca8c1 12:55; c9961882 15:49; a4fc6e40 15:55) and the unit logs (lfbeamread start 15:51; lfbeam8 start 15:54). The BEAM pin was still written before its smoke output was read (the commit precedes the full read).
