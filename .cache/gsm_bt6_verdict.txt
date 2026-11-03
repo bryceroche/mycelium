@@ -1,0 +1,2 @@
+G1 BT5: rho0 0.95 / 0.99 | TEST step diff +0.0035 / +0.0033 (mean +0.0034; bar +0.010, both > 0) -> FAIL | ORIG diff +0.0130 / +0.0090
+G2 BT4: rho0 0.7 / 0.9 | TEST step diff -0.0010 / +0.0013 (mean +0.0001; bar +0.010, both > 0) -> FAIL | ORIG diff +0.0108 / +0.0099

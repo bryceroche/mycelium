@@ -55003,3 +55003,15 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
 - **LK0 (ceiling, val):** per-token oracle best breath (min teacher mse per token) vs breath 4: val mse lower by ≥ 0.010 (absolute, in the BREATH-line units). FAIL closes LK (nothing to brake).
 - **LK1 (only if LK0 PASSES; GPU export + frozen CLK3_241 wild read):** freeze a token at the first breath b ≥ 2 where ‖x_b − x_{b−1}‖/‖x_b‖ < θ (θ fit on train rows, min train mse); wild LK1 − MBR ≥ +0.010 paired. The settle signal gates at inference only; it never enters a loss (Goodhart fence).
 - **PREDICTIONS:** MB2 PASS (so LK does not fire); if it fires, LK0 FAIL.
+
+### 2026-11-02 18:38 — BT6 VERDICT (unit lfbt6 18:23–18:37; zero-training read): **G1 FAIL, G2 FAIL** (both as predicted)
+- **Custody:** the scheduled arm reproduces the banked TEST step (BT5_s0 0.1604, BT4_s0 0.1674) and the banked commit shares exactly.
+- **G1 (BT5 weights):** ρ0 0.95 / 0.99 (TRAIN fit). TEST step gated − scheduled = +0.0035 / +0.0033 (paired SE over steps 0.0030 / 0.0027), mean +0.0034 < +0.010. **FAIL.**
+- **G2 (BT4 weights):** ρ0 0.7 / 0.9. TEST step −0.0010 / +0.0013, mean +0.0001. **FAIL.**
+- **Reads:**
+  - **The gate inverts the timeline.** The schedule commits most slots in cycles 3–5 (ORIG [86, 124, 216, 1463, 4653, 2843]); the gate commits most in cycle 0 (ORIG [7487, 1471, 311, 100, 15, 1]; TEST [1636, 1109, 758, 395, 73, 7]). Waiting was never helping: committing what the net is sure of at once lets the executor write back sooner.
+  - **ORIG gains on all four weights:** step +0.0130 / +0.0090 / +0.0108 / +0.0099 (SE ~0.0018, z ≥ 5); ORIG answers +0.023 to +0.030. A real effect, on the fitted texts.
+  - **TEST barely moves:** TEST type stays 0.29–0.31 under both. The TEST wall is recognizing the step type on an unseen problem, not when to commit. The bridge's dial is not the TEST bottleneck.
+  - On BT5 the TEST sign is positive on both seeds (+0.0034), unlike BT5 vs BT4 (signs flipped). That is a small, stable, under-bar tilt, not a claim.
+- **WHAT THIS CLOSES:** "the fixed schedule is what held BT5 back on TEST". **WHAT STANDS:** the confidence gate as the bridge's quantizer (it is better than the schedule wherever the net knows the type; the build follows it). **Next form, named (not pinned, needs the word):** BT7, the belief-propagation dial. A few rounds of BP between breaths on the BT's proposed graph, with the solver's rules as factors; the gate reads the checked belief instead of the raw softmax. It adds information the softmax lacks (consistency with the neighbors), which is the only way a dial can move TEST type. Prediction to register with it.
+- PREDICTIONS G1 FAIL ✓, G2 FAIL ✓. Running total 69/107.
