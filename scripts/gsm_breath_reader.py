@@ -37,6 +37,7 @@ CYCLOCK = os.environ.get("BT_CYCLOCK") == "1"        # (ledger 10-31) slot queri
 ZOOM = os.environ.get("BT_ZOOM") == "1"              # (ledger 10-31) coarse-to-fine silhouette: p(type) = p(op) p(type | op); unsure -> op-level mask
 ZOOM_TAU = 0.5
 SOFT = os.environ.get("BT_SOFT") == "1"              # (ledger 11-01) the soft notebook: uncommitted slots show sum_t p(t) C_t, tau by cycle
+GATE = os.environ.get("BT_GATE", "")                 # (ledger 11-02 BT6) inference: commit iff radius >= rho0 (1 - c/5); "" = the schedule
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -295,9 +296,12 @@ def score(net, its, states, tree, seed=0):
                 conf = np.where(ty == STOP, pt, pt * ca * cb)                                     # the radius of each proposal
                 target = math.ceil(K * (c + 1) / NCYC)
                 for b in range(B):
-                    need = target - com[b].sum()
-                    if need <= 0: continue
-                    cand = [k for k in np.argsort(-conf[b]) if not com[b, k]][:need]
+                    if GATE:   # BT6: the confidence dial decides WHEN; the last cycle forces every remaining slot
+                        cand = [k for k in np.argsort(-conf[b]) if not com[b, k] and conf[b, k] >= float(GATE) * (1 - c / (NCYC - 1))]
+                    else:
+                        need = target - com[b].sum()
+                        if need <= 0: continue
+                        cand = [k for k in np.argsort(-conf[b]) if not com[b, k]][:need]
                     for k in cand:
                         com[b, k] = True; typ[b, k] = ty[b, k]; rad[b, k] = conf[b, k]; IA[b, k], IB[b, k] = ia[b, k], ib[b, k]; cyc[b, k] = c
                         op = TYPES[ty[b, k]][0] if ty[b, k] != STOP else "."
