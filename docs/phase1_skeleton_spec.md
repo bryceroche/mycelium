@@ -55093,3 +55093,22 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
 - **Read:** the steady s/step over steps 200→400, from the cumulative lines, so step 0 (compile + the BEAM search) is excluded. Total wall time is reported separately, so the one-off search cost is visible. Parser check on the MBR22 log: 0.860 s/step.
 - **Timing only, no bar:** BEAM changes kernel schedules, not math, but sums may add in a different order, so it is not bit-identical. No accuracy claim is made, and a pinned run never switches BEAM mid-flight.
 - **Unit lfbeam** waits for the whole lfmbr22 chain (GPU) and for lfrope, because it patches distill_reader.py. Log: `.cache/run_lfbeam.log`.
+
+### 2026-11-03 11:36 — BT7b VERDICT: C0 PASS, B7b FAIL, B7bT FAIL (2/3 predicted; B7bT predicted PASS) — 77/119
+
+`.cache/gsm_bt7b_verdict.txt` (unit lfbt7b, done 11:36):
+- **C0 PASS:** ORIG step under the BT6 gate 0.918 / 0.911 (bar 0.90 on both seeds). ✓ predicted.
+- **B7b FAIL:** TEST step, BP − BT6 gate: −0.0003 / +0.0003 (mean +0.0000; bar +0.010 with both > 0). ORIG +0.0023 / +0.0006. ✓ predicted.
+- **B7bT FAIL:** TEST type: +0.0008 / +0.0005 (mean +0.0006). ORIG +0.0025 / +0.0007. ✗ predicted PASS.
+- **Read beside, the extra loss alone (BT6 gate, BT7b weights vs BT5 weights):** TEST step 0.1456 vs 0.1639 and 0.1450 vs 0.1609 (≈ −0.017, same sign on both seeds); TEST type 0.2705 vs 0.2961 and 0.2866 vs 0.3047 (≈ −0.021). ORIG is unchanged (FINAL step 0.900 / 0.894). Both seeds agree, but this is an unbarred read.
+- **What it says:**
+  - **The training fixed the damage.** BT7a's factor A cost −0.028 TEST step; trained, the same factor costs nothing, and ORIG moves the right way by a hair. So the kind evidence now exists.
+  - **It carries nothing new.** The pointer heads under free kinds learned to agree with the type head. The factor then re-counts evidence the type logits already hold, so BP has nothing to add (the redundancy reading).
+  - **The extra loss costs transfer.** The free-kind CE spends capacity on fitting kinds on the training texts, and TEST type recognition, which is the wall (BT6), drops.
+- **What this closes:** "BP whose factors are read off the same network's own heads". Trained or untrained, an internal factor gives either noise (BT7a) or an echo (BT7b).
+- **What stands:** BP as the line; the prefix / slot-ref messages (harmless); C0.
+- **Next form, named (patience charter; needs the word): BT7c = BP with a factor from OUTSIDE the network.**
+  - The executor/solver factor: a candidate step whose pointers name values that make the partial program fail to execute (or produce a non-integer or negative value where the gold register never has one) is down-weighted in the beliefs.
+  - Only an UNSAT proof crosses hard (the bridge rule); everything else is a soft bias.
+  - This is the first BP whose evidence the net cannot already hold, and the parse-side beam + circuit breaker in miniature.
+  - The beliefs-as-attention-biases form stays named, but after BT7b it is not expected to add information either.
