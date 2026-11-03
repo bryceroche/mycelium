@@ -264,7 +264,8 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
     st.flush(); print(f"[gsm] {len(uniq)} texts, {int(start[-1])} words -> {args.gsm} ({CKPT})", flush=True); sys.exit(0)
 
 # ---- train ------------------------------------------------------------------------------------------------------
-assert not os.path.exists(CKPT), f"{CKPT} exists -- refusing to overwrite"
+LK = os.environ.get("DR_LK") == "1"   # (ledger 11-02 LK0) read a trained MBR ckpt: the per-token best-breath ceiling
+assert LK or not os.path.exists(CKPT), f"{CKPT} exists -- refusing to overwrite"
 samples, ids, mask, _ = tokenize(TRAIN_JSONL)
 teach = np.load(STATES_NPY.format(split=TRAIN_SPLIT), mmap_mode="r")
 assert teach.shape == (len(ids), T_ALG, H_TRUNK)
@@ -420,6 +421,18 @@ def loader():
               + (gsm_rows(np.sort(rng.choice(g_tr, BATCH, replace=False))) if GSM else ()) + (t6_rot(tsent[idx], mask[idx]) if T6 else ()))
 
 
+if LK:   # LK0: per-token teacher mse at each breath on the val rows; the oracle takes each token's best breath
+    assert BR and os.path.exists(CKPT); ld = safe_load(CKPT); assert set(ld) == set(p), f"ckpt keys differ: {set(ld) ^ set(p)}"
+    for k in p: p[k].assign(ld[k].to(Device.DEFAULT).cast(dtypes.float)).realize()
+    se, wt = [], []
+    for b in [va_idx[i:i + BATCH] for i in range(0, len(va_idx) - BATCH + 1, BATCH)]:
+        x0, am, tm, tg, db, cs, sn = batch_of(b); tgf = tg.cast(dtypes.float)
+        se.append(np.stack([((head(p, xb) - tgf) ** 2).mean(-1).numpy() for xb in body(p, x0, am, db, (cs, sn), every=True)]))   # (BR, B, T)
+        wt.append(tm.numpy())
+    se, wt = np.concatenate(se, 1) * INV_VAR, np.concatenate(wt, 0); m = wt > 0
+    per = [float(se[k][m].mean()) for k in range(BR)]; orc = float(se.min(0)[m].mean()); best = np.bincount(se.argmin(0)[m], minlength=BR)
+    print(f"[lk0] {CKPT}: per-breath val mse {' / '.join(f'{v:.4f}' for v in per)} | oracle {orc:.4f} | breath4 - oracle {per[-1] - orc:+.4f} "
+          f"(bar >= +0.010) -> {'PASS' if per[-1] - orc >= 0.010 else 'FAIL'} | best-breath share {best.tolist()}", flush=True); sys.exit(0)
 threading.Thread(target=loader, daemon=True).start()
 VB = [va_idx[i:i + BATCH] for i in range(0, len(va_idx) - BATCH + 1, BATCH)]
 t0 = time.time(); hist = []
