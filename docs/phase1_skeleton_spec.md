@@ -55112,3 +55112,29 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
   - Only an UNSAT proof crosses hard (the bridge rule); everything else is a soft bias.
   - This is the first BP whose evidence the net cannot already hold, and the parse-side beam + circuit breaker in miniature.
   - The beliefs-as-attention-biases form stays named, but after BT7b it is not expected to add information either.
+
+### 2026-11-03 13:10 — BT7c-H0 PINNED: THE EXECUTOR HEADROOM READ (zero-training; before BT7c is built)
+
+Bryce asked whether CSP-solver feedback is what provides the adjustment between breaths. Yes: that is the alternation ruling, and the notebook's write-back plus the consumed-marks bias already carry the committed half of it. BT7c would add the executor's verdict on UNCOMMITTED candidates. The headroom corollary says: measure what such a factor could catch before building it.
+- **Read** (`scripts/gsm_bt7c_h0.py`, BT4T9NS_s0/s1 weights on T9-NS states, per the RoPE ruling): the BT6 gate commits (ρ0 fit on TRAIN[:600]). The executor runs the predicted program, and each gold step position gets three pre-named flags on its own value: hard (cannot execute — the UNSAT kind), neg (< 0), frac (non-integer). Gold false-flag rates come from the gold programs on TRAIN[:600].
+- **H0 bar:** at least one flag with a gold rate ≤ 0.02 on TRAIN[:600] must, on TEST, catch ≥ 0.10 of wrong steps with catch − false-flag-on-right-steps ≥ 0.05, on both seeds.
+- **Custody note:** the bar was written AFTER a 128-item smoke on seed 0. That smoke showed: hard ≈ 0 (the kind mask already keeps pointers on numbers and computed slots); neg gold 0.000, TEST catch 0.035 vs false 0.028; frac gold 0.054. The bar is the one I would have set anyway, but it is weaker evidence than a blind pin.
+- **PREDICTION:** H0 FAIL. The wrong steps on TEST mostly execute fine and look numerically ordinary (the TEST wall is type recognition, BT6). If it fails, the executor's leverage is NOT step-level value sanity; the next form is the program-level check (the answer key's own shape: a final value that is an integer and positive), or the solver's consistency across the whole graph.
+- **13:16 VERDICT: H0 FAIL** (predicted FAIL ✓; 78/120). `.cache/gsmb_bt7c_h0_BT4T9NS_s{0,1}.json`:
+  - **Eligible flags** (gold rate ≤ 0.02 on TRAIN[:600]): hard 0.000, neg 0.000. Frac (0.054) is not eligible.
+  - **On TEST:**
+
+    | Flag | s0 catch | s0 false | s1 catch | s1 false | Bar |
+    |---|---|---|---|---|---|
+    | hard | 0.006 | 0.003 | 0.004 | 0.000 | FAIL |
+    | neg | 0.035 | 0.028 | 0.033 | 0.029 | FAIL |
+
+  - **For the record:** frac catches 0.138 / 0.135 with false 0.136 / 0.159, so it doesn't discriminate. Any-flag: 0.175 / 0.168 vs 0.165 / 0.184.
+  - **On ORIG the flags do discriminate** (frac 0.130–0.152 vs 0.035–0.038; neg 0.023–0.051 vs 0.002–0.003), but ORIG has little left to fix (step 0.97).
+  - **What it says:** on TEST a wrong step looks numerically just like a right one. Many "right" steps (the right op and the right pointers) carry odd values too, because they read a wrong upstream slot. Step-level value sanity cannot tell the TEST errors apart. The kind mask already prevents the hard (UNSAT) failures structurally.
+  - **What this closes:** BT7c in its step-level executor-sanity form (it would have no headroom).
+  - **What stands:** solver feedback as the between-breath channel (the alternation ruling); the committed write-back that already exists.
+  - **Next form, named (needs the word):** feedback that carries INFORMATION THE TEXT IMPLIES, not numeric sanity:
+    - (a) the program-level check: does the whole program's answer have the answer key's shape? This would be graded at TRAIN time only, never using the TEST key.
+    - (b) the parse-side beam: keep the top-k type proposals per slot alive across breaths and let the solver's whole-graph consistency choose. This needs a factor graph with more than one constraint per value, which GSM8K word problems rarely give.
+    - Honest reading: at 0.15 TEST step the wall is recognising the step type from text. No grader downstream of the reader can supply that.
