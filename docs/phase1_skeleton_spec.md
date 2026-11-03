@@ -55195,3 +55195,10 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
 - Read beside: breaker only (λ = 0); ORIG; the share of items where everything was pruned.
 - **Pinned blind:** a 128-item smoke was running when this was written, and its output had not been seen.
 - **PREDICTIONS:** BEAM-H PASS; BEAM-1 FAIL (H0: numeric sanity doesn't separate right from wrong on TEST, and the breaker rarely fires because the kind mask prevents UNSAT).
+
+### 2026-11-03 13:50 — ALL IN ON 8M (Bryce: "forget about 22m lets go all in on 8m"); the 22M BEAM test cancelled; the 8M BEAM test launched (word given)
+
+- **The 22M BEAM test was cancelled mid-search** (unit lfbeam stopped). Its BEAM=0 half had landed: 0.845 s/step steady on the MBR22 shape, 567 s wall for 601 steps. No checkpoint was left behind.
+- **The 8M BEAM speed test** (unit lfbeam8, `.cache/run_lfbeam8.log`) is the same protocol on the 8M MBR shape (DR_LAYERS=2, 8.07M): BEAM=0 vs 2, steady s/step over steps 200→400. Timing only, no bar.
+- **The 8M rig (13:35) is now THE line, not just a rig:** no further 22M reader runs are planned. The 22M results stay banked.
+- **Open, Bryce's call:** the BT benches still read NMDBT9NS (22M) states under the RoPE ruling. Moving them to an 8M reader's states needs a GSM8K export from the 8M reader and a parity read; it is not done by this entry.
