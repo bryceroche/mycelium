@@ -1,0 +1,4 @@
+B7 BT5: TEST diff_step -0.0274 / -0.0294 (mean -0.0284; bar +0.010, both > 0) -> FAIL | ORIG -0.2557 / -0.2732 | custody OK
+B7T BT5: TEST diff_type -0.0435 / -0.0422 (mean -0.0429; bar +0.010, both > 0) -> FAIL | ORIG -0.2562 / -0.2738 | custody OK
+B7 (read, BT4) BT4: TEST diff_step -0.0322 / -0.0239 (mean -0.0280; bar +0.010, both > 0) -> FAIL | ORIG -0.2722 / -0.2864 | custody OK
+B7T (read, BT4) BT4: TEST diff_type -0.0382 / -0.0344 (mean -0.0363; bar +0.010, both > 0) -> FAIL | ORIG -0.2736 / -0.2868 | custody OK
