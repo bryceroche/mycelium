@@ -55138,3 +55138,33 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
     - (a) the program-level check: does the whole program's answer have the answer key's shape? This would be graded at TRAIN time only, never using the TEST key.
     - (b) the parse-side beam: keep the top-k type proposals per slot alive across breaths and let the solver's whole-graph consistency choose. This needs a factor graph with more than one constraint per value, which GSM8K word problems rarely give.
     - Honest reading: at 0.15 TEST step the wall is recognising the step type from text. No grader downstream of the reader can supply that.
+
+### 2026-11-03 13:02 — MBR22 VERDICT: M22P PASS, M22B FAIL (2/2 predicted; 80/122) + THE DELTA CENSUS; 13:04 the RoPE patch landed
+
+`.cache/run_lfmbr22.log` (8 tied layers × 4 breaths, 22.2M, 30k at 0.862 s/step; frozen CLK3_241 wild read):
+- **M22P PASS:** wild fac-exact 0.3588 ≥ 0.3479. ✓ predicted.
+- **M22B FAIL:** 0.3588 − 0.3579 = +0.0009 (bar +0.020). ✓ predicted.
+- **Paired reads (beside):**
+  - vs NMDBT9NS 0.3671: −0.0083 (z −1.13)
+  - vs NMDBT9NSR1 0.3486: +0.0102 (z +1.37)
+  - vs MBR (8M) 0.3320: **+0.0268 (z +3.49)**
+  - vs NMDB30 0.3637: −0.0049 (z −0.64)
+- **What it says:** at 22M the breathing reader reaches one-pass parity, sitting between the two T9-NS seeds. The 8M MBR gap (MB1/MB2 FAIL) was capacity, as MBR-C suggested, and size closed it. The loop buys no wild accuracy at either size.
+- **Per-breath val mse:** 0.1569 > 0.1495 > 0.1495 > 0.1498. Breath 2 is the last that helps; breaths 3–4 are flat to slightly worse.
+- **THE DELTA CENSUS (NNUE; diagnostic, never supervised).** The relative change is read against the 1/b pure-accumulation baseline:
+
+  | Breath | q50 | 1/b | q10–q99 |
+  |---|---|---|---|
+  | 2 | 0.546 | 0.500 | 0.477–0.626 |
+  | 3 | 0.131 | 0.333 | 0.108–0.174 |
+  | 4 | 0.069 | 0.250 | 0.058–0.088 |
+
+  - **The reader SETTLES after breath 2:** the updates at breaths 3–4 run at 0.39× and 0.27× of pure accumulation.
+  - **It settles uniformly, not token by token:** the q10–q99 band is narrow, and the share below 0.01 is 0.000 at every breath. No token freezes at the pinned 0.01 line, so NNUE-style per-token skipping has nothing to skip. All tokens quiet together.
+  - Together with the mse line, this suggests a 2-breath reader would read the same at half the loop's compute. That is a reading, not a claim; it needs its own pin.
+- **The RoPE patch landed (unit lfrope, 13:04):** six scripts were edited as staged, and the default states load (648206 × 2048, teacher space as before).
+  - The chain's guard check printed nothing. Rerun by hand, the guard DOES refuse (`RD_STATES=gsmb_student_states.npy ... is a RoPE-era reader`).
+  - The check line was faulty, not the guard: under `pipefail`, python's exit 1 failed the `( ... | grep -q )` subshell, so the `&& echo` was skipped. The patched scripts are committed with this entry.
+- **Next forms, named (needs the word):**
+  - (a) MBR22 at 2 breaths (the settle reading: the same wild at half the loop compute? bar on parity).
+  - (b) Reading breaths with a job: a Tree query per breath, re-queried where the delta stays high. The census says the loop has nothing to do after breath 2 unless something new enters it, and a query is exactly that new input.

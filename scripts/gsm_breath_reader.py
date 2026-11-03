@@ -51,6 +51,15 @@ PARENT = np.array([GD.OPS.index(o) for o, _, _ in TYPES] + [NOP - 1])
 SPLITS = TR.SPLITS
 
 
+def rolef_name():
+    """the role feats built on the same reader states (RoPE retirement ruling 11-03): a mismatch fails loudly"""
+    st = os.environ.get("RD_STATES", "gsmb_t9ns_states.npy")
+    pair = {"gsmb_t9ns_states.npy": "gsmb_role_feats_t9ns.npy", "gsmb_student_states.npy": "gsmb_role_feats.npy"}
+    rf = os.environ.get("BT_ROLEF", pair.get(st, ""))
+    assert rf and (st not in pair or rf == pair[st]), f"role feats {rf!r} were not built on the reader states {st!r}"
+    return rf
+
+
 def step_type(op, a, b):
     return STOP if op == "." else TYPES.index((op, a[0], b[0]))
 
@@ -342,7 +351,7 @@ if __name__ == "__main__":
     import torch
     torch.set_num_threads(int(os.environ.get("TOY_THREADS", "6"))); torch.manual_seed(SEED); rng = np.random.default_rng(SEED)
     Dt, states = TR.load(); tree = TR.load_tree(); train = Dt["TRAIN"]
-    RF = np.load(GD.V1.C(os.environ.get("BT_ROLEF", "gsmb_role_feats.npy")), mmap_mode="r") if ROLE else None   # BT_ROLEF: ledger 11-02 CY
+    RF = np.load(GD.V1.C(rolef_name()), mmap_mode="r") if ROLE else None   # the role feats follow the states (ledger 11-03)
     net = make_net(); opt = torch.optim.AdamW(net.parameters(), lr=LR); npar = sum(p.numel() for p in net.parameters())
     print(f"[bt] {TAG} D {D} reader {NLE} + breath {NLB} (weight-tied x {NCYC} cycles) silhouette {DB} atoms {NT} | params {npar}", flush=True)
     t0 = time.time(); curve = []

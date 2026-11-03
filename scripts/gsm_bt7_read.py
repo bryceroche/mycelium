@@ -24,7 +24,7 @@ TAG = os.path.basename(BR.LOAD).replace("gsmb_breath_", "").replace(".pt", "")
 assert BR.LOAD and os.path.exists(BR.LOAD) and not BR.GATE and not BR.ORACLE
 torch.set_num_threads(int(os.environ.get("TOY_THREADS", "3")))
 Dt, states = BR.TR.load(); tree = BR.TR.load_tree()
-if BR.ROLE: BR.RF = np.load(BR.GD.V1.C(os.environ.get("BT_ROLEF", "gsmb_role_feats.npy")), mmap_mode="r")
+if BR.ROLE: BR.RF = np.load(BR.GD.V1.C(BR.rolef_name()), mmap_mode="r")
 net = BR.make_net(); net.load_state_dict(torch.load(BR.LOAD)); net.eval()
 K, NT, STOP, NCYC = BR.K, BR.NT, BR.STOP, BR.NCYC
 KIND = np.array([[BR.KINDS.index(a), BR.KINDS.index(b)] for _, a, b in BR.TYPES])     # (NT-1, 2) the kind each type claims per role

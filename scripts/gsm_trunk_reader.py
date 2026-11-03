@@ -43,8 +43,12 @@ def load():
         for it, s in zip(its, idx[sp]):
             it["st0"] = s
             nl = {n.lower(): n for n in it["names"]}; it["surf"] = [nl.get(x, x) if f else x for x, f in zip(it["toks"], it["isn"])]
-    # RD_STATES (ledger 10-31, Llama retired): the reader's word states; default = the banked Llama trunk's
-    return Dt, np.load(GD.V1.C(os.environ.get("RD_STATES", "gsmb_trunk_states.npy")), mmap_mode="r")
+    # RD_STATES (ledger 10-31, Llama retired): the reader's word states; (default since 11-03: the T9-NS student, below)
+    # THE RoPE RETIREMENT RULING (ledger 11-03): the reader is the T9-NS student; RoPE-era states need RD_LEGACY=1
+    st = os.environ.get("RD_STATES", "gsmb_t9ns_states.npy")
+    if st in ("gsmb_trunk_states.npy", "gsmb_student_states.npy") and os.environ.get("RD_LEGACY") != "1":
+        raise SystemExit(f"RD_STATES={st} is a RoPE-era reader (retired 11-03); set RD_LEGACY=1 for a banked comparison or control")
+    return Dt, np.load(GD.V1.C(st), mmap_mode="r")
 
 
 def load_tree():

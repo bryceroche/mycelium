@@ -40,6 +40,8 @@ T6 = os.environ.get("DR_T6") in ("1", "2", "3")         # (ledger 10-31, U2; DR_
 HY = os.environ.get("DR_T6") == "2"
 T9NS = os.environ.get("DR_T9NS") == "1"   # (ledger 11-01) T9 with its 6 sentence planes QUIET (the sentence-address test)
 RSEED = int(os.environ.get("DR_SEED", "0"))   # (ledger 11-01) the replication: init seed RSEED, loader seed 2 + RSEED (0 = the banked runs)
+assert (os.environ.get("DR_T6") in ("1", "3")) or os.environ.get("DR_LEGACY_ROPE") == "1", \
+    "RoPE retired (ledger 11-03): the reader runs on the T9 clock (DR_T6=3); RoPE forms (no DR_T6 / DR_T6=2) need DR_LEGACY_ROPE=1"
 T9 = os.environ.get("DR_T6") == "3"   # (ledger 11-01) T6 offset | T6 sentence | gears 7-9 x token | quiet planes
 # (U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
 # SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
