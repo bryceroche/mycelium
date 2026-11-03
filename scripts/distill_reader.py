@@ -44,6 +44,7 @@ T9 = os.environ.get("DR_T6") == "3"   # (ledger 11-01) T6 offset | T6 sentence |
 # (U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
 # SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
 GSM = os.environ.get("DR_GSM") == "1"              # + GSM8K TRAIN text (ledger 10-31): a native head on the BANKED trunk word states
+BR = int(os.environ.get("DR_BREATHS", "0"))      # (ledger 11-02) THE BREATHING READER: DR_LAYERS weight-tied layers x BR breaths
 WARM = os.environ.get("DR_WARM", "")               # continue from this checkpoint (every key must match)
 SAVE_AT = int(os.environ.get("DR_SAVE_AT", 0))     # an extra snapshot at this step (-> ..._{TAG}_s{step}.safetensors)
 DBNPY, DBP = ".cache/readerdb_{split}.npy", 256
@@ -109,6 +110,20 @@ def t6_rot(sent, tm):
     return np.cos(a), np.sin(a)
 
 
+if BR:   # (ledger 11-02 MBR) per-breath plane masks for the coarse-to-fine clock + the query-only breath stamp, constants outside the JIT
+    assert T9 and T9NS, "the breathing reader runs on the T9-NS clock (no RoPE)"
+    _UNLOCK = {4: (3, 2, 1, 0), 3: (3, 1, 0), 2: (3, 0), 1: (0,)}[BR]       # first unlocked offset gear (index into T6_SPEEDS, fastest = 0)
+    _GQ = np.radians(np.asarray(CK.T6_SPEEDS, np.float32))
+    BRM, BRQC, BRQS = [], [], []
+    for _b in range(BR):
+        _m = np.ones(HD // 2, np.float32); _m[:_UNLOCK[_b]] = 0.0               # offset planes [0:6): the faster gears quiet this breath
+        _qa = np.zeros(HD // 2, np.float32); _qa[15:21] = (_b + 1) * _GQ        # the breath stamp, queries only, quiet planes [15:21)
+        _m, _qa = np.concatenate([_m, _m]), np.concatenate([_qa, _qa])
+        BRM.append(Tensor(_m, dtype=dtypes.float).reshape(1, 1, 1, HD).contiguous().realize())
+        BRQC.append(Tensor(np.cos(_qa), dtype=dtypes.float).reshape(1, 1, 1, HD).contiguous().realize())
+        BRQS.append(Tensor(np.sin(_qa), dtype=dtypes.float).reshape(1, 1, 1, HD).contiguous().realize())
+
+
 def init_params(mean_out):
     rng = np.random.default_rng(RSEED)
     nrm = lambda *s: Tensor(rng.normal(0, 1 / math.sqrt(s[0]), s).astype(np.float32), dtype=dtypes.float).contiguous()
@@ -128,20 +143,31 @@ def init_params(mean_out):
 
 
 def forward(p, x0, am, db=None, rc=None):
-    return _rms_norm(body(p, x0, am, db, rc), p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
+    return head(p, body(p, x0, am, db, rc))
 
 
-def body(p, x0, am, db=None, rc=None):
+def head(p, x):
+    return _rms_norm(x, p["fnorm"], EPS) @ p["w_out"] + p["b_out"]
+
+
+def body(p, x0, am, db=None, rc=None, every=False):
     B = x0.shape[0]
     x = x0.cast(dtypes.float) @ p["w_in"]
     if db is not None:
         x = x + db.cast(dtypes.float) @ p["w_db"]
-    for i in range(NL):
+    xs = []
+    for br in range(max(BR, 1)):
+      if BR:   # the coarse-to-fine clock: quiet planes read cos 1 / sin 0
+        kc, ks = rc[0] * BRM[br] + (1 - BRM[br]), rc[1] * BRM[br]
+      for i in range(NL):
         h = _rms_norm(x, p[f"an{i}"], EPS)
         q = (h @ p[f"wq{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
         k = (h @ p[f"wk{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
         v = (h @ p[f"wv{i}"]).reshape(B, T_ALG, NH, HD).transpose(1, 2)
-        if rc is None: q, k = _apply_rope(q, k, COS, SIN, T_ALG)
+        if BR:
+            q, k = q * kc + _rotate_half(q) * ks, k * kc + _rotate_half(k) * ks
+            q = q * BRQC[br] + _rotate_half(q) * BRQS[br]                                            # the breath stamp (queries only)
+        elif rc is None: q, k = _apply_rope(q, k, COS, SIN, T_ALG)
         else: q, k = q * rc[0] + _rotate_half(q) * rc[1], k * rc[0] + _rotate_half(k) * rc[1]   # THE T6 ADDRESS (no RoPE)
         sc = (q @ k.transpose(-2, -1)) * (1 / math.sqrt(HD)) + am
         a = sc.clip(-1e4, 1e4).softmax(-1)
@@ -149,7 +175,8 @@ def body(p, x0, am, db=None, rc=None):
         if FF:
             h2 = _rms_norm(x, p[f"fn{i}"], EPS)
             x = x + ((h2 @ p[f"wg{i}"]).silu() * (h2 @ p[f"wu{i}"])) @ p[f"wd{i}"]
-    return x
+      xs.append(x)
+    return xs if every else x
 
 
 def addmask(tm):
@@ -207,7 +234,7 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
     import gsm_bench_data as GD, gsm_trunk_states as GTS
     from tokenizers import Tokenizer
     assert os.path.exists(CKPT) and not os.path.exists(args.gsm), f"need {CKPT}; refusing to overwrite {args.gsm}"
-    assert not T6, "the T6 student's GSM8K export needs GSM8K sentence indices (not built yet)"
+    from phase1_algebra_head import sent_indices   # (ledger 11-02 CY) the training split's own segmenter, so T6 forms export too
     Dt, Q = GTS.texts(); tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
     uniq = list(dict.fromkeys(q for sp in Q.values() for q in sp)); enc = [tok.encode(q) for q in uniq]
     assert max(len(e.ids) for e in enc) <= T_ALG
@@ -226,10 +253,12 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
             n = len(enc[i].ids); ids[r, :n] = enc[i].ids; m[r, :n] = 1
             if DBIN: db[r, :n] = RDB.lookup(store, RDB.row_keys(ids[r], n)) * dscale     # as built: backoff, N >= 3
         xin = (Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None)
+        rc = tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(np.stack([sent_indices(uniq[i], enc[i].offsets, m[r]).astype(np.int8)
+                                                                    for r, i in enumerate(sl)]), m)) if T6 else None
         if os.environ.get("DR_HEAD") == "nat":   # the GSM form's native head (trained on the banked trunk word states)
-            o = (_rms_norm(body(p, *xin), p["fnorm"], EPS) @ p["w_nat"] + p["b_nat"]).realize().numpy()
+            o = (_rms_norm(body(p, *xin, rc), p["fnorm"], EPS) @ p["w_nat"] + p["b_nat"]).realize().numpy()
         else:
-            o = forward(p, *xin).realize().numpy()
+            o = forward(p, *xin, rc).realize().numpy()
         assert np.isfinite(o).all()
         for r, i in enumerate(sl): st[start[i]:start[i + 1]] = o[r, al[i]].astype(np.float16)
     st.flush(); print(f"[gsm] {len(uniq)} texts, {int(start[-1])} words -> {args.gsm} ({CKPT})", flush=True); sys.exit(0)
@@ -301,15 +330,34 @@ INV_VAR = 1.0 / var_t
 def loss_fn(out, tgt, tm, inv=None):
     # .contiguous() = schedule boundaries: without them tinygrad fuses the w_out matmul's reduction under the per-row
     # mean and recomputes per-row/per-batch reductions inside the backward's elementwise kernels (13.7 s/step -> 0.28)
-    out = out.contiguous(); tgt = tgt.cast(dtypes.float); n = tm.sum().contiguous()
-    mse = (((out - tgt) ** 2).mean(-1) * tm).sum() / n * (INV_VAR if inv is None else inv)
-    cos = (out * tgt).sum(-1).contiguous() / ((out * out).sum(-1).sqrt().contiguous() * (tgt * tgt).sum(-1).sqrt().contiguous() + 1e-6)
-    return mse + ((1 - cos) * tm).sum() / n, mse
+    # (11-02) per-row terms + weights as buffers too: the grad reaching out stays elementwise (MBR: 1.55 -> 0.25 s/step)
+    out = out.contiguous(); tgt = tgt.cast(dtypes.float); wr = (tm / tm.sum()).contiguous()
+    se = ((out - tgt) ** 2).mean(-1).contiguous()
+    cos = ((out * tgt).sum(-1).contiguous() / ((out * out).sum(-1).sqrt().contiguous() * (tgt * tgt).sum(-1).sqrt().contiguous() + 1e-6)).contiguous()
+    mse = (se * wr).sum() * (INV_VAR if inv is None else inv)
+    return mse + ((1 - cos) * wr).sum(), mse
+
+
+BRW = [(b + 1) / sum(range(1, BR + 1)) for b in range(BR)]   # (MBR) deep supervision: every breath distilled, later breaths weigh more
+BRWT = Tensor(np.asarray(BRW or [0.0], np.float32), dtype=dtypes.float).contiguous().realize()
+
+
+def loss_br(out, tgt, tm):
+    """loss_fn per breath on out (BR, B, T, H), same boundaries; -> (sum_b BRW[b] * loss_b, mse of the last breath)"""
+    # per-row terms and weights are buffers, so the grad reaching out is elementwise (else w_out/b_out's grad recomputes B*T sums per row)
+    out = out.contiguous(); tgt = tgt.cast(dtypes.float); wr = (tm / tm.sum()).contiguous()
+    se = ((out - tgt) ** 2).mean(-1).contiguous()
+    cos = ((out * tgt).sum(-1).contiguous() / ((out * out).sum(-1).sqrt().contiguous() * (tgt * tgt).sum(-1).sqrt().contiguous() + 1e-6)).contiguous()
+    return ((se * INV_VAR + 1 - cos) * (wr * BRWT.reshape(BR, 1, 1)).contiguous()).sum(), (se[BR - 1] * wr).sum() * INV_VAR
 
 
 def _train(x0, am, tm, tgt, db, cs=None, sn=None):
     with Tensor.train():
-        out = forward(p, x0, am, db, None if cs is None else (cs, sn)); loss, mse = loss_fn(out, tgt, tm)
+        if BR:   # ONE head over the breaths stacked on the batch axis: four separate heads fused w_out's grad into a recomputing kernel (1.55 -> s/step)
+            out = head(p, Tensor.cat(*body(p, x0, am, db, (cs, sn), every=True), dim=0)).reshape(BR, *tgt.shape)
+            loss, mse = loss_br(out, tgt, tm)
+        else:
+            out = forward(p, x0, am, db, None if cs is None else (cs, sn)); loss, mse = loss_fn(out, tgt, tm)
         opt.zero_grad(); loss.backward()
         ok = loss.isfinite().cast(dtypes.float).contiguous()                # single-kernel guard (a boundary, or the loss is recomputed per grad element)
         for t in params:
@@ -394,18 +442,25 @@ for step in range(STEPS):
         msg = f"[distill] step {step} (queue {Q.qsize()}) loss {lv:.4f} mse {float(mse.numpy()):.4f}" + (
             f" gsm mse {float(gmse.numpy()):.4f}" if GSM else "") + f" | {(time.time() - t0) / (step + 1):.3f}s/step"
         if step % 2000 == 0 or step == STEPS - 1:
-            vl = [eval_step(*batch_of(b)) for b in VB]
-            vloss = float(np.mean([float(a.numpy()) for a, _ in vl])); vmse = float(np.mean([float(b.numpy()) for _, b in vl]))
-            msg += f" | VAL loss {vloss:.4f} mse {vmse:.4f}"; hist.append(dict(step=step, val_loss=vloss, val_mse=vmse))
+            vl = [tuple(float(t.numpy()) for t in eval_step(*batch_of(b))) for b in VB]     # floats per batch: the JIT reuses its outputs
+            vloss = float(np.mean([a for a, _ in vl])); vmse = float(np.mean([b for _, b in vl])); v32 = vl[-1][1]
+            msg += f" | VAL loss {vloss:.4f} mse {vmse:.4f} (VAL32 {v32:.4f})"
+            hist.append(dict(step=step, val_loss=vloss, val_mse=vmse, val32_mse=v32))
             if GSM:
-                gv = [eval_g(*[Tensor(a, dtype=dtypes.half) if k in (0, 3, 4) else (addmask(a) if k == 1 else Tensor(a, dtype=dtypes.float))
-                              for k, a in enumerate(gsm_rows(g_va[i:i + BATCH]))]) for i in range(0, len(g_va) - BATCH + 1, BATCH)]
-                gvm = float(np.mean([float(b.numpy()) for _, b in gv])); msg += f" | GSM VAL native mse {gvm:.4f}"; hist[-1]["gsm_val_mse"] = gvm
+                gv = [tuple(float(t.numpy()) for t in eval_g(*[Tensor(a, dtype=dtypes.half) if k in (0, 3, 4) else (addmask(a) if k == 1 else Tensor(a, dtype=dtypes.float))
+                              for k, a in enumerate(gsm_rows(g_va[i:i + BATCH]))])) for i in range(0, len(g_va) - BATCH + 1, BATCH)]
+                gvm = float(np.mean([b for _, b in gv])); msg += f" | GSM VAL native mse {gvm:.4f}"; hist[-1]["gsm_val_mse"] = gvm
         print(msg, flush=True)
     if SAVE_AT and step + 1 == SAVE_AT:
         safe_save({k: v.realize() for k, v in p.items()}, CKPT.replace(".safetensors", f"_s{SAVE_AT}.safetensors"))
         print(f"[distill] snapshot at step {SAVE_AT}", flush=True)
+brv = []
+if BR:   # (MBR, bar MB2) the per-breath val mse: does each breath sharpen the estimate?
+    for b in VB:
+        x0, am, tm, tg, db, cs, sn = batch_of(b)
+        brv.append([float(loss_fn(head(p, xb), tg, tm)[1].numpy()) for xb in body(p, x0, am, db, (cs, sn), every=True)])
+    brv = np.mean(np.array(brv), 0).tolist(); print(f"[distill] BREATH val mse {' > '.join(f'{v:.4f}' for v in brv)}", flush=True)
 safe_save({k: v.realize() for k, v in p.items()}, CKPT)
-json.dump(dict(tag=TAG, D=D, layers=NL, ff=FF, db=DBIN, t6=T6, gsm=GSM, warm=WARM, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
+json.dump(dict(tag=TAG, D=D, layers=NL, breaths=BR, breath_val_mse=brv, ff=FF, db=DBIN, t6=T6, gsm=GSM, warm=WARM, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
                var_t=var_t, hist=hist, seconds=time.time() - t0), open(META, "w"), indent=1)
 print(f"[distill] saved {CKPT} in {time.time() - t0:.0f}s", flush=True)
