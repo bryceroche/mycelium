@@ -467,13 +467,18 @@ for step in range(STEPS):
     if SAVE_AT and step + 1 == SAVE_AT:
         safe_save({k: v.realize() for k, v in p.items()}, CKPT.replace(".safetensors", f"_s{SAVE_AT}.safetensors"))
         print(f"[distill] snapshot at step {SAVE_AT}", flush=True)
-brv = []
+brv, dlt, census = [], [], []
 if BR:   # (MBR, bar MB2) the per-breath val mse: does each breath sharpen the estimate?
     for b in VB:
         x0, am, tm, tg, db, cs, sn = batch_of(b)
-        brv.append([float(loss_fn(head(p, xb), tg, tm)[1].numpy()) for xb in body(p, x0, am, db, (cs, sn), every=True)])
+        xbs = body(p, x0, am, db, (cs, sn), every=True); brv.append([float(loss_fn(head(p, xb), tg, tm)[1].numpy()) for xb in xbs])
+        xn, mm = [xb.numpy() for xb in xbs], tm.numpy() > 0     # THE DELTA CENSUS (ledger 11-03, Bryce's NNUE point; a read, never a loss)
+        dlt.append(np.stack([np.linalg.norm(xn[k] - xn[k - 1], axis=-1)[mm] / (np.linalg.norm(xn[k], axis=-1)[mm] + 1e-6) for k in range(1, BR)]))
     brv = np.mean(np.array(brv), 0).tolist(); print(f"[distill] BREATH val mse {' > '.join(f'{v:.4f}' for v in brv)}", flush=True)
+    dlt = np.concatenate(dlt, 1); census = [dict(breath=k + 2, q10=float(np.quantile(d, .1)), q50=float(np.median(d)), q90=float(np.quantile(d, .9)),
+                                                  q99=float(np.quantile(d, .99)), below01=float((d < 0.01).mean())) for k, d in enumerate(dlt)]
+    for c in census: print(f"[distill] DELTA breath {c['breath']}: rel change q10 {c['q10']:.4f} q50 {c['q50']:.4f} q90 {c['q90']:.4f} q99 {c['q99']:.4f} | share < 0.01 {c['below01']:.3f}", flush=True)
 safe_save({k: v.realize() for k, v in p.items()}, CKPT)
-json.dump(dict(tag=TAG, D=D, layers=NL, breaths=BR, breath_val_mse=brv, ff=FF, db=DBIN, t6=T6, gsm=GSM, warm=WARM, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
+json.dump(dict(tag=TAG, D=D, layers=NL, breaths=BR, breath_val_mse=brv, delta_census=census, ff=FF, db=DBIN, t6=T6, gsm=GSM, warm=WARM, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
                var_t=var_t, hist=hist, seconds=time.time() - t0), open(META, "w"), indent=1)
 print(f"[distill] saved {CKPT} in {time.time() - t0:.0f}s", flush=True)

@@ -55057,3 +55057,25 @@ NMDBT9NSR1 (T9-NS, DR_SEED=1) then NMDBT9R1 (T9, DR_SEED=1), each 30k → wild e
 - As the 20:46 attribution showed, factor A (type↔pointer through free-kind pointer logits) is the damage: the pointer heads were never trained to compare kinds, so the factor injects noise at full weight (unit temperature) and overrides types the net had right (ORIG op-right-type-wrong 0.008 → 0.14). Op accuracy falls too (0.99 → 0.84 ORIG), because the factor reranks across ops through the kinds.
 - **WHAT THIS CLOSES:** "BP with factors read from heads never trained to emit them". **WHAT STANDS:** the prefix/slot-ref messages (harmless, +0.002 at the smoke); BP as the line. **Next form BT7b (named at 20:46):** train the kind evidence (a free-kind pointer CE beside the masked one), then the same BP; the beliefs as soft attention biases. Needs the word.
 - PREDICTIONS: B7T PASS ✗, B7 FAIL ✓. Running total 72/113 (with BREATH-BUY ✓).
+
+### 2026-11-02 22:15 (banked 11-03 05:43) — CY VERDICT (unit lfcy2; BT4 on the T9-NS reader's GSM8K states vs on NMDB's, seeds 0/1, 18k): **C0 PASS, Y1 PASS, Y2 FAIL** (all three as predicted)
+- C0 ORIG step 0.962 / 0.960. **Y1 parity:** TEST step −0.0126 / +0.0138, mean +0.0006 ≥ −0.010: PASS. **Y2:** mean +0.0006 < +0.010: FAIL.
+- Reads: TEST type 0.302 / 0.311 vs 0.303 / 0.291; TEST ans 0.048 / 0.061 vs 0.077 / 0.051; CFNUM ans 0.730 / 0.731 vs 0.719 / 0.738.
+- **For the RoPE ruling (Bryce's):** the evidence is now complete. Wild parity on two seeds (TW2) + task parity on two seeds (CY). RoPE buys nothing measurable on either read. Running total 75/116.
+
+### 2026-11-03 05:43 — WORD GIVEN (Bryce: "1) bigger engine 2) train belief propagation pointers to understand and compare math types 3) stockfish NNUE ... review the delta between the matryoshka states between breaths"): MBR22 + BT7b PINNED; the delta census rides MBR22
+**MBR22, THE BIGGER ENGINE** (GPU, unit lfmbr22): MBR's form at NMDB's size: DR_LAYERS=8 tied × DR_BREATHS=4 on T9-NS (22.2M, the same parameters as NMDBT9NS; 4× its layer passes), 30k, wild export, frozen CLK3_241 read. One change at a time: size only. The reading breaths (a Tree query per breath) come as the next arm against this baseline.
+- **M22P (parity):** wild ≥ 0.3479 (the T9-NS two-seed mean − 0.010).
+- **M22B (breathing buys at 22M):** MBR22 − the T9-NS two-seed mean (0.3579) ≥ +0.020 (THE NUMBER: one seed against a two-seed mean needs two SEs).
+- Reads: the BREATH ladder; alias-free VAL mse vs NMDBT9NS; **the delta census** (Bryce's NNUE point, below).
+- **PREDICTIONS:** M22P PASS; M22B FAIL.
+**THE DELTA CENSUS (NNUE/React, a read, never a loss: Goodhart fence):** per breath b ≥ 2, each val token's relative change ‖x_b − x_{b−1}‖/‖x_b‖, with quantiles (10/50/90/99) and the share below 0.01. It answers whether tokens settle (a bimodal census = some tokens done early).
+- Critique carried with it: a freeze-on-small-delta form has a measured ceiling of +0.0006 (LK0 on MBR), and tinygrad's fixed-shape JIT does dense matmuls, so skipping settled tokens saves no time (NNUE's win comes from sparse incremental accumulator updates). Where delta fits Mycelium is as a TRIGGER: in the reading-breath form, only tokens whose state moved re-query the Tree (React's "re-render only what changed"). The census measures whether that trigger would ever fire selectively.
+**BT7b, BP POINTERS TRAINED TO COMPARE KINDS** (CPU, unit lfbt7b): BT5's config + `BT_KINDCE=1`: beside the masked pointer CE, the same multi-valid CE on the pointer heads under the gold type with EVERY kind open (`net.ptrs(gold, free=True)`). This trains P(kind | pointer) into existence, the signal factor A read as noise in BT7a. Seeds 0/1, 18k, BT_SAVE; then gsm_bt7_read.py on the BT7b weights (BT6 gate vs BT7a BP, same weights).
+- **C0:** ORIG step (BT6 gate) ≥ 0.90 both seeds.
+- **B7b:** TEST step, BP − BT6 gate on the BT7b weights, mean ≥ +0.010 with both seeds > 0.
+- **B7bT:** TEST type, same comparison and bar.
+- Read beside: BT7b's BT6 gate vs BT5's BT6 gate (the extra loss alone); ORIG under BP (does the trained factor still hurt the fitted texts?).
+- **PREDICTIONS:** C0 PASS; B7bT PASS; B7b FAIL.
+- **05:48 launches:** lfbt7b 05:50 (CPU, 6 threads per seed; the BT_KINDCE smoke ran clean, 6,600,113 params, the same as BT5, since the loss adds no weights); lfmbr22 05:48 (GPU, 0.82 s/step at the 40-step smoke → ~6.8 h + export/read).
+- **Delta-census custody note (from the smoke, before any measurement):** at step 40 the census reads q50 0.500 / 0.333 / 0.250 for breaths 2/3/4. That is exactly 1/b, which pure accumulation gives (each breath adds a same-sized update to a growing residual). **The census must be read against the 1/b baseline:** settling = a token's relative change well BELOW 1/b; the 0.01 share is reported as pinned, but the baseline comparison is the meaningful read.
