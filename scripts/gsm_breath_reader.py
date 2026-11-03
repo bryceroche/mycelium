@@ -178,36 +178,41 @@ def make_net():
                 lse = torch.stack([logit.masked_fill(~grp[g], -1e9).logsumexp(-1) for g in range(NOP)], -1)
                 lfine = logit - lse[..., par]; logit = lc_[..., par] + lfine
             p = logit.softmax(-1)
+            def ptrs(c, zoom, free=False):   # (ledger 11-02 BT7a) the pointer heads under type c, from this breath's state
+                rr = p.gather(-1, c[..., None])                                                    # the radius: type confidence
+                u = s.up(z) + s.upc(rr * s.C[c])                                                   # expand: silhouette + snapped atom x r
+                hu = s.ln(u)
+                tick = t["sid"][:, Lq:, None].float() * wt                                         # (B, K, NTK)
+
+                def bind(q, role):                                                                 # bus planes: q * e^{i phi(type, role)}
+                    ph = s.phi[c, role]
+                    return torch.cat([q[..., :2 * NTK], rot(q[..., 2 * NTK:], ph)], -1)
+
+                def tickrot(z_):
+                    return torch.cat([rot(z_[..., :2 * NTK], tick), z_[..., 2 * NTK:]], -1)
+
+                kt = s.kt(xk_q); ksl = tickrot(s.ks(hu)); cnt = cons.float()
+                km = kmask.to(c.device)[c]                                                         # (B, K, 2, 3)
+                if free: km = torch.ones_like(km)                                                  # BT7a: every kind open (structure masks stay)
+                if zoom:                                                          # unsure of the fine type -> zoom out to the op
+                    unsure = lfine.gather(-1, c[..., None])[..., 0].exp() < ZOOM_TAU
+                    km = torch.where(unsure[..., None, None], kmask_op[par[c]], km)
+                outs = []
+                for role, proj in ((0, s.qa), (1, s.qb)):
+                    q = bind(proj(hu), role)
+                    lt = torch.einsum("bkd,bld->bkl", q, kt) + s.pc * cnt[:, None, :Lq] * math.sqrt(D)
+                    lt = lt.masked_fill(~t["isnum"][:, None, :Lq] | ~km[:, :, role, 0:1], -1e4)
+                    ls = torch.einsum("bkd,bjd->bkj", tickrot(q), ksl) + s.pc * cnt[:, None, Lq:] * math.sqrt(D)
+                    ls = ls.masked_fill(~torch.ones(K, K, dtype=torch.bool).tril(-1) | ~km[:, :, role, 1:2], -1e4)
+                    lc = torch.einsum("bkd,cd->bkc", q, s.kc).masked_fill(~km[:, :, role, 2:3], -1e4)
+                    outs.append(torch.cat([lt, ls, lc], -1) / math.sqrt(D))
+                # pointer layout = TR.batch's valid-set layout: [L positions (question + pad + slots) | K slots | NC consts]
+                pad = torch.full((B, K, L - Lq), -1e4)
+                pa, pb = (torch.cat([o[..., :Lq], pad, o[..., Lq:]], -1) for o in outs)
+                return pa, pb
+            s.ptrs = lambda c_, free=False: ptrs(c_, False, free)
             c = logit.argmax(-1) if cond is None else cond
-            rr = p.gather(-1, c[..., None])                                                    # the radius: type confidence
-            u = s.up(z) + s.upc(rr * s.C[c])                                                   # expand: silhouette + snapped atom x r
-            hu = s.ln(u)
-            tick = t["sid"][:, Lq:, None].float() * wt                                         # (B, K, NTK)
-
-            def bind(q, role):                                                                 # bus planes: q * e^{i phi(type, role)}
-                ph = s.phi[c, role]
-                return torch.cat([q[..., :2 * NTK], rot(q[..., 2 * NTK:], ph)], -1)
-
-            def tickrot(z_):
-                return torch.cat([rot(z_[..., :2 * NTK], tick), z_[..., 2 * NTK:]], -1)
-
-            kt = s.kt(xk_q); ksl = tickrot(s.ks(hu)); cnt = cons.float()
-            km = kmask.to(c.device)[c]                                                         # (B, K, 2, 3)
-            if ZOOM and cond is None:                                                          # unsure of the fine type -> zoom out to the op
-                unsure = lfine.gather(-1, c[..., None])[..., 0].exp() < ZOOM_TAU
-                km = torch.where(unsure[..., None, None], kmask_op[par[c]], km)
-            outs = []
-            for role, proj in ((0, s.qa), (1, s.qb)):
-                q = bind(proj(hu), role)
-                lt = torch.einsum("bkd,bld->bkl", q, kt) + s.pc * cnt[:, None, :Lq] * math.sqrt(D)
-                lt = lt.masked_fill(~t["isnum"][:, None, :Lq] | ~km[:, :, role, 0:1], -1e4)
-                ls = torch.einsum("bkd,bjd->bkj", tickrot(q), ksl) + s.pc * cnt[:, None, Lq:] * math.sqrt(D)
-                ls = ls.masked_fill(~torch.ones(K, K, dtype=torch.bool).tril(-1) | ~km[:, :, role, 1:2], -1e4)
-                lc = torch.einsum("bkd,cd->bkc", q, s.kc).masked_fill(~km[:, :, role, 2:3], -1e4)
-                outs.append(torch.cat([lt, ls, lc], -1) / math.sqrt(D))
-            # pointer layout = TR.batch's valid-set layout: [L positions (question + pad + slots) | K slots | NC consts]
-            pad = torch.full((B, K, L - Lq), -1e4)
-            pa, pb = (torch.cat([o[..., :Lq], pad, o[..., Lq:]], -1) for o in outs)
+            pa, pb = ptrs(c, ZOOM and cond is None)
             return logit, pa, pb, z, p
 
     return Net()
