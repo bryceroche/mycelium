@@ -90,7 +90,7 @@ pure prose at 340 epochs is poison −243 — tune between).
 
 - **THE COMPATIBILITY RULING (2026-08-29)**: select the most COMPATIBLE
   component family, never the highest per-run scorer. Target = the
-  THREE-ROTOR STACK (token rotor: frozen trunk RoPE / breath rotor: the T6
+  THREE-ROTOR STACK (token rotor: ~~frozen trunk RoPE~~ the T9 clock's offset gears (RoPE RETIRED 11-03) / breath rotor: the T6
   GEAR CLOCK (`mycelium/rotor_clock.py`; ruling 2026-10-26) + pi-cycled attention
   rotation in sync / bus rotor: T^256
   phasor binding as an ACTIVE RECURRENT LOOP). Full form:
@@ -113,8 +113,17 @@ pure prose at 340 epochs is poison −243 — tune between).
   DB row; frozen-head wild swap 0.3637 ≥ 0.3593 PASS); benches read ITS states (GSM8K: `RD_STATES=gsmb_student_states.npy`).
   Banked teacher artifacts stay as history/instruments; the embedding table is still a lookup loaded from Llama's file (fold+prune
   = how the student owns it); the deployed manifest moves only by a battery. All in on the Breathing Transformer. Ledger 10-31.
+  **The reader named here is SUPERSEDED by the RoPE retirement ruling below (11-03).**
+- **THE RoPE RETIREMENT RULING (2026-11-03)**: RoPE is retired from the research line; position is carried by the **T9 clock**
+  (`DR_T6=3 DR_T9NS=1`: T6 offset gears + slow gears 7–9 x token + quiet planes, no sentence planes). The reader is
+  **NMDBT9NS** (`.cache/distill_reader_nmdbt9ns768x8.safetensors`; 22.2M, no MLP, no RoPE; the seed-0 arm, the original);
+  benches read ITS states (GSM8K: `gsmb_t9ns_states.npy` + `gsmb_role_feats_t9ns.npy`, now the defaults). Evidence: TW2 wild
+  parity on two seeds (means 0.3579 vs NMDB 0.3589) + CY task parity on two seeds (BT4 TEST step +0.0006). Guards (patch
+  `rope_retire.py`): RoPE-era states need `RD_LEGACY=1`, RoPE reader forms need `DR_LEGACY_ROPE=1` (banked comparisons and
+  controls only). Instruments keep their coordinates: the frozen CLK3_241 head (trained on Llama states) still grades wild
+  reads (a legacy instrument). The deployed manifest (gen-9b, Llama trunk) moves only by a battery. Ledger 11-03.
 - **THE ATOMS + DIFFUSION RULING (2026-10-30)**: the tree stores ATOMS (step types, 2-4 op fragments),
-  never per-problem graphs; radius = confidence, unbind = conjugate (never 1/z); the three rotors (T6 / RoPE / T256)
+  never per-problem graphs; radius = confidence, unbind = conjugate (never 1/z); the three rotors (T6 / T9 offset gears, ex-RoPE / T256)
   own DISJOINT complex planes; the silhouette is PER STEP (bottleneck classifies the step against atom centroids, the
   micro keys bypass it); contrastive energy pulls bindings toward centroids; every breath advances EVERY step in
   parallel (discrete-diffusion form; the executor commits what is determined each breath), breaths are weight-tied
@@ -269,7 +278,7 @@ governs what gets BUILT; bars govern what gets CLAIMED.
   tags through the skip rejoin in phase — aligned they stack into a massive signal, misaligned they cancel; wave energy funnels
   into the bottleneck, coupled with beam mass.
 - **Six breath cycles; rotate the QUERIES, not the attention planes**; the T6 clock lets the model orient itself across them.
-- **Three-rotor stack on disjoint planes:** temporal T6 clock, spatial RoPE, rotational T256 bus (+ the notebook). **The conjugate
+- **Three-rotor stack on disjoint planes:** temporal T6 clock, spatial position (RoPE until 11-03; now the T9 clock's offset gears), rotational T256 bus (+ the notebook). **The conjugate
   is a mathematical mirror** (never 1/z; radius = confidence). **Möbius** = the zoom function for Tree search.
 - **Diffusion-inspired:** every breath advances every step in parallel; breaths never specialize; heads may.
 - **Data:** GSM8K text, not home-grown problems — the goal is NL comprehension, graded on intermediate gold answers. Build
@@ -301,7 +310,7 @@ contradiction may break a branch; soft evidence only ever biases (neural propose
 | Component | Continuous mirror | Discrete mirror | Status / evidence |
 |---|---|---|---|
 | **Clock** | the gears turning (phase rotation inside attention) | the **odometer**: each gear snapped to its tick; mixed radix 2·3·2·2·2·2 (periods 2..96) -- digits for the Tree's exact composite keys | one source `rotor_clock.py`; toys: rotation reaches label accuracy with range (T2s/T2t) |
-| **Reader rotor** | RoPE spread / **T9-NS** (offset gears + slow gears 7–9 + quiet planes) | -- | **T9-NS = RoPE-free reader at two-seed parity** (wild means 0.3579 vs NMDB 0.3589, TW2 PASS 11-02); the sentence-cost claim did NOT replicate (TW1 FAIL: seed 1 −0.0010; seed spread up to 0.0185). The BT carries the sentence clock at parity (U1). RoPE ruling = Bryce's, on TW2 + CY (GSM8K task read) |
+| **Reader rotor** | **T9-NS** (offset gears + slow gears 7–9 + quiet planes); RoPE RETIRED 11-03 | the odometer's digits | **RULED 11-03: T9-NS is THE reader** (TW2 + CY parity). **T9-NS = RoPE-free reader at two-seed parity** (wild means 0.3579 vs NMDB 0.3589, TW2 PASS 11-02); the sentence-cost claim did NOT replicate (TW1 FAIL: seed 1 −0.0010; seed spread up to 0.0185). The BT carries the sentence clock at parity (U1). CY: BT4 TEST step parity on T9-NS states (+0.0006, two seeds). Breathing readers: MBR/MBR-C FAIL at 8M; MBR22 running |
 | **Breathing Transformer** | **BT5 soft notebook**: uncommitted slots carry Σ p(type)·atom, sharpened coarse-to-fine by τ 2.0 → 0.5 over the six cycles (diffusion self-conditioning) | snap to the codebook centroid + commit | BT5 FAIL (11-02: schedule fixed the timeline); BT6 confidence gate: ORIG +0.01 on all four weights, TEST type unmoved (G1/G2 FAIL); the TEST wall is type recognition, not commit timing |
 | **Confidence** | radius | commit / no-commit | conjugate mirror rule |
 | **Tree lookup** | KNN on soft keys | exact-key backoff | soft keys beat exact (G-TREE3 +0.032) |
