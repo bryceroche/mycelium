@@ -55202,3 +55202,19 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
 - **The 8M BEAM speed test** (unit lfbeam8, `.cache/run_lfbeam8.log`) is the same protocol on the 8M MBR shape (DR_LAYERS=2, 8.07M): BEAM=0 vs 2, steady s/step over steps 200→400. Timing only, no bar.
 - **The 8M rig (13:35) is now THE line, not just a rig:** no further 22M reader runs are planned. The 22M results stay banked.
 - **Open, Bryce's call:** the BT benches still read NMDBT9NS (22M) states under the RoPE ruling. Moving them to an 8M reader's states needs a GSM8K export from the 8M reader and a parity read; it is not done by this entry.
+
+### 2026-11-03 15:57 — BEAM VERDICT: BEAM-H PASS, BEAM-1 PASS (1/2 predicted; BEAM-1 predicted FAIL) — 81/124
+
+`.cache/gsmb_beam_BT4T9NS_s{0,1}.json` (unit lfbeamread; TEST n 1012 items, ORIG n 2878):
+- **BEAM-H PASS:** TEST oracle@8 − greedy: 0.1492 − 0.0534 = +0.0958 (s0) and 0.1542 − 0.0593 = +0.0949 (s1); bar +0.030 on both. ✓ predicted. The right answer is in the top 8 programs ~2.7× as often as greedy picks it.
+- **BEAM-1 PASS:** TEST ans, beam + solver − greedy: +0.0119 (SE 0.0034) / +0.0089 (SE 0.0030), mean +0.0104 (bar +0.010, both > 0). ✗ predicted FAIL. It clears the bar by a hair, but it is ~4 SE from zero on both seeds. In relative terms, greedy 0.056 → 0.067 (+19%).
+- **ORIG (beside):** +0.0142 / +0.0170 (SE ~0.002); oracle@8 0.98.
+- **Breaker only (λ = 0, beside):** TEST +0.0019 / +0.0000, ORIG +0.0014 / +0.0011. The breaker almost never fires; the kind mask already prevents UNSAT (as H0 said).
+- **λ fit:** λ_int = 8 on both seeds (the top of the grid); λ_neg = 1 / 4. **The gain is the integer prior on the FINAL answer.**
+- **Why my prediction was wrong:** H0's frac flag did not separate wrong from right STEPS on TEST, because intermediates are often legitimately non-integer (gold rate 0.054). The FINAL answer is a different object: GSM8K answers are integers, so a program-level shape check discriminates where a step-level one cannot. That is the H0 next-form (a), "the program-level check", and it carried.
+- **Custody:** λ was fit on TRAIN[:600], never on a scored split. The prior is the answer key's SHAPE, learned from training data, never the TEST key. It is soft evidence choosing among the network's own proposals, which the bridge rule allows: neural proposes, symbolic disposes.
+- **What stands:** the parse-side beam + solver rerank is the first between-proposal solver feedback that buys TEST accuracy. The headroom is ~6× larger than what was captured (+0.095 available vs +0.010 taken).
+- **Next forms, named (patience charter; need the word):**
+  - (a) **BEAM-2, the beam inside the alternation:** the solver's chosen program is written back into the notebook and the BT breathes again (the post-hoc approximation removed).
+  - (b) **A wider beam / λ beyond the grid edge** (λ_int hit 8, the top): read the oracle at 16 and 32 and a λ = ∞ hard-integer arm.
+  - (c) **Training-time use:** the beam's solver-chosen programs as self-training targets on TRAIN only. This needs the custody gate: only answer-key-certified programs, the existing law.
