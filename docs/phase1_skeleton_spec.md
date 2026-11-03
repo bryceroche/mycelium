@@ -55168,3 +55168,30 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
 - **Next forms, named (needs the word):**
   - (a) MBR22 at 2 breaths (the settle reading: the same wild at half the loop compute? bar on parity).
   - (b) Reading breaths with a job: a Tree query per breath, re-queried where the delta stays high. The census says the loop has nothing to do after breath 2 unless something new enters it, and a query is exactly that new input.
+
+### 2026-11-03 13:35 — THE 8M ITERATION RIG (Bryce: "lets do 8m not 22m to iterate faster")
+
+- **Ruling:** reader-architecture experiments run at 8M from now on. 22M is only for a form that has already won at 8M, as its confirmation.
+  - The 8M rig is 2 tied layers (DR_LAYERS=2, DR_D=768).
+  - Speed: 0.264 s/step with 4 breaths (MBR; ~2.2 h per 30k) and 0.119 s/step one-pass (MBR-C; ~1 h), vs 0.862 s/step for MBR22 (~7.2 h).
+- **8M baselines** (frozen CLK3_241 wild): MBR 0.3320, MBR-C 0.3276. Bars for 8M forms are written against THESE, never against the 22M readers. The 8M rig misses the 22M parity line (0.3479), so an 8M result is a relative claim, never a replacement claim.
+- **Unchanged:** the reader whose states the benches read stays NMDBT9NS (22M; the RoPE ruling). The BT benches are already small (6.6M). Bryce's sizing reading, with Claude's caveat banked:
+  - 8M → 22M bought +0.027 on wild, which closed ~57% of the gap to the head's home read (CLK3_241 on its own BP states 0.3793).
+  - So the return per parameter is diminishing, but the 22M point is not waste. 8M is the right rig for iteration speed, not proven to be the "sweet spot" for fidelity.
+- **The named reader forms move to the rig:** (a) the 2-breath settle test, against MBR at 4 breaths; (b) reading breaths with a Tree query per breath.
+
+### 2026-11-03 13:38 — WORD GIVEN (Bryce: "word given for the parse-side beam"): BEAM PINNED (zero-training read; CPU)
+
+- **Read** (`scripts/gsm_beam_read.py`; BT4T9NS_s0/s1 weights on T9-NS states, the post-patch defaults):
+  - The BT runs as always: the BT6 gate commits, with ρ0 fit on TRAIN[:600].
+  - At each slot's commit cycle its candidates are stored: the top-2 types × the top-2 a-pointers × the top-2 b-pointers, under each type. STOP is one candidate.
+  - A left-to-right beam (width 8) over the slots builds whole programs.
+  - **The circuit breaker:** a prefix that cannot execute is pruned. That is a proof, so it crosses hard (the bridge rule).
+  - **Soft solver factors:** a final value that is not an integer, or is negative, is penalized by λ_i / λ_n. Both are fit on TRAIN[:600] over {0, 0.5, 1, 2, 4, 8}², max ans.
+  - If the breaker prunes everything, the greedy program stands.
+  - **Stated approximation:** the beam is post-hoc over commit-time distributions; the notebook saw the greedy choices.
+- **BEAM-H (headroom):** TEST oracle@8 ans − greedy ans ≥ +0.030 on both seeds.
+- **BEAM-1 (the form):** TEST ans, beam + solver − greedy, mean ≥ +0.010 with both seeds > 0.
+- Read beside: breaker only (λ = 0); ORIG; the share of items where everything was pruned.
+- **Pinned blind:** a 128-item smoke was running when this was written, and its output had not been seen.
+- **PREDICTIONS:** BEAM-H PASS; BEAM-1 FAIL (H0: numeric sanity doesn't separate right from wrong on TEST, and the breaker rarely fires because the kind mask prevents UNSAT).
