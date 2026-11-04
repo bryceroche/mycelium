@@ -55575,3 +55575,11 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
   banked in the table: that deducer's per-head masks carried the factor topology (given, not discovered).
 - Built form: the breaths are the internal solver (learned BP, the continuous mirror); the CSP solver called each breath is the external
   one (the discrete mirror; the alternation ruling). Neural-guided clean-CSP search stays CLOSED.
+
+### 2026-11-04 09:07 — FLAG RESOLVED (Bryce): "spatial means the T9 offset gears, keep RoPE retired"
+
+- The stone's 3-rotor stack ("Temporal T9 clock, Spatial ROPE, Rotational T256 bus") reads spatial = the T9 clock's offset gears. The RoPE
+  retirement ruling (11-03) stands, reaffirmed. Updated: docs/CORE_THEORIES.md reconciliation, CLAUDE.md §8, memory.
+- Agreed on the evidence: TW2 wild parity on two seeds + CY task parity; one clock family on disjoint planes (the compatibility ruling).
+- **Watch item:** gear reach. The slowest gears must span the longest distances a problem needs; MATH-500 runs longer than GSM8K. If a
+  longer-context read degrades, the remedy is a slower gear (the clock-range rule), never RoPE.

@@ -284,14 +284,14 @@ it governs what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form,
 - **U-Net per cycle:** expand and collapse each breath, the silhouette (segment + classify) at the bottleneck; the U-Net is zooming out
   on the tree, reasoning at the category level; **only ID tags travel the skip, never full facts.** **Nazaré:** the rule through the
   bottleneck and the ID tags through the skip rejoin in phase; aligned they stack into a massive signal, misaligned they cancel.
-- **Notebook + T256 rotational bus. Three-rotor stack:** temporal T9 clock, spatial position, rotational T256 bus. **The conjugate is a
+- **Notebook + T256 rotational bus. Three-rotor stack:** temporal T9 clock, spatial = the T9 offset gears (RoPE stays retired, Bryce 11-04), rotational T256 bus. **The conjugate is a
   mathematical mirror** (never 1/z; radius = confidence). **Möbius** = the zoom function for Tree search.
 - **Diffusion-inspired:** breath cycles must not specialize to per-step tasks; attention heads may (no gradient tug of war).
 
 **Reconciliation (full table in `docs/CORE_THEORIES.md`; the build follows the ruling column):**
 | Theory line | Banked result / ruling | Built form |
 |---|---|---|
-| "Spatial ROPE" in the 3-rotor stack | RoPE RETIREMENT RULING (11-03) | spatial position = the T9 clock's offset gears; **flagged to Bryce 11-04** (RoPE returns only by his word) |
+| "Spatial ROPE" in the 3-rotor stack | RoPE RETIREMENT RULING (11-03) | spatial position = the T9 clock's offset gears; **RESOLVED by Bryce 11-04: "spatial means the T9 offset gears, keep RoPE retired"** (watch: gear reach on longer problems; fix = a slower gear) |
 | 60° per breath; gears 30/60/180 | T2s/T2t; THE T6 CLOCK RULING (10-26) | queries rotated by the clock's six gears 180/60/30/15/7.5/3.75° (T9 adds slow gears 7–9) |
 | ~20 items per complex plane | ~20–30 keys per VECTOR / bus (crosstalk ~1/√P) | bind on demand; registers for capacity |
 | avoid the cross join | BT8 F1/F2 FAIL; diag: factors at parity, the joint loses conditioning | BT8b chained phase binding (11 shared atoms, keys bound to op / op + kind) |
