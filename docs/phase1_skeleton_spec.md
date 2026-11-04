@@ -55359,3 +55359,34 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - The rule (through the bottleneck) and the tags (through the skip) meet in the pointer attention: aligned they stack, misaligned they cancel (Nazaré).
 - Phases carry no facts, so the bottleneck stays a mandatory road.
 - Bars to be written at its pin, against BT4M8.
+
+### 2026-11-03 18:19 — A1 VERDICT: TK1 FAIL (predicted ✓; 83/126); the 512-d state's leaves transfer better than the 64-d silhouette's (beside)
+
+`.cache/gsmb_treeknn_BT4T9NS_s{0,1}.json` (unit lftk; 26,247 TRAIN leaves; k = 5 on both spaces and seeds, from TRAIN[:600] leave-one-problem-out: z 0.918 / 0.901, h 0.880 / 0.866):
+- **TK1 FAIL:** TEST type, kNN(z) − centroid: +0.0128 (SE 0.0045) / +0.0015 (SE 0.0045); mean +0.0072 < +0.010 (both > 0).
+- **Beside, kNN on h** (512-d, before the waist): TEST +0.0171 (SE 0.0049) / +0.0083 (SE 0.0047), mean +0.0127. h beats z on TEST on both seeds (+0.004 / +0.007), while on ORIG h is worse (−0.024 vs −0.013 under the centroid).
+- **Flip shares (z):** kNN rescues 4.7% / 4.1% of TEST slots the centroid misses and loses 3.4% / 3.9%. The memory and the centroid disagree on ~8% of TEST slots.
+- **What it says:**
+  - **Memorized leaves help new problems a little, and never hurt them:** positive on all four reads. The direction the theory predicts, below the bar.
+  - **The 64-d waist trades transfer for fit:** compressed for centroid separation, it fits the training texts better and generalizes slightly worse than the 512-d state it compresses. This is evidence for W128 and the ID skip (BT9), unbarred.
+  - Nothing here moves the wall much: type stays ~0.31.
+- **Next (Phase A3, unchanged):** the leaves as a breath-time road (KNN evidence re-entering the breath), keyed on the WIDER state.
+
+### 2026-11-03 18:24 — WORD GIVEN (Bryce: "yes we want the composite keys to bypass the compression and we can use T9 clock if you think that would be better than T6"): BT9 PINNED
+
+**BT9, THE ID SKIP** (patch `scripts/patches/bt9_idskip.py`, unit lfbt9):
+- **The form:**
+  - Slot id and tree level leave the pre-waist input.
+  - They rejoin AFTER the waist as phase tags on the slot-pointer planes: slot id = the T6 tick (unchanged); tree level = T6 gears × the derivation depth on its own NTK/2 planes, carved from the bus. The type-role bus keeps the rest.
+  - They meet in the slot-pointer attention (Nazaré).
+- **The clock:** T6, not T9. The tags span ≤ 8, and T6's slow gears (48, 96) already exceed that (the clock-range rule). T9's extra slow gears are for the reader's ~200-token spans.
+- **Dry run:**
+  - Six edits apply clean.
+  - With IDSKIP off, the parameter count is identical (6,567,345), and the path is unchanged.
+  - With IDSKIP on, the 20-step smoke trains and scores. Its loss starts higher, 4.25 vs 3.80 at step 15, as expected when the slots lose their input identity.
+- **Bars** (vs BT4M8, the same 8M-reader states and seeds):
+  - **B9-0 (fit):** ORIG step ≥ 0.90 on both seeds.
+  - **B9-1:** TEST type, mean ≥ +0.010 with both seeds > 0.
+  - **B9-2:** TEST step, the same bar.
+- **PREDICTIONS:** B9-0 PASS, B9-1 FAIL, B9-2 FAIL.
+- **Queue:** after lfbt8 finishes (the CPU is the bottleneck: BT4M8 is at 2k of 18k after ~70 min under contention). BT9 / W128 move to the GPU if the tinygrad port passes parity first.
