@@ -40,6 +40,7 @@ SOFT = os.environ.get("BT_SOFT") == "1"              # (ledger 11-01) the soft n
 KINDCE = os.environ.get("BT_KINDCE") == "1"          # (ledger 11-03 BT7b) + the pointer CE under the gold type with every kind open
 GATE = os.environ.get("BT_GATE", "")                 # (ledger 11-02 BT6) inference: commit iff radius >= rho0 (1 - c/5); "" = the schedule
 FACT = os.environ.get("BT_FACT") == "1"              # (ledger 11-03 BT8) the factored silhouette: op / kind a / kind b phase-bound, conjugate unbind
+IDSKIP = os.environ.get("BT_IDSKIP") == "1"          # (ledger 11-03 BT9) slot id + tree level bypass the waist as phase tags (the ID skip)
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -55,8 +56,8 @@ SPLITS = TR.SPLITS
 
 def rolef_name():
     """the role feats built on the same reader states (RoPE retirement ruling 11-03): a mismatch fails loudly"""
-    st = os.environ.get("RD_STATES", "gsmb_t9ns_states.npy")
-    pair = {"gsmb_t9ns_states.npy": "gsmb_role_feats_t9ns.npy", "gsmb_student_states.npy": "gsmb_role_feats.npy"}
+    st = os.environ.get("RD_STATES", "gsmb_mbr8_states.npy")                                # P8 (ledger 11-04): the 8M reader
+    pair = {"gsmb_mbr8_states.npy": "gsmb_role_feats_mbr8.npy", "gsmb_t9ns_states.npy": "gsmb_role_feats_t9ns.npy", "gsmb_student_states.npy": "gsmb_role_feats.npy"}
     rf = os.environ.get("BT_ROLEF", pair.get(st, ""))
     assert rf and (st not in pair or rf == pair[st]), f"role feats {rf!r} were not built on the reader states {st!r}"
     return rf
@@ -114,6 +115,8 @@ def make_net():
         if not T6OFF: return sid[..., None].float() * w
         return torch.cat([sid[..., None].float() * wh, off[..., None].float() * wh], -1)    # sentence planes | offset planes
     wt = torch.as_tensor(np.radians(CK.t6_plane_speeds(NTK)), dtype=torch.float32)        # pointer space: the step tick's planes
+    NLV = NTK // 2 if IDSKIP else 0                                                       # (BT9) the tree-level tag planes
+    wl = torch.as_tensor(np.radians(CK.t6_plane_speeds(max(NLV, 1))), dtype=torch.float32)
     kmask = torch.zeros(NT, 2, 3, dtype=torch.bool)                                       # type x operand -> allowed kind (t, s, c)
     for j, (_, a, b) in enumerate(TYPES):
         kmask[j, 0, KINDS.index(a)] = True; kmask[j, 1, KINDS.index(b)] = True
@@ -195,7 +198,8 @@ def make_net():
             CA = s.atoms() if FACT else s.C                                                   # (BT8) the rebound atoms
             re = s.reent(r[..., None] * CA[typ.clamp(min=0)])                                  # committed: atom x radius
             unc = s.maskv if sp is None else s.maskv + s.sre(sp @ CA)                        # uncommitted: the mask + what the BT believes
-            h = s.slotk.weight[None] + torch.where(com[..., None], re, unc) + s.cfp(cf) + s.lev(lev) + s.cons(cons[:, Lq:].long())
+            h = torch.where(com[..., None], re, unc) + s.cfp(cf) + s.cons(cons[:, Lq:].long())
+            if not IDSKIP: h = h + s.slotk.weight[None] + s.lev(lev)                         # (BT9: the IDs ride the skip instead)
             xk_q = xq + s.cons(cons[:, :Lq].long())
             sa = ang(t["sid"][:, Lq:], t["off"][:, Lq:]); ka = ang(t["sid"], t["off"])
             if CYCLOCK: sa = sa + cyc.float()[:, None, None] * w                               # the cycle stamp on the queries only
@@ -221,13 +225,19 @@ def make_net():
                 tick = t["sid"][:, Lq:, None].float() * wt                                         # (B, K, NTK)
 
                 def bind(q, role):                                                                 # bus planes: q * e^{i phi(type, role)}
-                    ph = s.phi[c, role]
-                    return torch.cat([q[..., :2 * NTK], rot(q[..., 2 * NTK:], ph)], -1)
+                    ph = s.phi[c, role][..., NLV:]                                                 # (BT9: the level planes are not bus)
+                    return torch.cat([q[..., :2 * (NTK + NLV)], rot(q[..., 2 * (NTK + NLV):], ph)], -1)
+
+                la = lev.float()[..., None] * wl                                                   # (BT9) the level tag per slot
+
+                def levrot(z_):                                                                    # (BT9) bind the level on its planes
+                    if not IDSKIP: return z_
+                    return torch.cat([z_[..., :2 * NTK], rot(z_[..., 2 * NTK:2 * (NTK + NLV)], la), z_[..., 2 * (NTK + NLV):]], -1)
 
                 def tickrot(z_):
                     return torch.cat([rot(z_[..., :2 * NTK], tick), z_[..., 2 * NTK:]], -1)
 
-                kt = s.kt(xk_q); ksl = tickrot(s.ks(hu)); cnt = cons.float()
+                kt = s.kt(xk_q); ksl = levrot(tickrot(s.ks(hu))); cnt = cons.float()
                 km = kmask.to(c.device)[c]                                                         # (B, K, 2, 3)
                 if free: km = torch.ones_like(km)                                                  # BT7a: every kind open (structure masks stay)
                 if zoom:                                                          # unsure of the fine type -> zoom out to the op
@@ -238,7 +248,7 @@ def make_net():
                     q = bind(proj(hu), role)
                     lt = torch.einsum("bkd,bld->bkl", q, kt) + s.pc * cnt[:, None, :Lq] * math.sqrt(D)
                     lt = lt.masked_fill(~t["isnum"][:, None, :Lq] | ~km[:, :, role, 0:1], -1e4)
-                    ls = torch.einsum("bkd,bjd->bkj", tickrot(q), ksl) + s.pc * cnt[:, None, Lq:] * math.sqrt(D)
+                    ls = torch.einsum("bkd,bjd->bkj", levrot(tickrot(q)), ksl) + s.pc * cnt[:, None, Lq:] * math.sqrt(D)
                     ls = ls.masked_fill(~torch.ones(K, K, dtype=torch.bool).tril(-1) | ~km[:, :, role, 1:2], -1e4)
                     lc = torch.einsum("bkd,cd->bkc", q, s.kc).masked_fill(~km[:, :, role, 2:3], -1e4)
                     outs.append(torch.cat([lt, ls, lc], -1) / math.sqrt(D))
