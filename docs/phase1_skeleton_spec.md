@@ -55407,3 +55407,29 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - **Pitfall hit:** the Welford buffer assigns must be realized inside the step (`Tensor.realize(lo, *buffers)`). Otherwise the next step's backward meets an unrealized assign: "failed to compute gradient for Ops.AFTER". The atoms are also detached in the forward.
 - **Queued:** unit lftgtime (`.cache/run_lftgtime.log`), a GPU timing smoke. BT4 config, BATCH 64, 300 steps from the torch seed-0 init, no checkpoint; it waits on .cache/gpu.lock behind RB8. Reference: torch CPU ~1.1 s/step at 6 threads. A full 18k tinygrad run needs Bryce's word.
 - **40-step smoke (CPU, same init and data):** tinygrad 4.098 / 3.557 / 3.574 / 3.352 at steps 10 / 20 / 30 / 40 vs torch 4.085 / 3.558 / 3.569 / 3.337. The curves track. tinygrad on CPU runs 18.7 s/step (bucket JIT compiles dominate; the CPU is not the target); torch here 3.5 s/step at 3 threads under load.
+
+### 2026-11-03 19:01 — RB8 VERDICT: RB-W FAIL by 0.001, RB-D PASS (2/2 predicted; 85/128) — the descending breaths have a job and read wild +0.019 over MBR (paired z 2.2); BT on tinygrad GPU 0.668 s/step
+
+`.cache/run_lfrb8.log` (8.46M, 2 tied × 4 breaths, L0/L1/L2 per breath, input row sealed; 30k at 0.169 s/step with BEAM=2 PARALLEL=0):
+- **RB-W FAIL:** wild fac-exact 0.3510 vs the bar 0.3520 (MBR 0.3320 + 0.020), missed by 0.0010. ✓ predicted FAIL.
+- **Paired reads (beside):**
+  - vs MBR: **+0.0190 (paired SE 0.0085, McNemar z 2.23)**
+  - vs MBRC: +0.0234 (z 2.74)
+  - vs MBR22 (22M): −0.0078 (z 0.91). The 8.46M descending reader sits within one paired SE of the 22M breathing reader.
+- **RB-D PASS:** breath-3 q50 0.2985 ≥ 0.20. ✓ predicted PASS.
+  - Census: breath 2 0.348, breath 3 0.299, breath 4 **0.020**. The breath that reads nothing new collapses (0.08× of 1/b; 0.3% of tokens < 0.01).
+  - Per-breath val mse: 0.2213 > 0.1827 > 0.1739 > 0.1747. Breaths 2 AND 3 now each buy fit; breath 4 buys nothing. In MBR, only breath 2 did (0.1706 > 0.1684 > 0.1681 > 0.1685).
+- **What it says:**
+  - **"Each breath zooms one level deeper in the Tree" gives the breaths a job, exactly where new Tree evidence enters.** Without new evidence, a breath settles. This is the census reading of 13:02 confirmed by intervention.
+  - The final val mse (0.1747) is WORSE than MBR's (0.1685), while wild is better: the descent fits the teacher less and transfers more.
+  - The wild gain is one seed against one seed at z 2.2: real-looking, but THE NUMBER law asks for +0.020 or a twin.
+  - **Custody note:** RB8 trained with BEAM=2 and MBR without. BEAM changes kernel schedules, not math (summation order only); I read it as noise-level, but it is a named difference.
+- **Next forms, named (need the word):**
+  - (a) **RB8 twin:** seed 1 of RB8 AND of MBR at 8M (~1.3 h each with BEAM) to settle the +0.019.
+  - (b) **Breath 4 gets a job:** a 4th level, or a KNN-by-state Tree query (Phase B), since the census shows the last breath idles.
+  - (c) The bench move could take RB8's states instead of MBR's if the twin confirms.
+
+**The BT on tinygrad (the fork's port, commits 2da85e11 / 0fd6d7f9; GPU timing unit lftgtime, done 19:00):**
+- **CPU parity PASS:** tensors ≤ 3.7e-4; score item-identical on 128 ORIG + 128 TEST; training replays torch's RNG, and the 40-step curves track.
+- **GPU:** BT4 config, batch 64, 0.668 s/step steady (steps 21–300; 4 length buckets; no BEAM), vs torch CPU ~1.1 s/step at 6 uncontended threads (1.65×). Today's contended CPU runs (BT4M8) are at ~2 s/step.
+- **Not ported yet:** FACT (BT8), IDSKIP (BT9), GATE / ORACLE, JIT inference. BEAM=2 on the BT kernels is untried.
