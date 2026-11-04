@@ -55433,3 +55433,18 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - **CPU parity PASS:** tensors ≤ 3.7e-4; score item-identical on 128 ORIG + 128 TEST; training replays torch's RNG, and the 40-step curves track.
 - **GPU:** BT4 config, batch 64, 0.668 s/step steady (steps 21–300; 4 length buckets; no BEAM), vs torch CPU ~1.1 s/step at 6 uncontended threads (1.65×). Today's contended CPU runs (BT4M8) are at ~2 s/step.
 - **Not ported yet:** FACT (BT8), IDSKIP (BT9), GATE / ORACLE, JIT inference. BEAM=2 on the BT kernels is untried.
+
+### 2026-11-04 00:33 — P8 VERDICT: PASS (1/1 predicted; 86/129) — the benches move to the 8M reader's states; the default switch is staged as a patch
+
+`.cache/run_lf8m.log` (BT4 CY config, s0/s1 18k on `gsmb_mbr8_states.npy` + `gsmb_role_feats_mbr8.npy`; done 00:21):
+- **P8 PASS:** BT4 TEST step 0.158 / 0.149 (mean 0.1535) vs BT4T9NS 0.155 / 0.163 (mean 0.1590); diff −0.0055 ≥ −0.010. ✓ predicted PASS.
+- **Beside (s0 / s1):** ORIG step 0.962 / 0.961; CFNUM step 0.875 / 0.853; CFNAME step 0.816 / 0.795; TEST type 0.306 / 0.284, op 0.483 / 0.441, ans 0.046 / 0.046.
+  The seed spread on TEST step (0.009) is the size of the reader-swap difference: the swap is inside the BT's own noise.
+- **The default switch (pinned "in the same commit"):** staged as `scripts/patches/p8_defaults.py` (gsm_trunk_reader + gsm_breath_reader:
+  default RD_STATES → `gsmb_mbr8_states.npy`, its role-feats pair added; T9-NS stays reachable by env). Not edited in place: lfbt8 / lfw128 /
+  lfbt9 re-read those files (all pin RD_STATES explicitly, so the switch is behavior-neutral for them, but a running chain's script is never
+  edited). Unit lfp8def applies it once lfbt9 has applied bt9_idskip.py and launched both BT9 seeds. Until then the default is still T9-NS.
+- **Incident (00:31, caught and reverted within a minute):** a dry-run command line accidentally ran `bt9_idskip.py` against the LIVE
+  gsm_breath_reader.py. Restored with `git checkout` (the diff was exactly the six BT9 edits; HEAD carries BT8). No process imported the file
+  in that window (BT8 started 17:34, W128 00:24; ps start times checked), and lfbt9's own apply will still find each anchor once (dry run
+  on a copy, after the P8 patch: 6 edits). Rule kept from it: dry runs of a patch only ever run on a copy with R rewritten.
