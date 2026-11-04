@@ -276,9 +276,13 @@ class Trainer:
             coef = (1.0 / (gn + 1e-6)).minimum(1.0)
             ok = lo.isfinite().cast(dtypes.float)
             for v in gp: v.grad = v.grad * coef * ok
+            # (11-04 fix) the silhouettes the Welford atoms follow must be the PRE-update ones (torch's order): opt.step assigns the
+            # weights in place, so a lazy z realized after it read the updated weights (C off by 0.67 after one step). Realize first.
+            zz = o["z"].detach().reshape(-1, DB).contiguous()
+            Tensor.realize(lo, zz, *[v.grad for v in gp])
             s.opt.step()
             # Welford: the atoms follow the (pre-update) silhouettes of the masked gold slots; the coarse atoms over the op
-            zz = o["z"].detach().reshape(-1, DB); oh = (gt.one_hot(NT).cast(dtypes.float) * mk.unsqueeze(-1)).reshape(-1, NT)
+            oh = (gt.one_hot(NT).cast(dtypes.float) * mk.unsqueeze(-1)).reshape(-1, NT)
             ups = [("Cn", "C", oh, zz)] + ([("Ccn", "Cc", oh @ PARM.T, zz)] if BR.ZOOM else []) + (fact_welford(P, zz, oh) if FACT else [])
             for Cn_, Ck_, ohx, zx in ups:
                 cnt = ohx.sum(0); sm = ohx.T @ zx; nn_ = P[Cn_] + cnt; upd = (cnt > 0).unsqueeze(-1)
