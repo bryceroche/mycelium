@@ -55338,3 +55338,24 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - Beside: the same vote on h (the 512-d slot state before the silhouette's down-projection); the flip shares; ORIG.
 - **Pinned blind.**
 - **PREDICTION:** TK1 FAIL. z is trained by the gravity loss to be centroid-separable, so the leaves mostly re-say the centroids. kNN on h is the more informative beside read: if h-kNN beats z, the silhouette's compression throws away type evidence the Tree could keep.
+
+### 2026-11-03 18:14 — WORD GIVEN (Bryce: "word given. also the composite keys bypass the compression, right? unet style compression and skip connection"): W128 PINNED; BT9 THE ID SKIP NAMED
+
+**W128, THE WIDER WAIST** (unit lfw128; it starts when lf8m's BT4M8 finishes):
+- The BT4 config with `BT_DB=128` (the twelve hills' 512/128; the BT has run at 64 since 10-31, a choice no bar settled). Seeds s0/s1, 18k, on the 8M-reader states; control BT4M8.
+- **W1:** TEST type − BT4M8, mean ≥ +0.010 with both seeds > 0. **W2:** TEST step, the same bar.
+- Pinned blind to A1's h-vs-z read (running).
+- **PREDICTIONS:** W1 FAIL, W2 FAIL (size has not bought TEST transfer: R4, B3).
+
+**The composite-key audit (Bryce's question; read off the code):**
+- **Bypass the 512→64 waist:** the T6 step tick (`tickrot` on pointer q/k after expansion), and the type-role bus phase (the bottleneck's own output).
+- **Compressed through the waist:** slot id (`s.slotk`) and tree level (`s.lev`), added to the slot state BEFORE the breath.
+- Token identity lives on the key side (uncompressed word states).
+- **There is NO U-Net skip:** the full-state skip was removed as a bypass (the mandatory-road law).
+
+**BT9, THE ID SKIP (named; needs the word):** the skip carries ONLY ID tags, as phases, never content.
+- Slot id and tree level are removed from the pre-bottleneck input.
+- They are bound as phase tags on their own planes of the expanded state, beside the T6 tick.
+- The rule (through the bottleneck) and the tags (through the skip) meet in the pointer attention: aligned they stack, misaligned they cancel (Nazaré).
+- Phases carry no facts, so the bottleneck stays a mandatory road.
+- Bars to be written at its pin, against BT4M8.
