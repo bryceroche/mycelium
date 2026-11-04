@@ -55624,3 +55624,19 @@ over said structure" (certification without the key) + "Beam search across top c
 
 **3. P9 (pinned 10:25) queued as unit lfp9:** waits for lfgpuq (G0 → BT8b) to end, then the rb8x4 `--gsm` export → role feats →
 BT4RB8 s0/s1 18k (tinygrad if G0 PASS, else torch) → `.cache/gsm_p9_verdict.txt`. Chain `.cache/run_lfp9.sh`.
+
+### 2026-11-04 11:13 — AG VERDICT: AG-1 FAIL ✓ / AG-C PASS ✓ (2/2 predicted; 92/135) — agreement between views certifies, but two seeds are not independent enough to select
+
+*Serves: "the alternation is between discovering the structure and solving over said structure" (certification without the key).*
+- **AG-1 FAIL ✓:** TEST ans AGREE − BEAM-1 **+0.0049 / +0.0059** (mean +0.0054, SE 0.0051 / 0.0059; bar +0.010). Both positive, under the bar.
+- **AG-C PASS ✓:** TEST items where the seeds' BEAM-1 answers agree: coverage 0.042 (42 items), precision **0.2619 = 5.35 ×** BEAM-1's 0.0489
+  (bar 3 ×; SE on 42 items ≈ 0.068, so the bar sits ~1.7 SE below). ORIG: coverage 0.867, precision 0.9996.
+- AG-P not read (gated on AG-1). Beside, for the record: SELF = BEAM-1 to four decimals because a single view's mass vote picks a different
+  value on only 9 / 1012 TEST items (0 / 2878 ORIG): the top program dominates its own beam's mass. Audited, not a bug: the one-view vote
+  is no selector at all, so whatever AGREE buys comes from the second view.
+- **ORIG, beside:** AGREE +0.0469 / +0.0403 (SE 0.004) over BEAM-1 (0.926 → 0.973; oracle@8 0.98): on text the BT has seen, the second view
+  closes ~2/3 of the gap to the oracle. On TEST the seeds share any answer value in only 0.348 of items.
+- **Reading:** agreement is a real certificate (5 × precision on TEST, 1.000 on ORIG), but two seeds trained on the same text discover the
+  same wrong structures, so as a SELECTOR it reaches few TEST items. The lever is view INDEPENDENCE.
+- **Next forms (named, not pinned):** (2) cross-READER views at no training cost once P9 lands: BT4M8 × BT4RB8 (different reader states, same
+  task); (3) sentence-permutation views (the TTA axis; a reader export of permuted text, GPU).
