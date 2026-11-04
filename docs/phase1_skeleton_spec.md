@@ -55279,3 +55279,12 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - **Why I predict FAIL:** on TEST the op factor alone is right only ~0.47 (BT4 TEST op). The wall is mostly recognising the op from text, which factoring the kinds doesn't touch. The cross-join gain can only come from kind combinations rare in TRAIN.
 - Beside: ORIG / CFNUM / CFNAME step, TEST op, TEST ans.
 - **Built forward if F1 passes:** the Tree side, where the factor codebooks become Tree nodes.
+
+### 2026-11-03 16:47 — BEAM=2 WAS NEVER SEARCHING: tinygrad's spawn pool re-runs distill_reader.py; rerun with PARALLEL=0
+
+- **The bug:** BEAM search runs tinygrad's `multiprocessing.get_context("spawn").Pool` (PARALLEL defaults to the CPU count on AMD). Spawned workers re-import the parent's main module. distill_reader.py has no `__main__` guard, so every worker re-executed the training script (the Llama table load, then the GPU open) and died claiming the GPU, which the parent holds.
+  - beam8t2.log: 116,526 tracebacks in ~50 min, load ~38, no step past 0.
+  - The cancelled 22M BEAM=2 half (15:5x) was the same failure; its "search" never ran either.
+- **The rerun** (unit lfbeam8b): BEAM=2 with `PARALLEL=0` (the search runs in-process; slower to search, the same tuned kernels), capped at 2 h. The comparison is BEAM=0 0.267 s/step steady (banked, the 8M shape).
+- **The root fix, named:** a `__main__` guard (or a worker-safe import split) in distill_reader.py. That way any BEAM run can use the pool. It goes in after the chains that re-read the script (lf8m export, lfrb8) are past it.
+- **Queue order now:** lfbeam8b holds the GPU → lf8m's GSM8K export → lfrb8 (RB8 patch, smoke, 30k). lfbeam2read (CPU) starts now. lfbt8 waits for BT4M8's first 1000 steps.
