@@ -55465,3 +55465,28 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
   the factored rebind blended with its own 37-way Welford centroid by shrinkage n/(n+κ). Well-evidenced cells keep their own centroid
   (no fit loss); rare and unseen cells fall back to the factors (where the cross join would otherwise have to be memorized). The read:
   TEST type on rare cells (train count < median) vs BT4M8, the cells the factored form exists for.
+
+### 2026-11-04 07:42 — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "lets use the tinygrad and the GPU and avoid the SQL cross join and use phase binding and conjugate unbinding instead!"): RB8 TWIN, THE GPU PORT, G0 PINNED; BT8b held for the diag
+
+**(1) RB8 TWIN (unit lftwin, GPU; `.cache/run_lftwin.sh`).** Seed 1 (DR_SEED=1: init + loader) of RB8 (rb8x4r1) and of MBR (mbr2x4r1), 30k each on the
+8M rig, both BEAM=2 PARALLEL=0; wild export; frozen CLK3_241 read; paired reads.
+- **RB-T:** RB8 − MBR wild fac-exact, seed-matched paired: mean over seeds 0 and 1 ≥ +0.010 AND both seeds > 0.
+- **PREDICTION: PASS.** Seed 0 read +0.019 (z 2.23) and RB-D showed the mechanism (breaths 2 and 3 working only where a Tree level enters).
+  The risk: the wild seed spread reaches 0.0185, so a +0.019 single read can be half spread.
+- Custody: seed 0's MBR trained without BEAM, seed 1's with it (kernel schedules only; named, as at RB8).
+- On PASS: the bench states move from MBR-8M to RB8-8M (a new P-read, pinned then).
+
+**(2) THE GPU PORT (scripts/gsm_breath_tg.py):** FACT (BT8 and its successor) and IDSKIP (BT9) ported; a TG_MODE=train driver: the full 18k run on
+the GPU (under .cache/gpu.lock), curves every 1000 steps and the FINAL read scored by the TORCH scorer (weights copied back; one scorer for
+every arm), the same .pt / .json outputs as gsm_breath_reader.py.
+- **Custody gates (CPU, before any GPU run):** banked BT8 weights (FACT) score item-identical to torch on 128 ORIG + 128 TEST; IDSKIP
+  tensors match torch from a shared random init (≤ 1e-3); the 40-step training smoke tracks torch with each flag.
+- **G0 (the engine control, one GPU run):** BT4M8 config, seed 0, 18k trained on tinygrad/GPU. TEST step within ±0.010 of the torch
+  BT4M8_s0 (0.158), ORIG step within ±0.010 of 0.962. **PREDICTION: PASS.** On PASS the tinygrad arms compare against the banked torch
+  BT4M8 seeds; on FAIL, tinygrad arms compare only against tinygrad controls.
+- **BT9 stays on the CPU** (launched 05:26, verdict ~20:30); moving it now would restart a third of a run.
+
+**(3) BT8b:** the form will be pinned after the zero-training diag (`scripts/gsm_bt8_diag.py`, unit lfbt8diag: which factor, op / kind a / kind b,
+did the factored silhouette lose, BT8 vs BT4M8, both seeds). Bryce's direction for it: no cross join; phase binding and conjugate unbinding.
+The backoff form named at 05:24 (a per-type 37-way centroid blended in) re-admits the cross join where it is evidenced, so it is set aside
+under this word unless the diag says the interaction is irreducible.
