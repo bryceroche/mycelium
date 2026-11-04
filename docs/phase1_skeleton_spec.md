@@ -55583,3 +55583,18 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
 - Agreed on the evidence: TW2 wild parity on two seeds + CY task parity; one clock family on disjoint planes (the compatibility ruling).
 - **Watch item:** gear reach. The slowest gears must span the longest distances a problem needs; MATH-500 runs longer than GSM8K. If a
   longer-context read degrades, the remedy is a slower gear (the clock-range rule), never RoPE.
+
+### 2026-11-04 10:25 — RB-T VERDICT: PASS (1/1 predicted; 90/133) — reading breaths that descend the Tree beat the plain 8M breather on wild, two seeds
+
+*Serves: "Abstract reasoning = zooming out on the Tree DB" (the U-Net walks the Tree coarse-to-fine).*
+
+- **RB-T PASS:** RB8 − MBR wild fac-exact (masked, frozen CLK3_241) **+0.0190 / +0.0180** (mean +0.0185; bar mean ≥ +0.010 and both > 0).
+  Paired SE 0.0085 / 0.0079, McNemar z −2.23 / −2.29 on both seeds. Each seed alone sits near the THE NUMBER line (+0.020), the twin carries it.
+  ✓ predicted PASS.
+- Beside: RB8 s0 vs s1 +0.0049 (SE 0.0075: seed spread inside one SE). MBR22 (22M) vs RB8R1 +0.0127 (z 1.58, not significant): the 8M
+  Tree-descending reader closes most of the 22M gap.
+- **P9 PINNED (needs the word; runs after the BT8b verdict, since it moves the base under BT8b/BT9):** `--gsm` export of rb8x4 (seed 0,
+  the original) → `gsmb_rb8_states.npy` + `gsmb_role_feats_rb8.npy`; BT4M8 config s0/s1 18k on the GPU (tinygrad, G0-gated).
+  **Bar P9 (task parity):** BT4 TEST step mean over two seeds ≥ the BT4M8 mean (0.158 / 0.149 → 0.1535) − 0.010. If G0 fails, P9 trains on
+  torch. **PREDICTION:** P9 PASS (wild +0.019 has never moved TEST step: CY, P8). On PASS the default switch is staged as a patch, applied
+  between chains.
