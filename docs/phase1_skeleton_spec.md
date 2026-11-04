@@ -55702,3 +55702,17 @@ hypersphere transformer, reported 4–20× fewer steps; cited from memory, unver
 - **PREDICTIONS (re-registered for the concrete forms; the brainstorm's "S-SPEED PASS" leaned on nGPT, which normalizes every hidden
   state with learned step sizes; these forms do not):** SPHT: S-SPEED FAIL, S-T PASS, S-T+ FAIL. SPHR: S-SPEED FAIL, S-T FAIL, S-T+ FAIL
   (rotation-only updates cannot change a plane's magnitude: a big constraint on what a breath can write).
+
+### 2026-11-04 12:26 — G0 VERDICT: FAIL (0/1 predicted; 92/136) — tinygrad-trained BT4M8 lands 0.0108 under torch on ORIG step
+
+*Serves: the platform (11-03/04: every training run on tinygrad + the GPU).*
+- **G0 FAIL ✗ (predicted PASS):** BT4M8TG_s0 TEST step 0.1549 vs torch 0.1576 (−0.0028, inside ±0.010); **ORIG step 0.9513 vs 0.9621
+  (−0.0108, outside ±0.010)**. Beside: CFNUM step −0.021, CFNAME −0.007, TEST type −0.005, TEST ans −0.003. tinygrad ran at ~0.38 s/step.
+- The tinygrad run is also 0.0098 under torch **seed 1** (0.9611) on ORIG, so the gap is not explained by the seed spread on fit (0.0010).
+  Curves on ORIG[:600] stay in the seed band through 13k and lag over 15k–18k (0.948 vs 0.963 / 0.954 at 18k).
+- Audit so far (CPU, reading code): gradient clipping, AdamW (decoupled decay, eps, bias correction) and Welford order match torch. Every
+  earlier parity gate ran on **DEV=CPU**; the GPU's kernels (e.g. its transcendentals: sin/cos on large clock angles) were never gated.
+  **Fired (zero training, unit lfg0audit):** the parity read on PCI+AMD itself, banked weights, 512 ORIG / 512 TEST.
+- **Consequences as wired before the verdict:** lfp9, lfq2 and lfsph fall back to torch (CPU, ~4× slower) unless the engine is fixed and
+  re-gated first. BT8b (lfgpuq, hard-wired to tinygrad, running) continues: its TEST bars sit against torch controls with G0's TEST gap
+  inside ±0.003 to ±0.005; flagged as a confound when it is read.
