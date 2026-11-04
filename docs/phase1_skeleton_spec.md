@@ -55748,3 +55748,20 @@ hypersphere transformer, reported 4–20× fewer steps; cited from memory, unver
   it is memorized per problem, not discovered. This is the discovery line's sharpest measured symptom so far.
 - **Named, not pinned:** CFORD, a third counterfactual split (order changed, gold re-derived), so every bench reports order-robustness;
   and a separation read for (a) vs (b): a small hand-checked subset of reorderings that stay well-formed.
+
+### 2026-11-04 14:25 — G0 AUDIT (lfg0audit, zero training): the GPU forward is exact; the G0 gap lives in training dynamics, not a kernel
+
+*Serves: the platform (every training run on tinygrad + the GPU).*
+- **The parity read on PCI+AMD** (banked torch BT4M8_s0 weights, 512 ORIG + 512 TEST): read max |d| 1.07e-4 (|x| max 65); per-cycle logits
+  ≤ 1.3e-4, argmax type agreement 1.000 every cycle; scores **item-identical** (ORIG ans / step_all / type_ok and TEST all d +0.0000, item
+  agreement 1.000). The GPU transcendentals (the clock's sin/cos) are cleared.
+- **Code read:** the LR is constant (no schedule to mismatch), the same numpy rng sequence drives batches and masks, the same init is copied
+  in, grad-None params are excluded, and AdamW/clip/Welford match (12:26). What is left is float-order divergence over 18k steps: the tinygrad
+  run is a third trajectory from the same seed.
+- **The curves (ORIG[:600], every 1000):** the constant-LR snapshot noise is ~0.01 (the torch seeds swap order 14k → 16k, 0.934/0.944 →
+  0.953/0.946). Over 14k–18k tinygrad sits at or under the lower torch seed every checkpoint (0.931, 0.942, 0.935, 0.950, 0.949), 0.003–0.011 below it.
+  This reads as a mild, consistent lag or as one unlucky trajectory; n = 1 per engine cannot separate them.
+- **G0 stays FAIL** (the bar is unbent). As wired, lfp9 / lfq2 / lfsph train on torch, and tinygrad arms compare only to tinygrad
+  controls. Named, not pinned: a tinygrad seed-1 twin of BT4M8 (one GPU run, ~2 h), which would give a tinygrad control pair and tell lag from luck.
+- Beside: **BT8b_s0 (tinygrad) FINAL** ORIG step 0.943 / TEST step 0.134, type 0.28. That is below both the torch BT4M8_s0 (0.158) and the
+  tinygrad G0 run (0.155) on TEST step. s1 is running; the verdict comes after it.
