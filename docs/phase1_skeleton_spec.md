@@ -55678,3 +55678,27 @@ views; AGREE across views per model (`gsm_agree_read.py` mechanics). New scripts
 - **CPU smoke:** identity items' exported states match the banked mbr8 rows within fp16 (max 0.0005); their role feats match to ~1e-7.
 - **A flaw in my pin, flagged, bars unbent:** AG3-I and AG3-C count identity items (19% of TEST), which agree trivially. The verdict reads the
   pinned bars on all items; AG3-x lines beside read non-identity items only, and any claim about views quotes AG3-x alongside.
+
+### 2026-11-04 11:54 — SPH THE SMOOTH SPACE (Bryce's brainstorm, word given "for the queue"): staged, gated, queued (unit lfsph)
+
+*Serves: "clean binding, unbinding and snap-to-centroid let long chains of reasoning run without degrading the representation" (norm-
+preserving breaths) + "Complex planes are key to lossless binding" + "512 → 64 at the bottleneck" (the waist on the torus).*
+Bryce: *"constrain the search space such that only the smaller representation space with smooth, even, and flowing angles is allowed ...
+min(surface area) and max(volume)."* Critique banked (11-04, on the Gemini relay): the isoperimetric answer is the BALL, not the sphere; a
+sphere constraint would delete radius = confidence (the conjugate mirror rule), so the built form is the TORUS (unit modulus per complex
+plane; radius kept apart); the no-MLP BT already lacks the ReLU kinks that make "sharp corners"; prior art: nGPT (Loshchilov et al. 2024,
+hypersphere transformer, reported 4–20× fewer steps; cited from memory, unverified). Bryce did not pick torus vs sphere; I took the torus
+(my recommendation) and say so.
+- **Patch** `scripts/patches/sph.py` (both engines): **BT_SPH=1** the torus silhouette (z_p / |z_p| on all DB/2 planes; Welford atoms
+  average unit phasors, so an atom's radius = its members' agreement); **BT_SPH=2** + the turning breath (each breath block rotates the slot
+  state's planes by W_oa(attention output), zero-init, instead of the residual add: norm-preserving per plane; the reader keeps the residual).
+- **Gates (CPU, on copies with R rewritten):** SPH off on banked BT4M8_s0: item-identical (ORIG / TEST 128, all three metrics); SPH=1 / 2
+  from a shared init: tensors ≤ 2.4e-5, type argmax agree 1.000; 40-step smokes torch vs tinygrad: SPH=1 4.1676 / 3.4195 vs 4.1669 /
+  3.4214, SPH=2 4.1940 / 3.4058 vs 4.1940 / 3.4014 (3 decimals, looser than the 4 of earlier forms: 1% of init planes have |z_p| < 0.05,
+  and the normalization amplifies fp32 reduction-order noise by up to ~1/|z_p|; banked as the cause on the evidence, not proven).
+- **Runs:** after lfq2 + lfag3 end, the patch is applied; SPHT (SPH=1) s0/s1 then SPHR (SPH=2) s0/s1, 18k on the GPU.
+- **Bars (per arm, vs BT4M8 torch):** **S-SPEED:** the first logged step with ORIG step ≥ 0.90 at ≤ 2/3 of BT4M8's (BT4M8: 9000 / 10000,
+  so ≤ 6000 / 6667) on both seeds. **S-T:** TEST step mean ≥ −0.010. **S-T+:** TEST step mean ≥ +0.010, both > 0.
+- **PREDICTIONS (re-registered for the concrete forms; the brainstorm's "S-SPEED PASS" leaned on nGPT, which normalizes every hidden
+  state with learned step sizes; these forms do not):** SPHT: S-SPEED FAIL, S-T PASS, S-T+ FAIL. SPHR: S-SPEED FAIL, S-T FAIL, S-T+ FAIL
+  (rotation-only updates cannot change a plane's magnitude: a big constraint on what a breath can write).
