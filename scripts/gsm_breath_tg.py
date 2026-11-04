@@ -7,9 +7,16 @@ vision"). A port of gsm_breath_reader.py's network (read + breath + ptrs) and tr
   - training pads every batch's question block to a 32-bucket (pads are masked keys: exp(-1e4) = 0 in fp32, so padding is exact
     up to reduction order) and runs one TinyJit per bucket; the rng sequence replicates the torch train_step exactly, so a run
     sees the torch run's batches and masks
-  - ported: BT4 (CYCLOCK, ZOOM, ROLE, T6OFF) + SOFT and KINDCE in train_step; not ported: FACT (BT8), ORACLE, GATE (score = the schedule)
-Modes (TG_MODE): parity (DEV=CPU; banked weights vs torch: tensors per cycle + score metrics), smoke (same init + same data, both
-frameworks, TG_STEPS steps), time (the GPU timing smoke: s/step at BATCH 64). Env as gsm_breath_reader (BT_*), TG_STEPS, TG_LOAD.
+  - ported: BT4 (CYCLOCK, ZOOM, ROLE, T6OFF) + SOFT and KINDCE in train_step; (11-04) FACT (BT8) and IDSKIP (BT9); not ported:
+    ORACLE, GATE (score = the schedule)
+  - the factored silhouette lives in ONE block (FACTOR CODEBOOKS below: fact_atoms / fact_logits / fact_welford): a successor form
+    (BT8b) is a new branch inside those three functions, nothing else
+  - params the torch graph never touches under the flags (torch: grad None -> AdamW skips them, no decay) are found by one throwaway
+    torch step and left out of the tinygrad optimizer, so both frameworks update the same set
+Modes (TG_MODE): parity (DEV=CPU; banked weights vs torch, or TG_LOAD=init for a shared random init: tensors per cycle + score
+metrics), smoke (same init + same data, both frameworks, TG_STEPS steps), time (the GPU timing smoke: s/step at BATCH 64),
+train (the full run: BT_STEPS steps; every 1000 the weights are copied back into the torch net and scored by BR.score -- one scorer
+for every arm; BT_SAVE=1 -> the same .pt / .json / FINAL line as gsm_breath_reader.py). Env as gsm_breath_reader (BT_*), TG_STEPS, TG_LOAD.
 """
 import math, os, sys, time
 
@@ -22,8 +29,10 @@ from tinygrad.nn.optim import AdamW
 D, NH, DB, NLE, NLB, NCYC = BR.D, BR.NH, BR.DB, BR.NLE, BR.NLB, BR.NCYC
 K, NC, NT, STOP, NOP = BR.K, BR.NC, BR.NT, BR.STOP, BR.NOP
 DH = D // NH; NPA = D // 2; NTK = NPA // 3; NNAME = BR.TR.NNAME
-assert not BR.FACT and not BR.ORACLE and not BR.GATE, "not ported: FACT / ORACLE / GATE"
-BUFFERS = ("C", "Cn", "Cc", "Ccn")
+assert not BR.ORACLE and not BR.GATE, "not ported: ORACLE / GATE"
+FACT, IDSKIP, CHAIN = BR.FACT, BR.IDSKIP, BR.CHAIN                                           # CHAIN = BT_FACT=2 (BT8b)
+BUFFERS = ("C", "Cn", "Cc", "Ccn", "psi", "Fop", "Fopn", "Fa", "Fan", "Fb", "Fbn", "Theta", "Phi")
+NLV = NTK // 2 if IDSKIP else 0                                                               # (BT9) the tree-level tag planes
 
 _W = np.radians(BR.CK.t6_plane_speeds(DH // 2)).astype(np.float32)
 _WH = np.radians(BR.CK.t6_plane_speeds(DH // 4)).astype(np.float32)
@@ -35,7 +44,11 @@ _KM[STOP] = 1
 _PARM = np.zeros((NOP, NT), np.float32); _PARM[BR.PARENT, np.arange(NT)] = 1               # (lse @ PARM)[t] = lse[parent(t)]
 _KMOP = np.stack([(_KM[_PARM[g] > 0].max(0)) for g in range(NOP)])                          # the op-level mask (union of its types)
 _KMOPT = _KMOP[BR.PARENT]                                                                    # per type: its op's mask
-W, WH, WT = Tensor(_W).realize(), Tensor(_WH).realize(), Tensor(_WT).realize()
+_WL = np.radians(BR.CK.t6_plane_speeds(max(NLV, 1))).astype(np.float32)
+_OHA = np.eye(3, dtype=np.float32)[BR.FKA]; _OHB = np.eye(3, dtype=np.float32)[BR.FKB]           # (BT8) type -> its kind factors
+_ISSTEP = (np.arange(NT) != STOP).astype(np.float32)
+W, WH, WT, WL = Tensor(_W).realize(), Tensor(_WH).realize(), Tensor(_WT).realize(), Tensor(_WL).realize()
+OHA, OHB, ISSTEP = Tensor(_OHA).realize(), Tensor(_OHB).realize(), Tensor(_ISSTEP).realize()
 KM6, KMOP6 = Tensor(_KM.reshape(NT, 6)).realize(), Tensor(_KMOPT.reshape(NT, 6)).realize()
 PARM, GRP = Tensor(_PARM).realize(), Tensor(_PARM > 0).realize()
 TRIL = Tensor(np.tril(np.ones((K, K), bool), -1)).realize()
@@ -80,6 +93,48 @@ def attn(P, n, xq, xk, aq, ak, mask):
     return xq + lin(P, (sc.softmax(-1) @ v).transpose(1, 2).reshape(B, Lq, D), n + ".o")
 
 
+# ---- FACTOR CODEBOOKS (BT8; successors branch here) -------------------------------------------------------------------------
+def unbind(P, z):
+    """the conjugate mirror: u_r = z * conj(e^{i psi_r}) for r = op, a, b"""
+    return [rot(z, -P["psi"][r]) for r in range(3)]
+
+
+def keys(P):
+    """per type: the kind-a and kind-b key phases (NT, DB/2) x2. BT8: the bare role phases; BT8b (CHAIN): bound to op / op + kind a"""
+    ps = P["psi"]
+    if not CHAIN: return ps[1].unsqueeze(0).expand(NT, -1), ps[2].unsqueeze(0).expand(NT, -1)
+    th = PARM.T @ P["Theta"]
+    return ps[1] + th, ps[2] + th + OHA @ P["Phi"]
+
+
+def fact_atoms(P):
+    """(NT, DB) the rebound composite per type: sum_r e^{i key_r(t)} C_r[factor_r(t)] (stop: the op factor alone); buffers, no grad"""
+    ka_, kb_ = keys(P)
+    return (rot(PARM.T @ P["Fop"], P["psi"][0]) + (rot(OHA @ P["Fa"], ka_) + rot(OHB @ P["Fb"], kb_)) * ISSTEP.unsqueeze(-1)).detach()
+
+
+def fact_logits(P, z):
+    """-> logit, lfine: unbind each factor, snap it against its own codebook, compose log p(op) + log p(a) + log p(b)"""
+    u = unbind(P, z)
+    lf = [(-((u[r].unsqueeze(2) - F_.detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tauf"][r].exp()).log_softmax(-1)
+          for r, F_ in enumerate((P["Fop"], P["Fa"], P["Fb"]))]
+    if not CHAIN: lfine = (lf[1] @ OHA.T + lf[2] @ OHB.T) * ISSTEP
+    else:   # (BT8b) each kind unbound under every type's own key: p(ka | op), p(kb | op, ka) -> (B, K, NT, 3), read at the type's kind
+        ka_, kb_ = keys(P); zt = z.unsqueeze(2).expand(z.shape[0], z.shape[1], NT, DB)   # tinygrad rot keeps z's shape: broadcast first
+        lca = [(-((rot(zt, -k_).unsqueeze(-2) - F_.detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tauf"][r].exp()).log_softmax(-1)
+               for r, k_, F_ in ((1, ka_, P["Fa"]), (2, kb_, P["Fb"]))]
+        lfine = ((lca[0] * OHA).sum(-1) + (lca[1] * OHB).sum(-1)) * ISSTEP
+    return lf[0] @ PARM + lfine, lfine
+
+
+def fact_welford(P, zz, oh):
+    """the factor atoms follow the UNBOUND gold silhouettes (stop slots feed the op codebook only); oh = masked one-hot (N, NT)"""
+    u = unbind(P, zz); ohs = oh * ISSTEP
+    if CHAIN:   # (BT8b) unbound under the gold type's own keys (rows with no gold weight read any key: their weight is 0)
+        ka_, kb_ = keys(P); u = [u[0], rot(zz, -(oh @ ka_)), rot(zz, -(oh @ kb_))]
+    return [("Fopn", "Fop", oh @ PARM.T, u[0]), ("Fan", "Fa", ohs @ OHA, u[1]), ("Fbn", "Fb", ohs @ OHB, u[2])]
+
+
 def read(P, t):
     x = lin(P, lnorm(P, t["x"], "inp.0"), "inp.1")
     th = t["nid"].maximum(0).one_hot(NNAME).cast(dtypes.float) @ t["theta"]
@@ -98,23 +153,25 @@ def breath(P, t, xq, nb, cyc, sp=None):
     typ, r, cf, lev, cons = nb
     B, Lq = xq.shape[0], xq.shape[1]; L = Lq + K
     com = typ >= 0
-    re = lin(P, r.unsqueeze(-1) * (typ.maximum(0).one_hot(NT).cast(dtypes.float) @ P["C"].detach()), "reent")
-    unc = P["maskv"] if sp is None else P["maskv"] + lin(P, sp @ P["C"].detach(), "sre", bias=False)
-    h = P["slotk.weight"].unsqueeze(0) + com.unsqueeze(-1).where(re, unc) + lin(P, cf, "cfp") + emb(P, lev, "lev", BR.LEVMAX + 1) \
-        + emb(P, cons[:, Lq:].cast(dtypes.int), "cons", 2)
+    CA = fact_atoms(P) if FACT else P["C"].detach()                                          # (BT8) the rebound atoms
+    re = lin(P, r.unsqueeze(-1) * (typ.maximum(0).one_hot(NT).cast(dtypes.float) @ CA), "reent")
+    unc = P["maskv"] if sp is None else P["maskv"] + lin(P, sp @ CA, "sre", bias=False)
+    h = com.unsqueeze(-1).where(re, unc) + lin(P, cf, "cfp") + emb(P, cons[:, Lq:].cast(dtypes.int), "cons", 2)   # torch's order
+    if not IDSKIP: h = h + P["slotk.weight"].unsqueeze(0) + emb(P, lev, "lev", BR.LEVMAX + 1)              # (BT9: the IDs ride the skip)
     xk_q = xq + emb(P, cons[:, :Lq].cast(dtypes.int), "cons", 2)
     sa = ang(t["sid"][:, Lq:], t["off"][:, Lq:]); ka = ang(t["sid"], t["off"])
     if BR.CYCLOCK: sa = sa + cyc.cast(dtypes.float).reshape(B, 1, 1) * W
     mask = t["pad"][:, None, None, :].where(-1e4, 0.0)
     for i in range(NLB): h = attn(P, f"core.{i}", h, Tensor.cat(xk_q, h, dim=1), sa, ka, mask)
     z = lin(P, lnorm(P, h, "down.0"), "down.1")
-    logit = -((z.unsqueeze(2) - P["C"].detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tau"].exp()
     lfine = None
-    if BR.ZOOM:
+    if FACT: logit, lfine = fact_logits(P, z)
+    else: logit = -((z.unsqueeze(2) - P["C"].detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tau"].exp()
+    if BR.ZOOM and not FACT:
         lc_ = (-((z.unsqueeze(2) - P["Cc"].detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tauc"].exp()).log_softmax(-1)
         lse = Tensor.stack(*[GRP[g].where(logit, -1e9).logsumexp(-1) for g in range(NOP)], dim=-1)
         lfine = logit - lse @ PARM; logit = lc_ @ PARM + lfine
-    return dict(logit=logit, p=logit.softmax(-1), z=z, lfine=lfine, xk_q=xk_q, cons=cons, t=t, Lq=Lq)
+    return dict(logit=logit, p=logit.softmax(-1), z=z, lfine=lfine, xk_q=xk_q, cons=cons, t=t, Lq=Lq, CA=CA, lev=lev)
 
 
 def ptrs(P, o, c, zoom=False, free=False):
@@ -123,15 +180,22 @@ def ptrs(P, o, c, zoom=False, free=False):
     B = z.shape[0]; L = Lq + K
     oc = c.one_hot(NT).cast(dtypes.float)
     rr = (p * oc).sum(-1, keepdim=True)
-    u = lin(P, z, "up") + lin(P, rr * (oc @ P["C"].detach()), "upc"); hu = lnorm(P, u, "ln")
+    u = lin(P, z, "up") + lin(P, rr * (oc @ o["CA"]), "upc"); hu = lnorm(P, u, "ln")
     tick = t["sid"][:, Lq:].cast(dtypes.float).unsqueeze(-1) * WT
+    E0 = 2 * (NTK + NLV)                                                                      # (BT9) the bus starts after the level planes
 
     def bind(q, role):
-        return Tensor.cat(q[..., :2 * NTK], rot(q[..., 2 * NTK:], oc @ P["phi"][:, role, :]), dim=-1)
+        return Tensor.cat(q[..., :E0], rot(q[..., E0:], oc @ P["phi"][:, role, NLV:]), dim=-1)
+
+    la = o["lev"].cast(dtypes.float).unsqueeze(-1) * WL                                       # (BT9) the level tag per slot
+
+    def levrot(z_):
+        if not IDSKIP: return z_
+        return Tensor.cat(z_[..., :2 * NTK], rot(z_[..., 2 * NTK:E0], la), z_[..., E0:], dim=-1)
 
     def tickrot(z_):
         return Tensor.cat(rot(z_[..., :2 * NTK], tick), z_[..., 2 * NTK:], dim=-1)
-    kt = lin(P, xk_q, "kt"); ksl = tickrot(lin(P, hu, "ks")); cnt = cons.cast(dtypes.float)
+    kt = lin(P, xk_q, "kt"); ksl = levrot(tickrot(lin(P, hu, "ks"))); cnt = cons.cast(dtypes.float)
     km = (oc @ KM6).reshape(B, K, 2, 3) > 0.5
     if free: km = Tensor.ones(B, K, 2, 3, dtype=dtypes.bool)
     if zoom:
@@ -142,7 +206,7 @@ def ptrs(P, o, c, zoom=False, free=False):
         q = bind(lin(P, hu, n), role)
         lt = q @ kt.transpose(-1, -2) + P["pc"] * cnt[:, None, :Lq] * math.sqrt(D)
         lt = (t["isnum"][:, None, :Lq].logical_not() | km[:, :, role, 0:1].logical_not()).where(-1e4, lt)
-        ls = tickrot(q) @ ksl.transpose(-1, -2) + P["pc"] * cnt[:, None, Lq:] * math.sqrt(D)
+        ls = levrot(tickrot(q)) @ ksl.transpose(-1, -2) + P["pc"] * cnt[:, None, Lq:] * math.sqrt(D)
         ls = (TRIL.logical_not().unsqueeze(0) | km[:, :, role, 1:2].logical_not()).where(-1e4, ls)
         lc = (km[:, :, role, 2:3].logical_not()).where(-1e4, q @ P["kc"].T)
         outs.append(Tensor.cat(lt, ls, lc, dim=-1) * (1 / math.sqrt(D)))
@@ -186,9 +250,9 @@ def nb_t(arrs):
 
 # ---- training -------------------------------------------------------------------------------------------------------------------
 class Trainer:
-    def __init__(s, P, lr):
+    def __init__(s, P, lr, unused=()):
         assert BR.ROLE, "the train step's signature carries the role feats (BT_ROLE=1)"
-        s.P = P; s.params = [v for k, v in P.items() if k not in BUFFERS]
+        s.P = P; s.params = [v for k, v in P.items() if k not in BUFFERS and k not in unused]
         for v in s.params: v.requires_grad = True
         s.opt = AdamW(s.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); s.jits = {}
 
@@ -215,8 +279,9 @@ class Trainer:
             s.opt.step()
             # Welford: the atoms follow the (pre-update) silhouettes of the masked gold slots; the coarse atoms over the op
             zz = o["z"].detach().reshape(-1, DB); oh = (gt.one_hot(NT).cast(dtypes.float) * mk.unsqueeze(-1)).reshape(-1, NT)
-            for Cn_, Ck_, ohx in (("Cn", "C", oh),) + ((("Ccn", "Cc", oh @ PARM.T),) if BR.ZOOM else ()):
-                cnt = ohx.sum(0); sm = ohx.T @ zz; nn_ = P[Cn_] + cnt; upd = (cnt > 0).unsqueeze(-1)
+            ups = [("Cn", "C", oh, zz)] + ([("Ccn", "Cc", oh @ PARM.T, zz)] if BR.ZOOM else []) + (fact_welford(P, zz, oh) if FACT else [])
+            for Cn_, Ck_, ohx, zx in ups:
+                cnt = ohx.sum(0); sm = ohx.T @ zx; nn_ = P[Cn_] + cnt; upd = (cnt > 0).unsqueeze(-1)
                 P[Ck_].assign(upd.where(P[Ck_] + (sm - cnt.unsqueeze(-1) * P[Ck_]) / nn_.maximum(1).unsqueeze(-1), P[Ck_]))
                 P[Cn_].assign(nn_.minimum(BR.NCAP))
             Tensor.realize(lo, *[P[b] for b in BUFFERS if b in P])   # the Welford assigns land in this step (else the next backward meets them)
@@ -291,6 +356,22 @@ def score(P, its, states, tree, seed=0):
     return {k: np.asarray(v) for k, v in res.items()}
 
 
+def unused_params(Dt, states, tree):
+    """the param names torch's train step leaves grad None under these flags (one throwaway step on a copy, its own rng)"""
+    import copy, torch
+    tn = BR.make_net(); opt = torch.optim.AdamW(tn.parameters(), lr=0.0)
+    st = torch.get_rng_state(); rng = np.random.default_rng(12345)
+    BR.train_step(tn, opt, [Dt["TRAIN"][int(i)] for i in rng.integers(0, len(Dt["TRAIN"]), 8)], states, tree, rng)
+    torch.set_rng_state(st)
+    return {n for n, v in tn.named_parameters() if v.grad is None}
+
+
+def to_torch(P, tn):
+    """copy the tinygrad params + buffers back into the torch net (exact fp32)"""
+    import torch
+    tn.load_state_dict({k: torch.as_tensor(P[k].numpy()) for k in tn.state_dict()})
+
+
 if __name__ == "__main__":
     import torch
     MODE = os.environ.get("TG_MODE", "parity")
@@ -298,7 +379,14 @@ if __name__ == "__main__":
     Dt, states = BR.TR.load(); tree = BR.TR.load_tree()
     BR.RF = np.load(BR.GD.V1.C(BR.rolef_name()), mmap_mode="r") if BR.ROLE else None
     if MODE == "parity":
-        tn = BR.make_net(); tn.load_state_dict(torch.load(os.environ.get("TG_LOAD", ".cache/gsmb_breath_BT4T9NS_s0.pt"))); tn.eval()
+        tl = os.environ.get("TG_LOAD", ".cache/gsmb_breath_BT4T9NS_s0.pt"); torch.manual_seed(0); tn = BR.make_net()
+        if tl != "init":
+            sd = torch.load(tl)
+            if os.environ.get("TG_ZEROKEYS") == "1":   # (gate) banked BT8 weights in the CHAIN net with Theta = Phi = 0: must equal FACT=1
+                miss = set(tn.state_dict()) - set(sd); assert miss == {"Theta", "Phi"}, miss
+                sd = dict(sd, Theta=torch.zeros_like(tn.Theta), Phi=torch.zeros_like(tn.Phi))
+            tn.load_state_dict(sd)
+        tn.eval(); print(f"[tg] parity weights: {tl} (FACT {FACT} IDSKIP {IDSKIP})", flush=True)
         P = from_torch(tn.state_dict())
         part = Dt["TEST"][:16]
         t, E = BR.batch(part, states, tree, np.random.default_rng(5)); L = t["pad"].shape[1]; B = len(part)
@@ -327,12 +415,43 @@ if __name__ == "__main__":
         N = int(os.environ.get("TG_PARN", "128"))
         for split in ("ORIG", "TEST"):
             Rt = BR.score(tn, Dt[split][:N], states, tree); Rg = score(P, Dt[split][:N], states, tree)
+            if os.environ.get("TG_DUMP"): np.savez(f"{os.environ['TG_DUMP']}_{split}.npz", **{f"tg_{m}": Rg[m] for m in Rg}, **{f"torch_{m}": Rt[m] for m in Rt})
             print(f"[tg] parity score {split} n {N}: " + " | ".join(f"{m} torch {Rt[m].mean():.4f} tg {Rg[m].mean():.4f} (d {Rg[m].mean() - Rt[m].mean():+.4f}; "
                   f"item agree {float((Rg[m] == Rt[m]).mean()):.3f})" for m in ("ans", "step_all", "type_ok")), flush=True)
+    elif MODE == "train":   # the full run on this device; scored by the torch scorer on copied-back weights
+        import json
+        SEED, TAG, STEPS = BR.SEED, BR.TAG, BR.STEPS
+        un = unused_params(Dt, states, tree)
+        torch.manual_seed(SEED); rng = np.random.default_rng(SEED)
+        tn = BR.make_net(); P = from_torch(tn.state_dict()); npar = sum(p.numel() for p in tn.parameters())
+        tr = Trainer(P, BR.LR, un); train = Dt["TRAIN"]
+        print(f"[bt] {TAG} D {D} reader {NLE} + breath {NLB} (weight-tied x {NCYC} cycles) silhouette {DB} atoms {NT} | params {npar} "
+              f"| tinygrad {Tensor.zeros(1).device} (unused under the flags: {sorted(un)})", flush=True)
+        t0 = time.time(); curve = []
+        for step in range(1, STEPS + 1):
+            its = [train[int(i)] for i in rng.integers(0, len(train), BR.BATCH)]
+            lo = tr.step(its, states, tree, rng)
+            if step % 1000 == 0 or step == STEPS:
+                to_torch(P, tn); tn.eval(); r = {k: BR.score(tn, Dt[k][:600], states, tree) for k in ("ORIG", "TEST")}
+                curve.append(dict(step=step, loss=lo, **{f"{k}_{m}": float(v[m].mean()) for k, v in r.items() for m in ("ans", "step_all")}))
+                print(f"[bt] {TAG} step {step} loss {lo:.4f} " + " ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} "
+                      f"type {v['type_ok'].mean():.3f}" for k, v in r.items()) + f" ({time.time() - t0:.0f}s)", flush=True)
+        to_torch(P, tn)
+        if os.environ.get("BT_SAVE") == "1": torch.save(tn.state_dict(), f".cache/gsmb_breath_{TAG}.pt")
+        tn.eval(); R_ = {k: BR.score(tn, Dt[k], states, tree) for k in BR.SPLITS}   # gsm_breath_reader's FINAL block, verbatim in effect
+        out = dict(tag=TAG, arm="BT", seed=SEED, d=D, params=npar, steps=STEPS, curve=curve, oracle=False, load="", engine="tinygrad",
+                   **{f"{k}_{m}": float(v[m].mean()) for k, v in R_.items() for m in v if m != "commit_cycle"},
+                   **{f"{k}_commit_share": np.bincount(v["commit_cycle"][v["commit_cycle"] >= 0], minlength=NCYC).tolist() for k, v in R_.items()},
+                   **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R_.items()},
+                   atoms_C=tn.C.tolist(), atoms_n=tn.Cn.tolist())
+        json.dump(out, open(f".cache/gsmb_breath_{TAG}.json", "w"))
+        print(f"[bt] {TAG} FINAL " + " | ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} op {v['step_op'].mean():.3f} "
+              f"ptr {v['step_ptr'].mean():.3f} type {v['type_ok'].mean():.3f}" for k, v in R_.items()), flush=True)
     else:
         SEED = BR.SEED; STEPS = int(os.environ.get("TG_STEPS", "60"))
+        un = unused_params(Dt, states, tree)
         torch.manual_seed(SEED); tn = BR.make_net(); P = from_torch(tn.state_dict())
-        tr = Trainer(P, BR.LR); train = Dt["TRAIN"]; rng = np.random.default_rng(SEED); curve = []; t0 = time.time()
+        tr = Trainer(P, BR.LR, un); train = Dt["TRAIN"]; rng = np.random.default_rng(SEED); curve = []; t0 = time.time()
         for step in range(1, STEPS + 1):
             its = [train[int(i)] for i in rng.integers(0, len(train), BR.BATCH)]
             lo = tr.step(its, states, tree, rng); curve.append(lo)
