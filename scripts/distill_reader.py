@@ -46,6 +46,7 @@ T9 = os.environ.get("DR_T6") == "3"   # (ledger 11-01) T6 offset | T6 sentence |
 # (U2) NO RoPE: per head, planes [0:HD/4) turn by the T6 gears x the
 # SENTENCE index, planes [HD/4:HD/2) by the T6 gears x the OFFSET in the sentence (hierarchical address on disjoint planes)
 GSM = os.environ.get("DR_GSM") == "1"              # + GSM8K TRAIN text (ledger 10-31): a native head on the BANKED trunk word states
+RB = os.environ.get("DR_RB") == "1"   # (ledger 11-03 RB8) the reading breaths descend the Tree: breath b reads level b (no input row)
 BR = int(os.environ.get("DR_BREATHS", "0"))      # (ledger 11-02) THE BREATHING READER: DR_LAYERS weight-tied layers x BR breaths
 WARM = os.environ.get("DR_WARM", "")               # continue from this checkpoint (every key must match)
 SAVE_AT = int(os.environ.get("DR_SAVE_AT", 0))     # an extra snapshot at this step (-> ..._{TAG}_s{step}.safetensors)
@@ -129,7 +130,7 @@ if BR:   # (ledger 11-02 MBR) per-breath plane masks for the coarse-to-fine cloc
 def init_params(mean_out):
     rng = np.random.default_rng(RSEED)
     nrm = lambda *s: Tensor(rng.normal(0, 1 / math.sqrt(s[0]), s).astype(np.float32), dtype=dtypes.float).contiguous()
-    p = {"w_in": nrm(H_TRUNK, D), **({"w_db": nrm(DBP, D)} if DBIN else {}), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
+    p = {"w_in": nrm(H_TRUNK, D), **({"w_db": nrm(DBP, D)} if DBIN and not RB else {}), **({f"w_db{l}": nrm(DBP, D) for l in range(3)} if RB else {}), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
          "w_out": nrm(D, H_TRUNK), "b_out": Tensor(mean_out.astype(np.float32), dtype=dtypes.float).contiguous()}
     for i in range(NL):
         p[f"an{i}"] = Tensor.ones(D, dtype=dtypes.float).contiguous(); p[f"fn{i}"] = Tensor.ones(D, dtype=dtypes.float).contiguous()
@@ -155,10 +156,12 @@ def head(p, x):
 def body(p, x0, am, db=None, rc=None, every=False):
     B = x0.shape[0]
     x = x0.cast(dtypes.float) @ p["w_in"]
-    if db is not None:
+    if db is not None and not RB:
         x = x + db.cast(dtypes.float) @ p["w_db"]
     xs = []
     for br in range(max(BR, 1)):
+      if RB and br < 3:   # (ledger 11-03 RB8) this breath reads one level deeper in the Tree
+        x = x + db[:, :, br * DBP:(br + 1) * DBP].cast(dtypes.float) @ p[f"w_db{br}"]
       if BR:   # the coarse-to-fine clock: quiet planes read cos 1 / sin 0
         kc, ks = rc[0] * BRM[br] + (1 - BRM[br]), rc[1] * BRM[br]
       for i in range(NL):
@@ -179,6 +182,17 @@ def body(p, x0, am, db=None, rc=None, every=False):
             x = x + ((h2 @ p[f"wg{i}"]).silu() * (h2 @ p[f"wu{i}"])) @ p[f"wd{i}"]
       xs.append(x)
     return xs if every else x
+
+
+if RB:
+    assert DBIN and BR >= 3 and not GSM, "RB8 needs the DB student, >= 3 breaths, no GSM-training form"
+    import reader_db_build as RDB
+    RB_MU, RB_U, RB_SCALE, RB_STORE = RDB.load_store()
+
+
+def rb_rows(ids_r, m_r, teach_r=None):
+    """(ledger 11-03 RB8) the Tree's three levels as separate rows [B, T, 3 x DBP]; teach_r given = leave-one-out (TRAIN)"""
+    return RDB.level_rows(RB_STORE, RB_MU, RB_U, RB_SCALE, np.asarray(ids_r), np.asarray(m_r), teach_r, T_ALG)
 
 
 def addmask(tm):
@@ -222,6 +236,7 @@ if args.export:
     st = np.lib.format.open_memmap(d_npy, mode="w+", dtype=np.float16, shape=(len(ids), T_ALG, H_TRUNK))
     edb = np.load(DBNPY.format(split=os.environ.get("DR_DBSRC", args.src)), mmap_mode="r") if DBIN else None   # DR_DBSRC: other db rows
     if DBIN: assert edb.shape == (len(ids), T_ALG, DBP), f"db rows {edb.shape} vs {len(ids)} rows"
+    if RB: edb = rb_rows(ids, mask)   # (RB8) the per-level plain lookup
     esent = np.load(STATES_NPZ.format(split=args.src))["sent"] if T6 else None
     for s0 in range(0, len(ids), 8):
         sl = slice(s0, min(s0 + 8, len(ids)))
@@ -253,7 +268,8 @@ if args.gsm:   # LLAMA RETIRED (ledger 10-31): the student's word states for the
         db = np.zeros((len(sl), T_ALG, DBP), np.float16)
         for r, i in enumerate(sl):
             n = len(enc[i].ids); ids[r, :n] = enc[i].ids; m[r, :n] = 1
-            if DBIN: db[r, :n] = RDB.lookup(store, RDB.row_keys(ids[r], n)) * dscale     # as built: backoff, N >= 3
+            if DBIN and not RB: db[r, :n] = RDB.lookup(store, RDB.row_keys(ids[r], n)) * dscale     # as built: backoff, N >= 3
+        if RB: db = rb_rows(ids, m)   # (RB8) the per-level plain lookup
         xin = (Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None)
         rc = tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(np.stack([sent_indices(uniq[i], enc[i].offsets, m[r]).astype(np.int8)
                                                                     for r, i in enumerate(sl)]), m)) if T6 else None
@@ -273,6 +289,8 @@ teach = np.load(STATES_NPY.format(split=TRAIN_SPLIT), mmap_mode="r")
 assert teach.shape == (len(ids), T_ALG, H_TRUNK)
 tdb = np.load(DBNPY.format(split=TRAIN_SPLIT), mmap_mode="r") if DBIN else None   # TRAIN rows are leave-one-out
 if DBIN: assert tdb.shape == (len(ids), T_ALG, DBP)
+tdb3 = np.load(".cache/readerdb3_{}.npy".format(TRAIN_SPLIT), mmap_mode="r") if RB else None   # (RB8) the per-level LOO rows, built once
+if RB: assert tdb3.shape == (len(ids), T_ALG, 3 * DBP)
 ztm = np.load(STATES_NPZ.format(split=TRAIN_SPLIT))["tokmask"]; assert (ztm.astype(np.float32) == mask).all(), "tokmask mismatch"
 tsent = np.load(STATES_NPZ.format(split=TRAIN_SPLIT))["sent"] if T6 else None
 if T6: assert DBIN and not GSM, "the T6 form is the DB student's (U2); GSM8K sentence indices are not built"
@@ -408,7 +426,7 @@ else:
 def batch_of(idx):
     idx = np.sort(idx)
     return (Tensor(EMB[ids[idx]], dtype=dtypes.half), addmask(mask[idx]), Tensor(mask[idx], dtype=dtypes.float),
-            Tensor(np.asarray(teach[idx]), dtype=dtypes.half)) + ((Tensor(np.asarray(tdb[idx]), dtype=dtypes.half),) if DBIN else ()) + (
+            Tensor(np.asarray(teach[idx]), dtype=dtypes.half)) + ((Tensor(np.asarray(tdb3[idx]) if RB else np.asarray(tdb[idx]), dtype=dtypes.half),) if DBIN else ()) + (
             tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(tsent[idx], mask[idx])) if T6 else ())
 
 
@@ -419,7 +437,7 @@ def loader():
     rng = np.random.default_rng(2 + RSEED)
     while True:
         idx = rng.choice(tr_idx, BATCH, replace=False); idx = np.sort(idx)
-        Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb[idx]),) if DBIN else ())
+        Q.put((EMB[ids[idx]], mask[idx], np.asarray(teach[idx])) + ((np.asarray(tdb3[idx]) if RB else np.asarray(tdb[idx]),) if DBIN else ())
               + (gsm_rows(np.sort(rng.choice(g_tr, BATCH, replace=False))) if GSM else ()) + (t6_rot(tsent[idx], mask[idx]) if T6 else ()))
 
 

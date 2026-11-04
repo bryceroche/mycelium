@@ -54,6 +54,28 @@ def lookup(store, k, z=None, kappa=None):
     return pred
 
 
+def level_rows(store, mu, U, scale, ids_r, m_r, teach_r=None, T=None):
+    """(ledger 11-03 RB8) each Tree level as its own row -> [rows, T, 3 x P] fp16 (scaled). teach_r given = LEAVE-ONE-OUT from the
+    row's own teacher state (the TRAIN rule the banked backoff rows follow); a level without a node (N >= MINN) reads zero.
+    Vectorized over the chunk's tokens (one searchsorted per level)."""
+    n = m_r.sum(1).astype(int); T = T or ids_r.shape[1]
+    keys = np.concatenate([row_keys(np.asarray(ids_r[r]), n[r]) for r in range(len(n))], 1)
+    z = None
+    if teach_r is not None:
+        x = np.concatenate([np.asarray(teach_r[r, :n[r]], np.float32) for r in range(len(n))])
+        z = ((x - mu) @ U).astype(np.float16).astype(np.float32)
+    flat = np.zeros((keys.shape[1], 3 * P), np.float32)
+    for li, lv in enumerate(LEVELS):
+        uk, N, LS, _ = store[lv]; pos = np.clip(np.searchsorted(uk, keys[li]), 0, len(uk) - 1); hit = uk[pos] == keys[li]
+        nn_ = np.where(hit, N[pos] - (1 if z is not None else 0), 0.0); ok = nn_ >= MINN
+        m_ = (LS[pos] - (z if z is not None else 0)) / np.maximum(nn_, 1)[:, None]
+        flat[:, li * P:(li + 1) * P] = np.where(ok[:, None], m_, 0.0) * scale
+    out = np.zeros((len(n), T, 3 * P), np.float16); o = 0
+    for r in range(len(n)):
+        out[r, :n[r]] = flat[o:o + n[r]]; o += n[r]
+    return out
+
+
 def load(jsonl, split):
     _, ids, mask, _ = tokenize(jsonl)
     tm = np.load(STATES_NPZ.format(split=split))["tokmask"]; A = np.load(STATES_NPY.format(split=split), mmap_mode="r")

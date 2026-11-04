@@ -55288,3 +55288,29 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - **The rerun** (unit lfbeam8b): BEAM=2 with `PARALLEL=0` (the search runs in-process; slower to search, the same tuned kernels), capped at 2 h. The comparison is BEAM=0 0.267 s/step steady (banked, the 8M shape).
 - **The root fix, named:** a `__main__` guard (or a worker-safe import split) in distill_reader.py. That way any BEAM run can use the pool. It goes in after the chains that re-read the script (lf8m export, lfrb8) are past it.
 - **Queue order now:** lfbeam8b holds the GPU → lf8m's GSM8K export → lfrb8 (RB8 patch, smoke, 30k). lfbeam2read (CPU) starts now. lfbt8 waits for BT4M8's first 1000 steps.
+
+### 2026-11-03 17:16 — BEAM SPEED: 1.77× on the 8M shape; BEAM-2 VERDICT FAIL (predicted ✓; 82/125); RB8 loader fixed and relaunched
+
+**8M BEAM speed test (lfbeam8b, done 17:09):**
+- BEAM=2 with PARALLEL=0 runs at **0.151 s/step steady** (steps 200→400) vs BEAM=0 at 0.267: **1.77× faster**.
+- The one-off search cost: step 0 took 1020 s (in-process; the tuned kernels are cached in tinygrad's diskcache by kernel AST, so the same shapes don't search again). Wall 1327 s for 601 steps.
+- On a 30k run that is ~1.3 h instead of ~2.2 h, and the search pays for itself within the first ~2k steps.
+- BEAM changes kernel schedules, not math: not bit-identical, the same model. **From now on the 8M runs train with `BEAM=2 PARALLEL=0`** (RB8 is the first), until the `__main__` guard lets the pool search in parallel.
+
+**BEAM-2 VERDICT: FAIL** (`.cache/gsmb_beam2_BT4T9NS_s{0,1}.json`, lfbeam2read done 16:55):
+- TEST round 1 − BEAM-1: −0.0148 (SE 0.0055) / +0.0109 (SE 0.0060), mean −0.0020. Bar +0.010 with both > 0. ✓ predicted FAIL.
+- Round 2: 0.0494 / 0.0810. ORIG round 1 hurts: −0.0337 / −0.0170. TRAIN r1 is below BEAM-1 on TRAIN on both seeds (0.8783 vs 0.9183; 0.8650 vs 0.8983). Oracle@8 on TEST rises a little on round 1 (0.149→0.152, 0.154→0.168).
+- **What it says:** re-reading each slot around the solver's winner gives a WORSE distribution than the commit-time one, even on the fitted texts. The seeds disagree in sign on TEST, so there is no signal.
+- **What this closes:** the leave-one-out re-read form of the alternation.
+- **What stands:** BEAM-1 (the post-hoc beam + the final-answer integer prior).
+- **Next form, named (not pinned):** re-read only the slots the solver flags. Leave the confident, certified ones alone (the bridge rule's spirit: write back only what is now known).
+
+**RB8 relaunched (17:2x):**
+- **What went wrong:** the first launch's smoke ran at 2.7 s/step with the data queue at 0. Computing the three Tree levels per row in Python inside the loader starved the GPU (~22 h for 30k). I stopped the chain before the 30k trained a step.
+- **The fix, same math:**
+  - `reader_db_build.level_rows`: vectorized, one searchsorted per level per chunk, 1.05 s per 256 rows.
+  - `scripts/rb8_rows.py`: builds the TRAIN per-level LOO rows once (`.cache/readerdb3_formpm35cBP.npy`, ~19 GB), with a custody check that the backoff collapse reproduces the banked rows.
+  - distill_reader's RB training rows read that memmap; export / GSM use level_rows directly.
+- distill_reader.py as committed = rb8.py's patch + this loader change.
+- The chain then smokes and trains 30k with BEAM=2 PARALLEL=0.
+- Bars unchanged: RB-W, RB-D.
