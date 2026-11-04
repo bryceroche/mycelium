@@ -55765,3 +55765,30 @@ hypersphere transformer, reported 4–20× fewer steps; cited from memory, unver
   controls. Named, not pinned: a tinygrad seed-1 twin of BT4M8 (one GPU run, ~2 h), which would give a tinygrad control pair and tell lag from luck.
 - Beside: **BT8b_s0 (tinygrad) FINAL** ORIG step 0.943 / TEST step 0.134, type 0.28. That is below both the torch BT4M8_s0 (0.158) and the
   tinygrad G0 run (0.155) on TEST step. s1 is running; the verdict comes after it.
+
+### 2026-11-04 15:51 — BRYCE'S WORD: all training on the GPU, the views are names + numbers only, the T6 clock on; queue rewired as one GPU chain (lfgq)
+
+Bryce, verbatim: *"lets stop the CPU runs. I trust GPU and tinygrad even if it is plus or minus 2%. lets not get bogged down in minutiae.
+dont scramble the sentences as that is gibberish, instead change the names and numbers. lets change nothing else in the GSM8K problems.
+be sure the T6 clock is turned on. word given for the whole queue -- salute!"*
+
+- **THE ENGINE RULING:** every training run is on tinygrad on the GPU, with no torch/CPU fallback. The G0 FAIL stays banked, but its
+  consequence clause ("tinygrad arms compare only against tinygrad controls") is **waived by Bryce's word**. Arms compare against the banked
+  torch controls as pinned. Each verdict line carries an engine tag, and the G0 gap (TEST step −0.003, ORIG step −0.011) is the
+  known engine offset to read alongside any margin.
+- **THE VIEW RULING:** the GSM8K problems are changed ONLY in their names and numbers (the CF fixture's two axes: CFNAME, and CFNUM with
+  gold recomputed). Sentence reordering is retired as a view: reordered GSM8K text is gibberish. That settles the AG3 finding's
+  reading as (b), by ruling. The named CFORD fixture and the (a)-vs-(b) separation read are dropped. Any future agreement view is a
+  name/number change.
+- **The T6 clock:** confirmed ON in every queued arm: BT_CYCLOCK=1 (the breath clock: queries turned by the six T6 gears times the cycle index)
+  and BT_T6OFF=1 (position on the T6 offset planes; no learned offset). The chain asserts both before it runs. The RB8 reader export carries
+  DR_T6=3 DR_T9NS=1 (the T9 clock, which contains T6). SPH changes neither.
+- **Rewired:** lfp9 / lfq2 / lfguard / lfsph were stopped while still waiting (none had started its work). One chain, **lfgq**
+  (`.cache/run_lfgq.sh`), runs after BT8b s1:
+  - P9: the rb8x4 export → the __main__ guard → role feats → BT4RB8 s0/s1
+  - AG2: CPU zero-training reads, in the background
+  - W128 s0/s1, then BT9 s0/s1
+  - the SPH patch (after the AG2 reads), then SPHT s0/s1 and SPHR s0/s1
+
+  All runs are tinygrad, 18k steps. Bars and verdict code are unchanged. Gate: a W128 (BT_DB=128) tinygrad smoke on CPU matches torch exactly
+  at 10 and 20 steps (4.0383 / 3.5381). At ~2 h per GPU run, 10 runs ≈ 20 h after BT8b s1.
