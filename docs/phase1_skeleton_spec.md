@@ -55448,3 +55448,20 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
   gsm_breath_reader.py. Restored with `git checkout` (the diff was exactly the six BT9 edits; HEAD carries BT8). No process imported the file
   in that window (BT8 started 17:34, W128 00:24; ps start times checked), and lfbt9's own apply will still find each anchor once (dry run
   on a copy, after the P8 patch: 6 edits). Rule kept from it: dry runs of a patch only ever run on a copy with R rewritten.
+
+### 2026-11-04 05:24 — BT8 VERDICT: F0 PASS, F1 FAIL, F2 FAIL (3/3 predicted; 89/132) — the purely factored silhouette costs fit and does not buy transfer
+
+`.cache/run_lfbt8.log` (BT4 config + BT_FACT=1, s0/s1 18k on the 8M-reader states; control BT4M8, same seeds/states; done 05:21):
+- **F0 PASS:** ORIG step 0.9297 / 0.9327 ≥ 0.90. ✓
+- **F1 FAIL:** TEST type, BT8 − BT4M8: −0.0322 / −0.0005 (mean −0.0163). ✓ predicted FAIL.
+- **F2 FAIL:** TEST step: −0.0322 / −0.0070 (mean −0.0196). ✓ predicted FAIL.
+- **Beside:** ORIG step −0.030 on both seeds (0.930 / 0.933 vs 0.962 / 0.961); CFNUM −0.042 / −0.005; CFNAME −0.061 / 0.000;
+  TEST op −0.007 / +0.028; TEST ans 0.031 / 0.044 vs 0.046 / 0.046.
+- **What it says:** forcing the step type to be the SUM of three independent factors (op + kind a + kind b, phase-bound, conjugate
+  unbind, 11 Welford atoms) loses ~0.03 of fit everywhere and gains nothing on TEST. The 37 combinations are not purely additive in the
+  silhouette: some (op, kind, kind) cells carry an interaction the factors cannot express. Avoiding the cross join completely also throws
+  away the cells that ARE well evidenced. The op factor alone is at parity (TEST op mean +0.011), so the coarse level is not what hurts.
+- **Next form, named (BT8b, needs the word): the backoff silhouette.** The Tree's own rule applied to the codebook: each type's atom =
+  the factored rebind blended with its own 37-way Welford centroid by shrinkage n/(n+κ). Well-evidenced cells keep their own centroid
+  (no fit loss); rare and unseen cells fall back to the factors (where the cross join would otherwise have to be memorized). The read:
+  TEST type on rare cells (train count < median) vs BT4M8, the cells the factored form exists for.
