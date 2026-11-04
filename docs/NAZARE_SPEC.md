@@ -1,4 +1,6 @@
 # THE NAZARÉ OPERATOR SPEC — commitment where the wave breaks
+
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
 # (2026-08-12; spec-first; NOTHING here authorizes a fire)
 
 **The three pieces, measured (the spec's whole foundation):**

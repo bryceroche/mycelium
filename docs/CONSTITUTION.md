@@ -1,5 +1,7 @@
 # THE CONSTITUTION
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 Laws with provenance: each entry carries its date, the commit that banked
 it, and the incident that produced it. The ledger
 (`docs/phase1_skeleton_spec.md`) holds the full forms; this file is the

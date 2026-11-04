@@ -1,5 +1,7 @@
 # Mycelium — Master Design Doc
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 Oct 11, 2026 · Bryce Roche (drafted with Opus; edited against the ledger by Claude)
 
 ## Goal and core theory

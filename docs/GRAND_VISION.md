@@ -1,5 +1,7 @@
 # GRAND_VISION — the hill, fully defined (2026-08-16, the word given)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **The vision:** a construction jaw whose binding is a communication system:
 MAPREDUCE SHUFFLE (route facts by key) + SIX HELICAL SINE WAVES (phase
 carriers) ACROSS BREATH CYCLES (FDM x TDM) — built to satisfy ALL SEVEN

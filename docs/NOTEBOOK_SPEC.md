@@ -1,5 +1,7 @@
 # THE NOTEBOOK SPEC — CAMBIUM's rings, made concrete (2026-08-03)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **STATUS 2026-08-04: BEGUN — §1 is ALIVE (rings v1 fired, graduated
 0.941 in-register, pulsing 0.650/dial-bends at the frontier). THE
 ORGAN ORDER, set by the frontier's own compression (a finding, not a

@@ -1,5 +1,7 @@
 # Binding for comprehension — the branch's opening map (2026-10-22)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 Branch `binding-comprehension`, cut from `complex-planes` at the end of 10-21. Nothing here is a claim. It is a map of
 what the record already says, the theory as Bryce put it, and the first toys, which get bars pinned before any read.
 

@@ -1,5 +1,7 @@
 # Phase-1 skeleton — the NL parser (v0 spec, 2026-07-05)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Status:** design settled in session 2026-07-05; NOTHING BUILT YET. This is the build
 plan for the first Alternator Phase-1: a frozen-trunk parser that turns templated NL
 into factor-graph deltas in the deducer's own vocabulary, closing the loop so the
@@ -55533,3 +55535,18 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
   a config). The 15k curve lines are history, not reads.
 - Regret banked: W128 was 83% done; I stopped it without asking whether "the CPU work" meant both chains. The cost is ~3 GPU-hours per seed to redo.
 - The CPU now serves the port's parity gates and the torch scorer. GPU queue: lftwin (running) → G0 → BT8b s0/s1 → W128 / BT9 on GPU.
+
+### 2026-11-04 08:45 — THE NORTH STAR CARVED IN STONE (Bryce: "for perspective, everything should build towards our longer term vision. pls carve this into stone")
+
+- **Canonical:** `docs/CORE_THEORIES.md`, Bryce's core theories verbatim (2026-11-04), plus its deltas vs the 10-30 statement and a
+  reconciliation table against the ledger. Carved into: CLAUDE.md (a north-star line under the header; §8 rewritten), the project memory
+  (`user_core_theories_2026_11_04.md`, a PAWLS line, the index; the 10-30 file marked superseded), and a north-star banner on 17 top-level
+  docs (README, NEXT_SESSION, CONSTITUTION, GRAND_VISION, MASTER_DESIGN, breathing_transformer, rotational_bus, CORE_COMPONENTS,
+  complex_planes, binding_comprehension, BOARD, NAZARE_SPEC, NOTEBOOK_SPEC, CLOCK_SPEC, alternation_spec, EXPLAINER, this ledger).
+  Older spec docs are history and carry no banner; the ledger and CLAUDE.md route every reader to the stone.
+- **The rule it adds:** every pin names the theory line it builds toward; a run serving no line states why (control, instrument, custody).
+  Theories govern what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form, never a line.
+- **Flagged to Bryce (not resolved silently):** the stone's 3-rotor stack says "Spatial ROPE"; the RoPE RETIREMENT RULING (11-03) retired
+  RoPE, and spatial position rides the T9 clock's offset gears. The build keeps the ruling until Bryce says otherwise.
+- **Today's queue against the stone:** BT8b (the cross join → chained phase binding + conjugate unbind), BT9 (composite keys bypass the
+  512 → 64 waist), RB8 twin (zooming down the Tree each breath), the GPU port (the platform), W128 (the waist's width, a control on 512 → 64).

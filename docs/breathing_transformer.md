@@ -1,5 +1,7 @@
 # The Breathing Transformer — canonical definition (2026-10-28)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Author:** Bryce (definition) + Claude (evidence column). **Status:** the design standard for the reasoning side of Mycelium.
 Bars govern claims; this document governs what gets built (the compatibility ruling). Every row cites the ledger
 (`docs/phase1_skeleton_spec.md`). Regime tag on every toy result: CPU toys, 10-22..10-26, MHA breathing loop.

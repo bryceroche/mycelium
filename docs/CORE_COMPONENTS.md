@@ -1,5 +1,7 @@
 # CORE_COMPONENTS — the conviction board (2026-08-19)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 ## THE BIDIRECTIONAL INTERFACE (the architecture's spine — 2026-08-20)
 TWO ARROWS, ONE GRAPH:
   CONTINUOUS -> DISCRETE : recognition lowers into structure (the waist

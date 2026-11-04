@@ -1,5 +1,7 @@
 # NEXT SESSION — cold-start entry (HANDOFF 2026-10-15 ~20:55; the box restarts)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **READ FIRST:** CLAUDE.md → this block → the ledger (docs/phase1_skeleton_spec.md) from "2026-10-14 (~16:00) — THE DEPTH PROBE'S
 SAVED PASS IS A SMOKE" to the end → MEMORY.md's board. Reads table: `.venv/bin/python3 scripts/reads.py table wildhold`.
 

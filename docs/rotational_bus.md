@@ -1,5 +1,7 @@
 # The Rotational Binding Bus — Architecture & Diagnostic Contract
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Status:** design center of the architecture (Bryce's ruling, 2026-08-28:
 "build everything around it"). Research lineage; the deployed stack
 (conductor_v2) is untouched. Ledger entries 2026-08-28+ carry the verdicts,

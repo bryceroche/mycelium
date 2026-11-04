@@ -1,5 +1,7 @@
 # Mycelium
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`docs/CORE_THEORIES.md`](docs/CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Blog and notes: [theshapeofthought.ai](https://theshapeofthought.ai/)**
 
 **A self-certifying natural-language math reasoning system, built on one rule:

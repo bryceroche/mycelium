@@ -1,5 +1,7 @@
 # MYCELIUM — an explainer for a technical friend (2026-08-09)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Thesis in one line:** a neuro-symbolic math system where *neural
 proposes and symbolic disposes* — a small trained head reads natural-
 language algebra into typed factor graphs, an exact solver crushes

@@ -1,5 +1,7 @@
 # Complex Planes — the addressing design (branch `complex-planes`, 2026-10-19)
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Authors:** Bryce + Claude (with Opus's review folded in). **Status:** design. Nothing has been trained, and no bars
 have been pinned. The numbers below are zero-GPU toy reads of the addressing math alone (`scripts/toys/complex_addr_*.py`).
 

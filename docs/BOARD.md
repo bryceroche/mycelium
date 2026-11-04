@@ -1,4 +1,6 @@
 # THE BOARD — docket artifact (2026-08-07 audit; gut #174's rent)
+
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
 Deciding stays with the word; this file marks status only.
 Re-audit at each chapter sync.
 

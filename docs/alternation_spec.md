@@ -1,5 +1,7 @@
 # The Alternation Spec — one setup breath, six alternating breaths, five keys, a predicate mask, a perceiver
 
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
+
 **Registered:** 2026-09-24 (Bryce's six-point focus, 09-23 late; the register family's book behind it).
 **Status:** SPEC. Nothing here is built until its stage is gated. Bars pin before measurement.
 **Governing laws:** the mandatory-road law (a message rides a road with no bypass), the residual-seal law,

@@ -1,4 +1,6 @@
 # THE CLOCK SPEC — organ 3, the WHEN organ (2026-08-08; spec-first;
+
+> **North star (carved in stone 2026-11-04):** everything builds toward Bryce's core theories, [`CORE_THEORIES.md`](CORE_THEORIES.md) (verbatim, canonical). Where this document disagrees with it, the north star and the ledger govern.
 # nothing here authorizes a build or a fire)
 
 **Summons (three, all measured):** the dup cure's double-failure
