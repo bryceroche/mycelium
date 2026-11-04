@@ -55228,3 +55228,19 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
 - Read beside: ORIG / CFNUM / CFNAME / TEST type versus BT4T9NS.
 - **PREDICTION:** P8 PASS. CY saw no task cost from a reader swap that moved wild by ±0.01. The TEST wall is step-type recognition, which reader fidelity at this scale barely moves (R4/B3: size buys no TEST transfer).
 - **On PASS:** the 8M reader's states become the bench default. The rolef pair and gsm_trunk_reader's default are switched in the same transaction as the verdict, never before it.
+
+### 2026-11-03 16:15 — WORD GIVEN FOR THE WHOLE QUEUE (Bryce: "word given for silhouette and snap -- the SQL cross join is our nemesis ... alternation proper with notebook also sounds good. word given for the whole queue"): BEAM-2 PINNED
+
+The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the factored silhouette (phase-bound factors, conjugate unbind, Welford factor atoms); (3) RB8, reading breaths on the 8M rig (a Tree query per breath). Each is pinned in its own entry before it fires.
+
+**BEAM-2, THE ALTERNATION PROPER** (`scripts/gsm_beam2_read.py`; zero-training; BT4T9NS_s0/s1 on T9-NS states, the BEAM-1 weights):
+- **Round 0 = BEAM-1,** with BEAM-1's own TRAIN-fit ρ0 and λ (from its JSON).
+- **Each round:**
+  - **WRITE-BACK:** the solver's chosen program goes into the notebook. Every slot is committed, with the executor's certificates.
+  - **RE-READ:** for each slot k, k is masked and the others stay committed to the winner (the masked-diffusion training distribution). One breath at the last cycle's stamp gives k's fresh top-2 × 2 × 2 candidates, plus the winner's own step scored under the fresh distribution.
+  - **DISPOSE:** beam + circuit breaker, then the solver reranks with λ2 fit on TRAIN[:600].
+- The beam_read refactor (gate_batch / slot_cands / top_alts) reproduces the BEAM-1 smoke exactly (128 items: ORIG 0.8984 → 0.9297; TEST 0.0469 → 0.0547).
+- **BEAM2 bar:** TEST ans, round 1 − BEAM-1, mean ≥ +0.010 with both seeds > 0.
+- Read beside: round 2; oracle@8 by round; ORIG.
+- **Pinned blind** (no BEAM-2 output had been seen).
+- **PREDICTION:** BEAM2 FAIL. On TEST, the winner the slots re-read around is usually wrong (ans 0.067), so the context is wrong too. Re-reading should help ORIG more than TEST.

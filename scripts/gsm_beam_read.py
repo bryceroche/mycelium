@@ -62,9 +62,50 @@ def beam(cands, vals):
 def collect(its, rho):
     """the BT6-gate commit loop; per item: greedy prog/ans, the beam's finished programs, gold final"""
     res = []
+    for s0 in range(0, len(its), 128):
+        part = its[s0:s0 + 128]
+        t, E, xq, L, progs, cands = gate_batch(part, rho, s0)
+        for b, it in enumerate(part):
+            vals = it["vals"] + [None] * (L - len(it["vals"]))
+            prog = []
+            for st in progs[b]:
+                if st[0] == ".": break
+                prog.append(st)
+            g = BR.GD.execute(prog, vals)
+            fin = beam(cands[b], vals)
+            res.append(dict(greedy=g is not None and BR.GD.V1.near(g, it["final"]),
+                            beam=[(lp, v, BR.GD.V1.near(v, it["final"])) for lp, _, v in fin]))
+    return res
+
+
+def slot_cands(b, k, dec, tv, ti, alt):
+    """top-2 types x top-2 a x top-2 b for slot (b, k) from precomputed (tv, ti, alt) -> [(logp, step | None)]"""
+    cl = []
+    for r in range(2):
+        tr = int(ti[b, k, r])
+        if tr == STOP: cl.append((float(tv[b, k, r]), None)); continue
+        va, xa, vb, xb = alt[r]
+        for i, j in itertools.product(range(2), range(2)):
+            s = float(tv[b, k, r] + va[b, k, i] + vb[b, k, j])
+            if math.isfinite(s): cl.append((s, (BR.TYPES[tr][0], dec(xa[b, k, i]), dec(xb[b, k, j]))))
+    return cl
+
+
+def top_alts(logit):
+    """the top-2 types and, under each, the top-2 a / b pointers (log-probs) for every slot"""
+    lpt = logit.log_softmax(-1); tv, ti = lpt.topk(2, -1)
+    alt = []
+    for r in range(2):
+        qa, qb = net.ptrs(ti[..., r])
+        va, xa = qa.log_softmax(-1).topk(2, -1); vb, xb = qb.log_softmax(-1).topk(2, -1)
+        alt.append((va.numpy(), xa.numpy(), vb.numpy(), xb.numpy()))
+    return tv.numpy(), ti.numpy(), alt
+
+
+def gate_batch(part, rho, s0):
+    """one batch through the BT6-gate loop -> t, E, xq, L, greedy progs, per-slot candidates at each slot's commit cycle"""
     with torch.no_grad():
-        for s0 in range(0, len(its), 128):
-            part = its[s0:s0 + 128]
+        if True:
             t, E = BR.batch(part, states, tree, np.random.default_rng(s0)); L = t["pad"].shape[1]; B = len(part)
             for b, it in enumerate(part): E[b]["vals"] = it["vals"]
             xq = net.read(t)
@@ -81,38 +122,14 @@ def collect(its, rho):
                 ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
                 ca = pa.softmax(-1).max(-1).values.numpy(); cb = pb.softmax(-1).max(-1).values.numpy()
                 conf = np.where(ty == STOP, pt, pt * ca * cb)
-                lpt = logit.log_softmax(-1); tv, ti = lpt.topk(2, -1)                         # (B, K, 2) the top-2 types
-                alt = []
-                for r in range(2):
-                    qa, qb = net.ptrs(ti[..., r])
-                    va, xa = qa.log_softmax(-1).topk(2, -1); vb, xb = qb.log_softmax(-1).topk(2, -1)
-                    alt.append((va.numpy(), xa.numpy(), vb.numpy(), xb.numpy()))
-                tv, ti = tv.numpy(), ti.numpy()
+                tv, ti, alt = top_alts(logit)                                                    # (B, K, 2) the top-2 types
                 for b in range(B):
                     for k in [k for k in np.argsort(-conf[b]) if not com[b, k] and conf[b, k] >= rho * (1 - c / (NCYC - 1))]:
                         com[b, k] = True; typ[b, k] = ty[b, k]; rad[b, k] = conf[b, k]
                         op = BR.TYPES[ty[b, k]][0] if ty[b, k] != STOP else "."
                         progs[b][k] = (op, dec(ia[b, k]), dec(ib[b, k])) if op != "." else (".", None, None)
-                        cl = []
-                        for r in range(2):
-                            tr = int(ti[b, k, r])
-                            if tr == STOP: cl.append((float(tv[b, k, r]), None)); continue
-                            va, xa, vb, xb = alt[r]
-                            for i, j in itertools.product(range(2), range(2)):
-                                s = float(tv[b, k, r] + va[b, k, i] + vb[b, k, j])
-                                if math.isfinite(s): cl.append((s, (BR.TYPES[tr][0], dec(xa[b, k, i]), dec(xb[b, k, j]))))
-                        cands[b][k] = cl
-            for b, it in enumerate(part):
-                vals = it["vals"] + [None] * (L - len(it["vals"]))
-                prog = []
-                for st in progs[b]:
-                    if st[0] == ".": break
-                    prog.append(st)
-                g = BR.GD.execute(prog, vals)
-                fin = beam(cands[b], vals)
-                res.append(dict(greedy=g is not None and BR.GD.V1.near(g, it["final"]),
-                                beam=[(lp, v, BR.GD.V1.near(v, it["final"])) for lp, _, v in fin]))
-    return res
+                        cands[b][k] = slot_cands(b, k, dec, tv, ti, alt)
+    return t, E, xq, L, progs, cands
 
 
 def pick(R, li, ln):
@@ -125,23 +142,24 @@ def pick(R, li, ln):
     return np.array(out)
 
 
-fit = {}
-for rho in (GRID[-3:-1] if SMOKE else GRID):
+if __name__ == "__main__":
+  fit = {}
+  for rho in (GRID[-3:-1] if SMOKE else GRID):
     fit[rho] = float(np.mean([r["greedy"] for r in collect(Dt["TRAIN"][:SMOKE or 600], rho)]))
-rho = max(fit, key=lambda r: fit[r])
-RT = collect(Dt["TRAIN"][:SMOKE or 600], rho)
-lfit = {(li, ln): float(pick(RT, li, ln).mean()) for li in LAMS for ln in LAMS}
-lam = max(lfit, key=lambda x: (lfit[x], -x[0] - x[1]))                    # ties -> the smaller penalties
-out = dict(tag=TAG, load=BR.LOAD, bw=BW, rho0=rho, fit=fit, lam=lam, lam_fit_best=lfit[lam], lam_fit_zero=lfit[(0.0, 0.0)])
-print(f"[beam] {TAG} rho0 {rho} | lam (int, neg) {lam} TRAIN ans {lfit[lam]:.4f} (lam 0: {lfit[(0.0, 0.0)]:.4f})", flush=True)
-for split in ("ORIG", "TEST"):
-    R = collect(Dt[split][:SMOKE or None], rho)
-    g = np.array([r["greedy"] for r in R], float); bm = pick(R, *lam).astype(float); b0 = pick(R, 0.0, 0.0).astype(float)
-    orc = np.array([any(x[2] for x in r["beam"]) or r["greedy"] for r in R], float)
-    d = bm - g; d0 = b0 - g
-    o = out[split] = dict(n=len(R), greedy=g.mean(), beam=bm.mean(), breaker_only=b0.mean(), oracle=orc.mean(),
-                          diff=d.mean(), se=d.std(ddof=1) / math.sqrt(len(d)), diff_breaker=d0.mean(),
-                          pruned_all=float(np.mean([not r["beam"] for r in R])), mean_finished=float(np.mean([len(r["beam"]) for r in R])))
-    print(f"[beam] {TAG} {split} n {o['n']} ans greedy {o['greedy']:.4f} | breaker only {o['breaker_only']:.4f} | beam+solver {o['beam']:.4f} "
-          f"({o['diff']:+.4f}, SE {o['se']:.4f}) | oracle@{BW} {o['oracle']:.4f} | all pruned {o['pruned_all']:.3f} | finished {o['mean_finished']:.1f}", flush=True)
-if not SMOKE: json.dump(out, open(f".cache/gsmb_beam_{TAG}.json", "w"), indent=1, default=float)
+  rho = max(fit, key=lambda r: fit[r])
+  RT = collect(Dt["TRAIN"][:SMOKE or 600], rho)
+  lfit = {(li, ln): float(pick(RT, li, ln).mean()) for li in LAMS for ln in LAMS}
+  lam = max(lfit, key=lambda x: (lfit[x], -x[0] - x[1]))                    # ties -> the smaller penalties
+  out = dict(tag=TAG, load=BR.LOAD, bw=BW, rho0=rho, fit=fit, lam=lam, lam_fit_best=lfit[lam], lam_fit_zero=lfit[(0.0, 0.0)])
+  print(f"[beam] {TAG} rho0 {rho} | lam (int, neg) {lam} TRAIN ans {lfit[lam]:.4f} (lam 0: {lfit[(0.0, 0.0)]:.4f})", flush=True)
+  for split in ("ORIG", "TEST"):
+      R = collect(Dt[split][:SMOKE or None], rho)
+      g = np.array([r["greedy"] for r in R], float); bm = pick(R, *lam).astype(float); b0 = pick(R, 0.0, 0.0).astype(float)
+      orc = np.array([any(x[2] for x in r["beam"]) or r["greedy"] for r in R], float)
+      d = bm - g; d0 = b0 - g
+      o = out[split] = dict(n=len(R), greedy=g.mean(), beam=bm.mean(), breaker_only=b0.mean(), oracle=orc.mean(),
+                            diff=d.mean(), se=d.std(ddof=1) / math.sqrt(len(d)), diff_breaker=d0.mean(),
+                            pruned_all=float(np.mean([not r["beam"] for r in R])), mean_finished=float(np.mean([len(r["beam"]) for r in R])))
+      print(f"[beam] {TAG} {split} n {o['n']} ans greedy {o['greedy']:.4f} | breaker only {o['breaker_only']:.4f} | beam+solver {o['beam']:.4f} "
+            f"({o['diff']:+.4f}, SE {o['se']:.4f}) | oracle@{BW} {o['oracle']:.4f} | all pruned {o['pruned_all']:.3f} | finished {o['mean_finished']:.1f}", flush=True)
+  if not SMOKE: json.dump(out, open(f".cache/gsmb_beam_{TAG}.json", "w"), indent=1, default=float)
