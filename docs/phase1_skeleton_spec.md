@@ -55640,3 +55640,30 @@ BT4RB8 s0/s1 18k (tinygrad if G0 PASS, else torch) → `.cache/gsm_p9_verdict.tx
   same wrong structures, so as a SELECTOR it reaches few TEST items. The lever is view INDEPENDENCE.
 - **Next forms (named, not pinned):** (2) cross-READER views at no training cost once P9 lands: BT4M8 × BT4RB8 (different reader states, same
   task); (3) sentence-permutation views (the TTA axis; a reader export of permuted text, GPU).
+
+### 2026-11-04 11:18 — WORD GIVEN for the whole queue ("nice -- word given for the whole queue. Salute!"): Q2 queued; AG2 + AG3 pinned
+
+**Q2 (unit lfq2, `.cache/run_lfq2.sh`): after lfp9 ends.** GPU: W128 s0/s1 then BT9 s0/s1, on the mbr8 states against the banked BT4M8
+(tinygrad if G0 PASS, else torch); the pinned bars W1/W2 and B9-0/1/2 (11-03) are unchanged. CPU, beside: AG2.
+- *W128 serves "512 → 64 at the bottleneck: the Silhouette" (a control on the waist's width); BT9 serves "composite keys bypass the U-Net
+  compression via the skip".*
+
+**AG2 THE CROSS-READER AGREEMENT (CPU, inside lfq2; pinned now, before any dump exists).** *Serves: the discovery line (certification
+without the key); view independence, the lever AG named.* BEAM dumps of BT4RB8 s0/s1 (P9's runs, RB8 states) joined with the banked
+BT4M8 dumps, pairs s0 × s0 and s1 × s1 (`scripts/gsm_ag2_verdict.py`).
+- **AG2-1:** TEST ans AGREE − BEAM-1 over the four model reads, mean ≥ +0.010 and all four > 0.
+- **AG2-I (independence):** TEST shared-value rate across readers > 0.378 (AG's one-reader rate 0.348 + 0.03).
+- **AG2-C:** TEST certificate precision ≥ 3 × BEAM-1 in both pairs.
+- **PREDICTIONS:** AG2-1 FAIL, AG2-I FAIL (both BTs train on the same text; the reader swap moved wild, never TEST step), AG2-C PASS.
+- If P9 FAILS its own bar, AG2 still reads (a weaker view is still a view); noted so the verdict is not read as P9's.
+
+**AG3 THE SENTENCE-PERMUTATION VIEWS (the TTA axis): build delegated, bars pinned.** *Serves: the discovery line; the deployed stack's
+diagram-invariance link (TTA unanimity 1.0000).* A second VIEW of each problem: its non-question sentences reordered (question last), re-
+tokenized, gold re-derived per view from the harvest trace, word states exported by the mbr8 reader; the banked BT4M8 s0 / s1 score both
+views; AGREE across views per model (`gsm_agree_read.py` mechanics). New scripts only (no queued chain's script is edited).
+- **AG3-1:** TEST ans AGREE(view 0, view 1) − BEAM-1(view 0) for each seed, mean ≥ +0.010 and both > 0.
+- **AG3-I:** TEST shared-value rate across views > 0.378.
+- **AG3-C:** TEST certificate precision ≥ 3 × BEAM-1 (view 0) for both seeds; VOID if coverage < 0.02.
+- **PREDICTIONS:** AG3-1 FAIL (low confidence), AG3-I PASS, AG3-C PASS.
+
+**Also in the queue:** the `__main__` guard for distill_reader.py (staged; applied after lfp9's export is past it).
