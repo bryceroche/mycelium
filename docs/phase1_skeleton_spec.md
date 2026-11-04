@@ -55219,3 +55219,12 @@ Bryce asked whether CSP-solver feedback is what provides the adjustment between 
   - (b) **A wider beam / λ beyond the grid edge** (λ_int hit 8, the top): read the oracle at 16 and 32 and a λ = ∞ hard-integer arm.
   - (c) **Training-time use:** the beam's solver-chosen programs as self-training targets on TRAIN only. This needs the custody gate: only answer-key-certified programs, the existing law.
 - **Ledger-time correction (15:59, read off the box):** five headers written this afternoon carried guessed times (13:10, 13:16, 13:35, 13:38, 13:50) instead of box times — the rule "a ledger time is read off the box" was broken. They are corrected to times anchored by the commits (b40ca8c1 12:55; c9961882 15:49; a4fc6e40 15:55) and the unit logs (lfbeamread start 15:51; lfbeam8 start 15:54). The BEAM pin was still written before its smoke output was read (the commit precedes the full read).
+
+### 2026-11-03 16:00 — ALL IN ON 8M, part 2 (Bryce: "lets go all in on 8m we're only losing ~2% accuracy and iterate MUCH faster"): THE BENCHES MOVE; P8 PINNED
+
+- **The open question from 15:54 is answered:** the BT benches move to the 8M breathing reader (MBR, `distill_reader_mbr2x4`, 8.07M; wild 0.3320 vs NMDBT9NS 0.3671 / two-seed T9-NS mean 0.3579; i.e. −0.026 to −0.035 on wild, "~2%" rounds down — the size of the loss is as banked).
+- **Chain (unit lf8m):** after lfbeam8 frees the GPU: `--gsm` export → `gsmb_mbr8_states.npy`; role feats → `gsmb_role_feats_mbr8.npy`; BT4 (CY's config) s0/s1 18k on the new states → the P8 verdict.
+- **P8 (task parity):** BT4 TEST step on the 8M-reader states, mean over two seeds, ≥ the BT4T9NS mean (0.155 / 0.163 → 0.159) − 0.010.
+- Read beside: ORIG / CFNUM / CFNAME / TEST type versus BT4T9NS.
+- **PREDICTION:** P8 PASS. CY saw no task cost from a reader swap that moved wild by ±0.01. The TEST wall is step-type recognition, which reader fidelity at this scale barely moves (R4/B3: size buys no TEST transfer).
+- **On PASS:** the 8M reader's states become the bench default. The rolef pair and gsm_trunk_reader's default are switched in the same transaction as the verdict, never before it.
