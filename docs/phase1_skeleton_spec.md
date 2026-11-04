@@ -55598,3 +55598,29 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
   **Bar P9 (task parity):** BT4 TEST step mean over two seeds ≥ the BT4M8 mean (0.158 / 0.149 → 0.1535) − 0.010. If G0 fails, P9 trains on
   torch. **PREDICTION:** P9 PASS (wild +0.019 has never moved TEST step: CY, P8). On PASS the default switch is staged as a patch, applied
   between chains.
+
+### 2026-11-04 11:08 — WORD GIVEN ("word given - Salute!"): the stone gains the discovery line; AG pinned and fired; P9 queued
+
+**1. The stone gains a line (Bryce, verbatim, 11-04):** *"the model learned to solve over a structure we gave it. it didnt discover the
+structure itself. THAT Is key second part of the system we need to build. the alternation is between discovering the structure and solving
+over said structure."* Placed under "LLMs have a solver inside" in `docs/CORE_THEORIES.md` (+ a reconciliation row), CLAUDE.md §8 and memory.
+Critique banked with it (11-04, on a Gemini relay): the solver "kicking back to the reader on a wall" must respect the bridge rule (only an
+UNSAT proof crosses hard), and on GSM8K a wrong graph is rarely UNSAT (BEAM-2's re-breath FAILED; BEAM-1's prune bought +0.010). The open
+question for part 2: **what certifies a discovered structure without the key?** Candidates: invariance across views, overdetermination,
+Tree support. Phase C (selective re-read) is the solver steering re-discovery, not "the solving half".
+
+**2. AG THE AGREEMENT READ (zero training, CPU; unit lfag; fired).** *Serves: "the alternation is between discovering the structure and solving
+over said structure" (certification without the key) + "Beam search across top choices"; the bridge rule (agreement only biases).*
+- `scripts/gsm_beam_dump.py` (per seed: the BEAM-1 read's rho0 / lam fit on TRAIN[:600], then per item the greedy value + every finished
+  beam program's log p / value / right) → `scripts/gsm_agree_read.py` on the banked BT4M8 s0 + s1 (the two seeds = two views, the
+  landscape axis). Selectors per seed: BEAM-1 (banked) / SELF (one view's mass vote by final value: the placebo) / AGREE (values in BOTH
+  beams, mass here + mass there − the soft factors; no shared value → BEAM-1).
+- **AG-1:** TEST ans AGREE − BEAM-1, both seeds > 0 and mean ≥ +0.010. **AG-P** (attribution, read only on AG-1 PASS): AGREE − SELF,
+  both > 0 and mean ≥ +0.005. **AG-C** (the certificate tier): TEST precision on items where the seeds' BEAM-1 answers agree ≥ 3 × the
+  BEAM-1 TEST mean; VOID if coverage < 0.02.
+- Smoke seen before pinning (n = 40 per split; mechanics only): a shared answer value on TEST in only ~0.22 of items (ORIG 0.97).
+- **PREDICTIONS:** AG-1 FAIL (the seeds rarely share a TEST value, which caps the selector's reach); AG-C PASS, low confidence.
+- Form 2 if the axis is live: sentence-permutation views (the TTA axis) need a reader export of permuted text (GPU), not pinned.
+
+**3. P9 (pinned 10:25) queued as unit lfp9:** waits for lfgpuq (G0 → BT8b) to end, then the rb8x4 `--gsm` export → role feats →
+BT4RB8 s0/s1 18k (tinygrad if G0 PASS, else torch) → `.cache/gsm_p9_verdict.txt`. Chain `.cache/run_lfp9.sh`.

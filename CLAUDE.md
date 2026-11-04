@@ -259,6 +259,10 @@ it governs what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form,
 - **LLMs have a solver inside** (#2, added 11-04): models naturally build internal representations of CSP solvers in their weights
   (our Sudoku result: v98, 2026-05-29 — learned joint inference ≈ loopy BP; June: byte-identical to the KenKen oracle). **The core
   rhythm includes a CALL to a CSP solver**: the breaths are the internal (continuous) solver, the symbolic solver the external (discrete) one.
+- **Discover the structure, then solve over it** (added 11-04): *"the model learned to solve over a structure we gave it. it didnt discover the
+  structure itself. THAT Is key second part of the system we need to build. the alternation is between discovering the structure and solving over
+  said structure."* Each breath discovers (types + pointers = the graph, retrieved from the Tree and bound); the solver solves over it. The open
+  question: what certifies a discovered structure without the key (only a proof crosses hard).
 - **The SQL cross join is the nemesis.** Traditional ML trains on the cross join of concepts (why the whole internet isn't enough data).
   Complex planes give **clean binding and unbinding** (phase angle + conjugate multiplication), so we never train on the cross join. The
   superpower is NOT superposition (~20 items per complex plane before degradation); it is clean, on-demand bind/unbind.
