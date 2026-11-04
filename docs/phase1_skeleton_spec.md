@@ -55667,3 +55667,14 @@ views; AGREE across views per model (`gsm_agree_read.py` mechanics). New scripts
 - **PREDICTIONS:** AG3-1 FAIL (low confidence), AG3-I PASS, AG3-C PASS.
 
 **Also in the queue:** the `__main__` guard for distill_reader.py (staged; applied after lfp9's export is past it).
+
+### 2026-11-04 11:22 — AG3 built (delegated, reviewed) and fired (unit lfag3)
+
+- New scripts only: `gsm_view_data.py` (sentence split with an abbreviation guard; question last; a seeded non-identity order; gold
+  re-derived by `GD.program` on the view text, identity fallback on any mismatch), `gsm_view_export.py` (a fake `gsm_trunk_states` +
+  `runpy` of distill_reader.py as __main__; the export's own index assert checks the view layout), `gsm_view_rolefeats.py` (memory from
+  view-0 TRAIN; queries from the view), `gsm_view_dump.py` (reuses view 0's rho0 / lam: same model, same selector), `gsm_ag3_verdict.py`.
+- **Census:** ORIG 2878 items (2170 permuted, 708 identity), TEST 1012 (822 permuted, 190 identity), 0 gold re-derivation failures.
+- **CPU smoke:** identity items' exported states match the banked mbr8 rows within fp16 (max 0.0005); their role feats match to ~1e-7.
+- **A flaw in my pin, flagged, bars unbent:** AG3-I and AG3-C count identity items (19% of TEST), which agree trivially. The verdict reads the
+  pinned bars on all items; AG3-x lines beside read non-identity items only, and any claim about views quotes AG3-x alongside.
