@@ -55729,3 +55729,22 @@ hypersphere transformer, reported 4–20× fewer steps; cited from memory, unver
 - Rule banked: **a wrapper that monkeypatches a module imports the module that configures it first, and asserts the configuration.**
 - Side reading (from the identity-only batch test): an item's result depends a little on its batch position (2 / 128 greedy values move),
   because the name phases theta are drawn per batch slot: the eval is stochastic at that grain; dumps compare at the same positions.
+
+### 2026-11-04 12:35 — AG3 VERDICT (rerun, fixed): AG3-1 FAIL ✓ / AG3-I PASS ✓ / AG3-C FAIL ✗ (2/3 predicted; 94/139) — and the BT's training-text fit does NOT survive sentence reordering
+
+*Serves: the discovery line (certification without the key).*
+- Fix validated: identity items now score identically in both views (ORIG 0.927 / 0.917, TEST 0.074 / 0.068 per seed).
+- **AG3-1 FAIL ✓:** TEST ans AGREE − BEAM-1(view 0) +0.0030 / +0.0020 (bar +0.010).
+- **AG3-I PASS ✓:** TEST shared-value rate across views 0.558 / 0.567 (> 0.378): sentence-order views share far more than seeds (0.348).
+- **AG3-C FAIL ✗ (predicted PASS):** TEST certificate precision 0.1148 / 0.0815 vs 3 × BEAM-1 0.1423 / 0.1512 (coverage 0.241 / 0.267).
+  AG3-x, non-identity items only: coverage 0.066 / 0.097, precision 0.2593 / 0.1125 (6.3× / 2.4× BEAM-1).
+- **THE FINDING (unbarred, both seeds):** on ORIG (the training text, fit to ~0.92) the REORDERED items collapse: greedy **0.907 → 0.189**
+  (s0) and **0.918 → 0.202** (s1), n 2170. TEST permuted items move from floor to floor (0.035 → 0.041, 0.045 → 0.026). CFNUM / CFNAME
+  (numbers / names changed, order kept) hold at 0.85 / 0.81. So the BT's fit is bound to sentence ORDER: what it learned on the training
+  text is keyed by where a fact sits (the sentence clock / position stamps), not only by what it says. Two readings, not yet separated:
+  (a) memorization keyed on position (the fixture never varied order: CFNUM / CFNAME are both order-preserving); (b) reordered GSM8K text
+  is genuinely harder (a pronoun before its antecedent; "this increased by 150%" placed first). TEST at the floor cannot separate them.
+- Reading for the stone: under "the T9 clock tracks address and order", ORDER is part of the volatile composite key, so a structure keyed on
+  it is memorized per problem, not discovered. This is the discovery line's sharpest measured symptom so far.
+- **Named, not pinned:** CFORD, a third counterfactual split (order changed, gold re-derived), so every bench reports order-robustness;
+  and a separation read for (a) vs (b): a small hand-checked subset of reorderings that stay well-formed.
