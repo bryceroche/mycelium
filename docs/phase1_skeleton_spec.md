@@ -55314,3 +55314,27 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - distill_reader.py as committed = rb8.py's patch + this loader change.
 - The chain then smokes and trains 30k with BEAM=2 PARALLEL=0.
 - Bars unchanged: RB-W, RB-D.
+
+### 2026-11-03 18:08 — WORD GIVEN (Bryce: "word given. lets move towards our long term vision"): THE ROADMAP (Phases A–D) + A1 THE TREE-KNN READ PINNED
+
+**The roadmap** (from the 11-03 brainstorm; the build follows it, bars govern claims):
+- **The scoreboard:** TEST step (~0.15 vs ORIG 0.96) = the cross join, measured.
+- **Phase A, the Tree becomes the BT's MEMORY:**
+  - A1, the Tree-KNN read (below).
+  - A2, the BT8 verdict (factor codebooks → Tree levels).
+  - A3, a breath-time KNN road into answer-key-gated leaves (Welford / BIRCH writes on correct chains).
+  - A4, the growth / plateau curve.
+- **Phase B, the reader searches the Tree:** RB8 → KNN by the breath's state, with Möbius zoom selecting the level.
+- **Phase C, the selective alternation:** write back only what the solver certifies; re-read only flagged slots; certified beam programs become Tree writes.
+- **Phase D, MATH-500:** swap the gen-9b Llama trunk via a battery; long chains give SNAP / U-Net / Nazaré / T256 their job.
+- **Practical lever:** port the BT (torch, CPU) to tinygrad on the GPU.
+- **Named falsifier:** if BT8 AND the Tree memory (A1/A3) both fail to move TEST type with the same data, the new-problem gap is knowledge/data, not representation. The next lever is then a larger answer-key-certified Tree (the MATH training harvest).
+
+**A1, THE TREE-KNN READ** (`scripts/gsm_treeknn_read.py`; zero-training; BT4T9NS_s0/s1 on T9-NS states; the BT6 gate with ρ0 from the banked BEAM JSON):
+- **Leaves:** every TRAIN slot's silhouette z at its commit cycle, with its GOLD step type (real steps + the first stop slot). This is "overfit the facts to the Tree".
+- **Classifier:** a TEST slot is classified by majority vote of its k nearest leaves (Euclidean, the centroid classifier's metric), on the SAME commit trajectories as the model's own centroid type.
+- k ∈ {1, 5, 15, 45}, fit on TRAIN[:600] leave-one-PROBLEM-out (never a scored split).
+- **TK1:** TEST type (real steps), kNN(z) − centroid, mean ≥ +0.010 with both seeds > 0.
+- Beside: the same vote on h (the 512-d slot state before the silhouette's down-projection); the flip shares; ORIG.
+- **Pinned blind.**
+- **PREDICTION:** TK1 FAIL. z is trained by the gravity loss to be centroid-separable, so the leaves mostly re-say the centroids. kNN on h is the more informative beside read: if h-kNN beats z, the silhouette's compression throws away type evidence the Tree could keep.
