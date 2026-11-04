@@ -1,0 +1,10 @@
+== start 07:43 ==
+[diag] BT4M8_s0 ORIG n 9385 op 0.9822 | kind a 0.9844 (given op right 0.9908) | kind b 0.9837 (given op right 0.9902) | joint 0.9684
+[diag] BT4M8_s1 ORIG n 9385 op 0.9808 | kind a 0.9811 (given op right 0.9902) | kind b 0.9814 (given op right 0.9914) | joint 0.9675
+[diag] BT8_s1 ORIG n 9385 op 0.9702 | kind a 0.9802 (given op right 0.9888) | kind b 0.9746 (given op right 0.9834) | joint 0.9441
+[diag] BT8_s0 ORIG n 9385 op 0.9741 | kind a 0.9784 (given op right 0.9828) | kind b 0.9804 (given op right 0.9846) | joint 0.9434
+[diag] BT4M8_s0 TEST n 3978 op 0.4827 | kind a 0.6189 (given op right 0.7552) | kind b 0.6053 (given op right 0.7708) | joint 0.3064
+[diag] BT8_s1 TEST n 3978 op 0.4696 | kind a 0.6272 (given op right 0.7639) | kind b 0.6134 (given op right 0.7607) | joint 0.2838
+[diag] BT4M8_s1 TEST n 3978 op 0.4414 | kind a 0.5960 (given op right 0.7563) | kind b 0.5890 (given op right 0.7864) | joint 0.2843
+[diag] BT8_s0 TEST n 3978 op 0.4759 | kind a 0.6229 (given op right 0.7211) | kind b 0.6290 (given op right 0.7454) | joint 0.2743
+== done 07:47 ==

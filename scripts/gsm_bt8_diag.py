@@ -21,7 +21,7 @@ _gold = BR.gold
 def gold_tap(E):   # BR.score calls gold(E) after the last cycle; the committed types live in its frame -> read them off the caller
     out = _gold(E)
     f = sys._getframe(1)
-    if "typ" in f.f_locals and "progs" in f.f_locals and f.f_code.co_name == "score":
+    if f.f_code.co_name == "score" and "com" in f.f_locals and f.f_locals["com"].all():   # the post-cycle call only (the first is gt0)
         typ, gt = f.f_locals["typ"], out[1]
         for b, e in enumerate(E):
             for k in range(e["m"]): CAP.append((int(typ[b, k]), int(gt[b, k])))

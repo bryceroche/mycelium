@@ -55490,3 +55490,38 @@ every arm), the same .pt / .json outputs as gsm_breath_reader.py.
 did the factored silhouette lose, BT8 vs BT4M8, both seeds). Bryce's direction for it: no cross join; phase binding and conjugate unbinding.
 The backoff form named at 05:24 (a per-type 37-way centroid blended in) re-admits the cross join where it is evidenced, so it is set aside
 under this word unless the diag says the interaction is irreducible.
+
+### 2026-11-04 07:51 — THE BT8 DIAG + BT8b PINNED: chained phase binding (the conditioning moves into the keys; no cross join)
+
+**The diag** (`scripts/gsm_bt8_diag.py`, `.cache/run_lfbt8diag.log`; zero-training; the committed type split into its factors over real gold steps;
+the joint reproduces the FINAL type reads exactly, 0.968 / 0.306 etc. A first pass double-counted (score() calls gold() before the cycles too;
+log kept as run_lfbt8diag_tapbug.log) and was rerun):
+
+| TEST (n 3978) | op | kind a | kind b | joint type |
+|---|---|---|---|---|
+| BT4M8 s0 / s1 | 0.483 / 0.441 | 0.619 / 0.596 | 0.605 / 0.589 | 0.306 / 0.284 |
+| BT8 s0 / s1 | 0.476 / 0.470 | 0.623 / 0.627 | 0.629 / 0.613 | 0.274 / 0.284 |
+
+ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0.943 / 0.944 vs 0.968 / 0.968.
+- **Reading:** on TEST the factored silhouette decodes EACH factor as well or better (kinds +0.004 to +0.031), yet the joint falls: the right factors
+  land in incoherent combinations. Independent decoding lost the CONDITIONING between factors (kind given op), not any factor. On ORIG the
+  op factor carries most of the fit loss.
+
+**BT8b (BT_FACT=2, `scripts/patches/bt8b_chain.py`, applied 07:51; Bryce's word: no cross join, phase binding + conjugate unbinding):**
+- z ~ e^{iψ_op} F_op[op] + e^{i(ψ_a + Θ_op)} F_a[ka] + e^{i(ψ_b + Θ_op + Φ_ka)} F_b[kb]. Θ (per op) and Φ (per kind a) are FIXED random key phases
+  (addresses). The same 11 Welford atoms as BT8; nothing stored per combination.
+- Decode: log p(op) + log p(ka | op) + log p(kb | op, ka). Each kind is unbound (conjugate) under each type's own key and snapped against the shared
+  codebook. A wrong op reads the kind through the wrong key (crosstalk), so coherence comes from the binding chain, the zoom made of phases.
+- **Custody:** with Θ = Φ = 0 the chained logits equal BT8's exactly (max |Δ| 0.0 on banked BT8_s0, 32 TEST items); 20-step smoke trains (loss 4.20 → 3.23).
+- **Runs:** BT8b s0/s1 18k on tinygrad/GPU (TG_MODE=train) behind the twin and G0, BT4 config + BT_FACT=2 on the 8M states. If G0 FAILS, BT8b
+  compares only against tinygrad controls (BT4M8TG, BT8TG to be run).
+- **Bars:**
+  - **B8b-0 (fit):** ORIG step ≥ 0.90 both seeds. Prediction PASS.
+  - **B8b-C (the chain's own read, vs BT8):** TEST type, BT8b − BT8, mean ≥ +0.010 with both seeds > 0. Prediction PASS (low confidence: BT8 s1
+    already sits at BT4M8's level, so seed 1's room is small).
+  - **B8b-1:** TEST type, BT8b − BT4M8, mean ≥ +0.010 with both > 0. Prediction FAIL.
+  - **B8b-2:** TEST step, BT8b − BT4M8, same bar. Prediction FAIL.
+- **Engineering critique, banked with the pin:** the encoder still has to produce op-conditioned kind evidence (that conjunction is computed somewhere).
+  The chain moves it out of 37 memorized TARGETS into 11 shared atoms + fixed keys; it does not make the encoder's job conjunction-free. If B8b-C
+  passes and B8b-1 fails, the next lever is the encoder side: the silhouette written by phase binding inside the breath (the soft op key rotating
+  the kind read), not a linear down-projection.

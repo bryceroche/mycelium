@@ -39,7 +39,8 @@ ZOOM_TAU = 0.5
 SOFT = os.environ.get("BT_SOFT") == "1"              # (ledger 11-01) the soft notebook: uncommitted slots show sum_t p(t) C_t, tau by cycle
 KINDCE = os.environ.get("BT_KINDCE") == "1"          # (ledger 11-03 BT7b) + the pointer CE under the gold type with every kind open
 GATE = os.environ.get("BT_GATE", "")                 # (ledger 11-02 BT6) inference: commit iff radius >= rho0 (1 - c/5); "" = the schedule
-FACT = os.environ.get("BT_FACT") == "1"              # (ledger 11-03 BT8) the factored silhouette: op / kind a / kind b phase-bound, conjugate unbind
+CHAIN = os.environ.get("BT_FACT") == "2"             # (ledger 11-04 BT8b) chained binding: kind keys bound to op (a) and op + kind a (b)
+FACT = os.environ.get("BT_FACT") in ("1", "2")              # (ledger 11-03 BT8) the factored silhouette: op / kind a / kind b phase-bound, conjugate unbind
 IDSKIP = os.environ.get("BT_IDSKIP") == "1"          # (ledger 11-03 BT9) slot id + tree level bypass the waist as phase tags (the ID skip)
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
@@ -166,6 +167,9 @@ def make_net():
                 s.register_buffer("Fa", torch.randn(3, DB) * 0.1); s.register_buffer("Fan", torch.zeros(3))
                 s.register_buffer("Fb", torch.randn(3, DB) * 0.1); s.register_buffer("Fbn", torch.zeros(3))
                 s.tauf = nn.Parameter(torch.zeros(3))
+                if CHAIN:   # (BT8b) the fixed random key phases: op keys and kind-a keys (addresses, not cells)
+                    s.register_buffer("Theta", torch.rand(NOP, DB // 2, generator=g_) * 2 * math.pi)
+                    s.register_buffer("Phi", torch.rand(3, DB // 2, generator=g_) * 2 * math.pi)
             s.ln = nn.LayerNorm(D); s.qa = nn.Linear(D, D); s.qb = nn.Linear(D, D); s.kt = nn.Linear(D, D); s.ks = nn.Linear(D, D)
             s.kc = nn.Parameter(torch.randn(NC, D) * 0.02); s.pc = nn.Parameter(torch.zeros(1))
 
@@ -184,9 +188,20 @@ def make_net():
             """(BT8) the conjugate mirror: u_r = z * conj(e^{i psi_r}) for r = op, a, b -> (3, ..., DB)"""
             return torch.stack([rot(z, -s.psi[r]) for r in range(3)])
 
+        def keys(s):
+            """(BT8b) per type: the kind-a and kind-b key phases -> (NT, DB/2) x2 (BT8: the bare role phases)"""
+            if not CHAIN: return s.psi[1].expand(NT, -1), s.psi[2].expand(NT, -1)
+            return s.psi[1] + s.Theta[par], s.psi[2] + s.Theta[par] + s.Phi[fka]
+
+        def unbind_gold(s, z, tt):
+            """(BT8b) the gold silhouettes unbound under the gold type's own keys -> (3, N, DB)"""
+            ka_, kb_ = s.keys()
+            return torch.stack([rot(z, -s.psi[0]), rot(z, -ka_[tt]), rot(z, -kb_[tt])])
+
         def atoms(s):
             """(BT8) the rebound composite per type: sum_r e^{i psi_r} C_r[factor_r(t)] (stop: the op factor alone) -> (NT, DB)"""
-            a = rot(s.Fop[par], s.psi[0]) + (rot(s.Fa[fka], s.psi[1]) + rot(s.Fb[fkb], s.psi[2])) * isstep[:, None]
+            ka_, kb_ = s.keys()
+            a = rot(s.Fop[par], s.psi[0]) + (rot(s.Fa[fka], ka_) + rot(s.Fb[fkb], kb_)) * isstep[:, None]
             return a
 
         def breath(s, t, xq, nb, cond, cyc=None, sp=None):
@@ -212,6 +227,12 @@ def make_net():
                 lf = [(-((u[r][:, :, None] - F_[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tauf[r].exp()).log_softmax(-1)
                       for r, F_ in enumerate((s.Fop, s.Fa, s.Fb))]
                 lfine = (lf[1][..., fka] + lf[2][..., fkb]) * isstep
+                if CHAIN:   # (BT8b) unbind each kind under every type's own key: p(ka | op), p(kb | op, ka)
+                    ka_, kb_ = s.keys(); zt = z[:, :, None]
+                    lca = [(-((rot(zt, -k_)[..., None, :] - F_) ** 2).sum(-1) / math.sqrt(DB) * s.tauf[r].exp()).log_softmax(-1)
+                           for r, k_, F_ in ((1, ka_, s.Fa), (2, kb_, s.Fb))]                    # (B, K, NT, 3) each
+                    lfine = (lca[0].gather(-1, fka.expand(*lca[0].shape[:2], -1)[..., None])[..., 0]
+                             + lca[1].gather(-1, fkb.expand(*lca[1].shape[:2], -1)[..., None])[..., 0]) * isstep
                 logit = lf[0][..., par] + lfine
             elif ZOOM:                                                                           # zoom: log p(op) + log p(type | op)
                 lc_ = (-((z[:, :, None] - s.Cc[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tauc.exp()).log_softmax(-1)
@@ -319,6 +340,8 @@ def train_step(net, opt, its, states, tree, rng):
         net.Cn.copy_(nn_.clamp(max=NCAP))                                                     # capped: the atom keeps following
         if FACT:   # (BT8) the factor atoms follow the UNBOUND gold silhouettes (stop slots feed the op codebook only)
             u = net.unbind(zz); st_ = tt != STOP
+            if CHAIN:   # (BT8b) the kinds unbound under the gold type's own keys
+                u = net.unbind_gold(zz, tt)
             for F_, Fn, ur, idx_, sel in ((net.Fop, net.Fopn, u[0], torch.as_tensor(PARENT)[tt], torch.ones_like(st_)),
                                           (net.Fa, net.Fan, u[1], torch.as_tensor(FKA)[tt], st_), (net.Fb, net.Fbn, u[2], torch.as_tensor(FKB)[tt], st_)):
                 ii, uu = idx_[sel], ur[sel]; cnt = torch.bincount(ii, minlength=len(Fn)).float()
