@@ -55244,3 +55244,38 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
 - Read beside: round 2; oracle@8 by round; ORIG.
 - **Pinned blind** (no BEAM-2 output had been seen).
 - **PREDICTION:** BEAM2 FAIL. On TEST, the winner the slots re-read around is usually wrong (ans 0.067), so the context is wrong too. Re-reading should help ORIG more than TEST.
+
+### 2026-11-03 16:33 — BT8 + RB8 PINNED (the rest of the queue under the 16:0x word)
+
+**Bryce's question: do the reader's breaths go deeper down the Tree each breath? No, not today.**
+- The reader's Tree (`reader_db`: BIRCH CFs keyed L0 token / L1 previous+token / L2 previous+token+next) enters ONCE, at the input, as the deepest-node backoff row.
+- The breaths never revisit it. Their only coarse→fine schedule is the clock's plane masks. Every breath sees the same Tree evidence it saw at the start, which fits the census: the breaths settle after breath 2 because nothing new enters.
+- RB8 makes the descent real.
+
+**RB8, THE READING BREATHS DESCEND THE TREE** (8M rig; patch `scripts/patches/rb8.py`, unit lfrb8 after lf8m's GSM8K export):
+- `DR_RB=1` on MBR's config.
+- **The input row is removed** (the seal: the breaths are the only road to the Tree).
+- **Breath b = 1, 2, 3 adds Tree level L0, L1, L2** through its own map (a mandatory road, no gain). Each breath zooms one level finer. Breath 4 reads nothing new.
+- Levels are computed on the fly from the store: TRAIN leave-one-out, eval a plain lookup.
+- **Custody:** the per-level rows, collapsed back to backoff, reproduce the banked training rows (24 rows: max |Δ| 3.1e-5, fp16 rounding). The level hit shares on TRAIN are L0 0.998 / L1 0.982 / L2 0.951.
+- Parameters: +2 × 256 × 768 over MBR (8.46M vs 8.07M).
+- **RB-W:** frozen CLK3_241 wild ≥ MBR 0.3320 + 0.020 = 0.3520. Prediction FAIL: it is the same evidence arriving in stages.
+- **RB-D:** delta census q50 at breath 3 (the last level-reading breath) ≥ 0.20, i.e. ≥ 0.6 × the 1/b baseline. MBR22 read 0.131 there; MBR 8M has no census. Prediction PASS: the breaths get a job.
+- Read beside: the per-breath val mse (MBR 8M: 0.1706 > 0.1684 > 0.1681 > 0.1685); paired reads vs MBR / MBRC / MBR22.
+
+**BT8, THE FACTORED SILHOUETTE: binding against the cross join** (patch `scripts/patches/bt8_fact.py`, unit lfbt8 after lf8m's BT4M8 runs and lfbeam2read):
+- **The diagnosis:** the BT ALREADY has a silhouette and snap (D→DB, Welford atoms, radius, rebind on the bus). But its 37 atoms are op × kind(a) × kind(b) + stop: the CROSS JOIN, with each combination its own centroid.
+- **The form:**
+  - The type is BOUND from three factors on the silhouette's 32 complex planes, with fixed random role phases ψ_op, ψ_a, ψ_b (addresses).
+  - **UNBIND** u_r = z · conj(e^{iψ_r}) (the conjugate mirror).
+  - **SNAP** each factor against its OWN Welford codebook: 5 + 3 + 3 = 11 atoms, not 37.
+  - log p(type) = log p(op) + log p(a) + log p(b).
+  - **REBIND** the snapped factors as the atom that re-enters (committed notebook, soft notebook, pointer expansion).
+  - The zoom's coarse level IS the op factor.
+- **Control:** BT4M8 (lf8m): the same states (the 8M reader's), seeds and config, without BT_FACT.
+- **F0 (fit):** BT8 ORIG step ≥ 0.90 on both seeds. Prediction PASS.
+- **F1 (the theory's read):** TEST type, BT8 − BT4M8, mean ≥ +0.010 with both seeds > 0. Prediction FAIL.
+- **F2:** TEST step, same bar. Prediction FAIL.
+- **Why I predict FAIL:** on TEST the op factor alone is right only ~0.47 (BT4 TEST op). The wall is mostly recognising the op from text, which factoring the kinds doesn't touch. The cross-join gain can only come from kind combinations rare in TRAIN.
+- Beside: ORIG / CFNUM / CFNAME step, TEST op, TEST ans.
+- **Built forward if F1 passes:** the Tree side, where the factor codebooks become Tree nodes.
