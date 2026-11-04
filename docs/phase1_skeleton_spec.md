@@ -55550,3 +55550,18 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
   RoPE, and spatial position rides the T9 clock's offset gears. The build keeps the ruling until Bryce says otherwise.
 - **Today's queue against the stone:** BT8b (the cross join → chained phase binding + conjugate unbind), BT9 (composite keys bypass the
   512 → 64 waist), RB8 twin (zooming down the Tree each breath), the GPU port (the platform), W128 (the waist's width, a control on 512 → 64).
+
+### 2026-11-04 08:54 — THE GPU PORT LANDS (fork; commits afa5aedc, 35eefa94): every custody gate PASS; G0 → BT8b queued behind the twin
+
+- Ported to `scripts/gsm_breath_tg.py`: FACT (BT8), CHAIN (BT_FACT=2, BT8b), IDSKIP (BT9), TG_MODE=train (GPU training, torch scorer on
+  copied-back weights, same .pt/.json/FINAL as the torch BT, plus an `engine: "tinygrad"` field). DB=128 (W128) needs only the env.
+- **Gates (CPU):** FACT on banked BT8_s0 item-identical on 128 ORIG + 128 TEST (tensors ≤ 2.3e-4); IDSKIP from a shared init ≤ 5.5e-6;
+  base BT4M8_s0 item-identical; CHAIN with Θ = Φ = 0 item-identical to FACT; CHAIN from a shared init ≤ 2.6e-6; 40-step smokes for
+  CHAIN / FACT / IDSKIP match torch's 10-step mean losses to 4 decimals; per-step params and buffers within 3e-5.
+- **A bug found and fixed, present since the original BT4 port:** the tinygrad step read the silhouette z lazily AFTER opt.step() had
+  overwritten the weights, so the Welford atoms followed post-update silhouettes (C off by 0.67 after one step). The 11-03 "curves track"
+  smoke hid it as a 0.013–0.016 offset. z is now realized with the grads before the step. The banked parity gates did not train, so they
+  stand; the 0.668 s/step timing stands (same kernels).
+- Unused parameters (tau/tauc under FACT, slotk/lev under IDSKIP) are left out of the tinygrad optimizer, as torch's AdamW skips them.
+- **Queued (unit lfgpuq):** waits for lftwin to end, then G0 (`.cache/run_lfg0.sh`, BT4M8TG_s0 18k), then BT8b s0 → s1
+  (`.cache/run_lfbt8b.sh`). No BEAM yet (untested on the BT kernels).
