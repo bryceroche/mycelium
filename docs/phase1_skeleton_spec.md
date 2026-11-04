@@ -55525,3 +55525,11 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
   The chain moves it out of 37 memorized TARGETS into 11 shared atoms + fixed keys; it does not make the encoder's job conjunction-free. If B8b-C
   passes and B8b-1 fails, the next lever is the encoder side: the silhouette written by phase binding inside the breath (the soft op key rotating
   the kind read), not a linear down-projection.
+
+### 2026-11-04 08:39 — ALL IN ON THE GPU (Bryce: "i'm okay with throwing away the CPU work and going all in on GPU for BT8b"): W128 and BT9 stopped
+
+- Stopped units lfw128 (W128 s0/s1 at step 15000/18000; last curve TEST step 0.144 / 0.160, type 0.27 / 0.29) and lfbt9 (BT9 s0/s1 at 5000/18000).
+  No verdicts: W1/W2 and B9-0/1/2 stay pinned and OPEN, to be run on tinygrad/GPU once the port lands (IDSKIP is in the port's scope; DB=128 is
+  a config). The 15k curve lines are history, not reads.
+- Regret banked: W128 was 83% done; I stopped it without asking whether "the CPU work" meant both chains. The cost is ~3 GPU-hours per seed to redo.
+- The CPU now serves the port's parity gates and the torch scorer. GPU queue: lftwin (running) → G0 → BT8b s0/s1 → W128 / BT9 on GPU.
