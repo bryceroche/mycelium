@@ -39,6 +39,7 @@ ZOOM_TAU = 0.5
 SOFT = os.environ.get("BT_SOFT") == "1"              # (ledger 11-01) the soft notebook: uncommitted slots show sum_t p(t) C_t, tau by cycle
 KINDCE = os.environ.get("BT_KINDCE") == "1"          # (ledger 11-03 BT7b) + the pointer CE under the gold type with every kind open
 GATE = os.environ.get("BT_GATE", "")                 # (ledger 11-02 BT6) inference: commit iff radius >= rho0 (1 - c/5); "" = the schedule
+FACT = os.environ.get("BT_FACT") == "1"              # (ledger 11-03 BT8) the factored silhouette: op / kind a / kind b phase-bound, conjugate unbind
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -48,6 +49,7 @@ KINDS = "tsc"; TYPES = [(o, a, b) for o in GD.OPS for a in KINDS for b in KINDS]
 LEVMAX, NCAP = 8, 2000
 NOP = len(GD.OPS) + 1                                 # the coarse atoms: the op, + stop
 PARENT = np.array([GD.OPS.index(o) for o, _, _ in TYPES] + [NOP - 1])
+FKA = np.array([KINDS.index(a) for _, a, _ in TYPES] + [0]); FKB = np.array([KINDS.index(b) for _, _, b in TYPES] + [0])   # (BT8) stop: no kinds
 SPLITS = TR.SPLITS
 
 
@@ -117,6 +119,7 @@ def make_net():
         kmask[j, 0, KINDS.index(a)] = True; kmask[j, 1, KINDS.index(b)] = True
     kmask[STOP] = True
     par = torch.as_tensor(PARENT); grp = torch.zeros(NOP, NT, dtype=torch.bool); grp[par, torch.arange(NT)] = True
+    fka, fkb = torch.as_tensor(FKA), torch.as_tensor(FKB); isstep = (torch.arange(NT) != STOP).float()   # (BT8) the factor indices per type
     kmask_op = torch.stack([kmask[grp[g]].any(0) for g in range(NOP)])                    # the op-level mask: the union of its types' kinds
 
     def rot(z, a):                                                                         # z (..., 2P) as P planes; a (..., P)
@@ -153,6 +156,13 @@ def make_net():
             if ZOOM:                                                                           # the coarse atoms (Welford over the op)
                 s.register_buffer("Cc", torch.randn(NOP, DB) * 0.1); s.register_buffer("Ccn", torch.zeros(NOP)); s.tauc = nn.Parameter(torch.zeros(1))
             s.phi = nn.Parameter(torch.rand(NT, 2, NPA - NTK) * 2 * math.pi)                   # type-role phases on the bus planes
+            if FACT:   # (BT8) three factor codebooks (Welford) + fixed random role phases on the silhouette's DB/2 planes
+                g_ = torch.Generator().manual_seed(8)
+                s.register_buffer("psi", torch.rand(3, DB // 2, generator=g_) * 2 * math.pi)
+                s.register_buffer("Fop", torch.randn(NOP, DB) * 0.1); s.register_buffer("Fopn", torch.zeros(NOP))
+                s.register_buffer("Fa", torch.randn(3, DB) * 0.1); s.register_buffer("Fan", torch.zeros(3))
+                s.register_buffer("Fb", torch.randn(3, DB) * 0.1); s.register_buffer("Fbn", torch.zeros(3))
+                s.tauf = nn.Parameter(torch.zeros(3))
             s.ln = nn.LayerNorm(D); s.qa = nn.Linear(D, D); s.qb = nn.Linear(D, D); s.kt = nn.Linear(D, D); s.ks = nn.Linear(D, D)
             s.kc = nn.Parameter(torch.randn(NC, D) * 0.02); s.pc = nn.Parameter(torch.zeros(1))
 
@@ -167,14 +177,24 @@ def make_net():
             for blk in s.enc: xq = blk(xq, xq, aq, aq, mask)
             return xq
 
+        def unbind(s, z):
+            """(BT8) the conjugate mirror: u_r = z * conj(e^{i psi_r}) for r = op, a, b -> (3, ..., DB)"""
+            return torch.stack([rot(z, -s.psi[r]) for r in range(3)])
+
+        def atoms(s):
+            """(BT8) the rebound composite per type: sum_r e^{i psi_r} C_r[factor_r(t)] (stop: the op factor alone) -> (NT, DB)"""
+            a = rot(s.Fop[par], s.psi[0]) + (rot(s.Fa[fka], s.psi[1]) + rot(s.Fb[fkb], s.psi[2])) * isstep[:, None]
+            return a
+
         def breath(s, t, xq, nb, cond, cyc=None, sp=None):
             """one cycle: every slot proposed in parallel. nb = notebook tensors; cond (B, K) = the step type the keys condition on
             (gold in training, the snapped prediction at inference; None = the snapped prediction)."""
             B, Lq, _ = xq.shape; L = Lq + K
             typ, r, cf, lev, cons = nb
             com = typ >= 0
-            re = s.reent(r[..., None] * s.C[typ.clamp(min=0)])                                  # committed: atom x radius
-            unc = s.maskv if sp is None else s.maskv + s.sre(sp @ s.C)                        # uncommitted: the mask + what the BT believes
+            CA = s.atoms() if FACT else s.C                                                   # (BT8) the rebound atoms
+            re = s.reent(r[..., None] * CA[typ.clamp(min=0)])                                  # committed: atom x radius
+            unc = s.maskv if sp is None else s.maskv + s.sre(sp @ CA)                        # uncommitted: the mask + what the BT believes
             h = s.slotk.weight[None] + torch.where(com[..., None], re, unc) + s.cfp(cf) + s.lev(lev) + s.cons(cons[:, Lq:].long())
             xk_q = xq + s.cons(cons[:, :Lq].long())
             sa = ang(t["sid"][:, Lq:], t["off"][:, Lq:]); ka = ang(t["sid"], t["off"])
@@ -183,14 +203,20 @@ def make_net():
             for blk in s.core: h = blk(h, torch.cat([xk_q, h], 1), sa, ka, mask)
             z = s.down(h)                                                                      # THE SILHOUETTE
             logit = -((z[:, :, None] - s.C[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tau.exp()
-            if ZOOM:                                                                           # zoom: log p(op) + log p(type | op)
+            if FACT:   # (BT8) unbind each factor, snap it against its own codebook, compose: log p(op) + log p(a) + log p(b)
+                u = s.unbind(z)
+                lf = [(-((u[r][:, :, None] - F_[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tauf[r].exp()).log_softmax(-1)
+                      for r, F_ in enumerate((s.Fop, s.Fa, s.Fb))]
+                lfine = (lf[1][..., fka] + lf[2][..., fkb]) * isstep
+                logit = lf[0][..., par] + lfine
+            elif ZOOM:                                                                           # zoom: log p(op) + log p(type | op)
                 lc_ = (-((z[:, :, None] - s.Cc[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tauc.exp()).log_softmax(-1)
                 lse = torch.stack([logit.masked_fill(~grp[g], -1e9).logsumexp(-1) for g in range(NOP)], -1)
                 lfine = logit - lse[..., par]; logit = lc_[..., par] + lfine
             p = logit.softmax(-1)
             def ptrs(c, zoom, free=False):   # (ledger 11-02 BT7a) the pointer heads under type c, from this breath's state
                 rr = p.gather(-1, c[..., None])                                                    # the radius: type confidence
-                u = s.up(z) + s.upc(rr * s.C[c])                                                   # expand: silhouette + snapped atom x r
+                u = s.up(z) + s.upc(rr * CA[c])                                                    # expand: silhouette + snapped atom x r
                 hu = s.ln(u)
                 tick = t["sid"][:, Lq:, None].float() * wt                                         # (B, K, NTK)
 
@@ -281,6 +307,13 @@ def train_step(net, opt, its, states, tree, rng):
         nn_ = net.Cn + cnt; upd = cnt > 0                                                     # Chan's merge of a batch into the mean
         net.C[upd] += (sm[upd] - cnt[upd, None] * net.C[upd]) / nn_[upd, None]
         net.Cn.copy_(nn_.clamp(max=NCAP))                                                     # capped: the atom keeps following
+        if FACT:   # (BT8) the factor atoms follow the UNBOUND gold silhouettes (stop slots feed the op codebook only)
+            u = net.unbind(zz); st_ = tt != STOP
+            for F_, Fn, ur, idx_, sel in ((net.Fop, net.Fopn, u[0], torch.as_tensor(PARENT)[tt], torch.ones_like(st_)),
+                                          (net.Fa, net.Fan, u[1], torch.as_tensor(FKA)[tt], st_), (net.Fb, net.Fbn, u[2], torch.as_tensor(FKB)[tt], st_)):
+                ii, uu = idx_[sel], ur[sel]; cnt = torch.bincount(ii, minlength=len(Fn)).float()
+                sm = torch.zeros(len(Fn), DB).index_add_(0, ii, uu); nn_ = Fn + cnt; upd = cnt > 0
+                F_[upd] += (sm[upd] - cnt[upd, None] * F_[upd]) / nn_[upd, None]; Fn.copy_(nn_.clamp(max=NCAP))
         if ZOOM:
             to = torch.as_tensor(PARENT)[tt]; cnt = torch.bincount(to, minlength=NOP).float(); sm = torch.zeros(NOP, DB).index_add_(0, to, zz)
             nn_ = net.Ccn + cnt; upd = cnt > 0
