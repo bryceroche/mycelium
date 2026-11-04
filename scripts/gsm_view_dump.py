@@ -11,7 +11,9 @@ import json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, ".")
 import numpy as np
-import gsm_trunk_reader as TR
+import gsm_breath_reader as _BR   # FIRST: it sets RD_ARM=TICK, which gsm_trunk_reader reads at import (11-04 bug: TR imported
+TR = _BR.TR                         # first ran the VANILLA arm: no step tick, no notebook features; the first AG3 read is VOID)
+assert TR.ARM == "TICK" and TR.TICK and TR.NOTE, f"trunk reader arm {TR.ARM}: the BT's encoder features are missing"
 
 E = os.environ.get
 

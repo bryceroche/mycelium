@@ -55716,3 +55716,16 @@ hypersphere transformer, reported 4–20× fewer steps; cited from memory, unver
 - **Consequences as wired before the verdict:** lfp9, lfq2 and lfsph fall back to torch (CPU, ~4× slower) unless the engine is fixed and
   re-gated first. BT8b (lfgpuq, hard-wired to tinygrad, running) continues: its TEST bars sit against torch controls with G0's TEST gap
   inside ±0.003 to ±0.005; flagged as a confound when it is read.
+
+### 2026-11-04 12:32 — AG3 first read VOID (an instrument bug, found before banking); fixed; rerun (unit lfag3b)
+
+- The first AG3 verdict (AG3-1 FAIL / AG3-I PASS / AG3-C FAIL) is **VOID**, kept in `.cache/void_ag3/`. Before banking, an audit of a
+  surprise (ORIG greedy on permuted items 0.91 → 0.19, and on IDENTITY items 0.927 → 0.870 although their states, role feats and every
+  item field were equal) found the cause: `gsm_view_dump.py` imported `gsm_trunk_reader` BEFORE `gsm_breath_reader`, which sets
+  `RD_ARM=TICK` at import; the trunk reader reads its arm at import, so the view-1 dumps ran the VANILLA encoder features (no step tick,
+  no notebook consumed-marks / features). Shown by diffing the batch tensors: sid (slot ticks), cons, pop, cf differed; x, role, theta equal.
+- Fix: the view dump imports the BT module first and asserts the TICK arm. The view data, states and role feats stand (unaffected); only
+  the view-1 dumps + join + verdict rerun. Bars unchanged.
+- Rule banked: **a wrapper that monkeypatches a module imports the module that configures it first, and asserts the configuration.**
+- Side reading (from the identity-only batch test): an item's result depends a little on its batch position (2 / 128 greedy values move),
+  because the name phases theta are drawn per batch slot: the eval is stochastic at that grain; dumps compare at the same positions.
