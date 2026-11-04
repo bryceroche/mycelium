@@ -55390,3 +55390,19 @@ The queue under this word: (1) BEAM-2, the alternation proper; (2) BT8, the fact
   - **B9-2:** TEST step, the same bar.
 - **PREDICTIONS:** B9-0 PASS, B9-1 FAIL, B9-2 FAIL.
 - **Queue:** after lfbt8 finishes (the CPU is the bottleneck: BT4M8 is at 2k of 18k after ~70 min under contention). BT9 / W128 move to the GPU if the tinygrad port passes parity first.
+
+### 2026-11-03 18:39 — THE BT ON TINYGRAD (roadmap lever; word given 11-03): `scripts/gsm_breath_tg.py`; parity PASS on CPU; GPU timing queued
+
+- **The port:**
+  - The BT network (read + breath + ptrs) and train_step in tinygrad. The parameter dict uses the torch state_dict's names, so banked .pt weights load directly and a torch init copies in.
+  - Gathers are one-hot matmuls (exact); masks are where(); the notebook/executor loop stays host-side.
+  - Training pads the question block to a 32-bucket (masked pads are exact: exp(−1e4) = 0) with one TinyJit per bucket. It replicates torch train_step's rng draws, so a tinygrad run sees the torch run's batches and masks.
+  - Ported: BT4 (CYCLOCK / ZOOM / ROLE / T6OFF), with SOFT and KINDCE in the train step (not yet smoke-tested). Not ported: FACT (BT8), ORACLE, GATE; inference is eager (no JIT yet).
+  - gsm_breath_reader.py is untouched.
+- **Parity (DEV=CPU; banked BT4T9NS_s0; the same batch):**
+  - read() max |Δ| 9.5e-5 (|x| ≤ 58.8).
+  - Cycles 0–2: logit ≤ 1.8e-4, p ≤ 9.1e-6, z ≤ 4.6e-5, pa ≤ 3.7e-4, pb ≤ 2.7e-4; argmax type agree 1.000.
+  - **score() on 128 ORIG + 128 TEST: identical to torch, item by item** (agree 1.000 on ans / step_all / type_ok). ORIG 0.9141 / 0.9728 / 0.9751; TEST 0.0312 / 0.1642 / 0.3242.
+- **Training smoke (same init, same data, CPU):** tinygrad loss 4.098 / 3.894 at steps 10 / 12 vs torch 4.085 / 3.878. The 40-step curve is in the fork report.
+- **Pitfall hit:** the Welford buffer assigns must be realized inside the step (`Tensor.realize(lo, *buffers)`). Otherwise the next step's backward meets an unrealized assign: "failed to compute gradient for Ops.AFTER". The atoms are also detached in the forward.
+- **Queued:** unit lftgtime (`.cache/run_lftgtime.log`), a GPU timing smoke. BT4 config, BATCH 64, 300 steps from the torch seed-0 init, no checkpoint; it waits on .cache/gpu.lock behind RB8. Reference: torch CPU ~1.1 s/step at 6 threads. A full 18k tinygrad run needs Bryce's word.
