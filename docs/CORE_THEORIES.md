@@ -18,6 +18,7 @@ term vision."* This file is the single canonical copy of the long-term vision. C
 ```text
 Core Theories 
 Building the Bridge between continuous and discrete.  The core rhythm is alternation between continuous and discrete 
+LLMs have a solver inside.  Our Sudoku result in July shows models naturally build internal representations of CSP solvers in their weights.  Our the core rhythm includes a call to a CSP solver
 Traditional ML trains on the SQL cross join of concepts which is why the entire internet of data isn't enough training data.  Complex planes enable clean binding and unbinding which allows us to avoid training on the SQL cross join. Our phase binding superpower is not about the superposition (we can fit in ~20 items per complex plane before degradation).  It's about clean binding and unbinding via phase angle and conjugate multiplication.  
 512 dim representation space compress down to 64 dim at bottleneck Silhouette of Dancer
 Traditional transformer MLP stores unique keys of concepts like Michael Jordan via combinations of roughly perpendicular dimensions.  Our goal is to get world knowledge and memorization OUT of the transformer MLP and INTO our tree which is a literal database with coarse to fine grain granularity levels.  
@@ -44,6 +45,8 @@ Diffusion inspired – breath cycles must not specialize to per-step tasks but a
 
 ## What changed since the 2026-10-30 statement
 
+- **#2, THE SOLVER INSIDE (added by Bryce 2026-11-04, after the carving):** LLMs have a solver inside; models naturally build internal
+  representations of CSP solvers in their weights; the core rhythm includes a CALL to a CSP solver.
 - **The bridge is the headline.** "Building the Bridge between continuous and discrete" now opens the theories (CLAUDE.md §9 is its
   component-by-component form).
 - **The waist is numbered: 512 → 64**, the silhouette of the dancer. The BT's built waist is exactly that (`BT_D=512 BT_DB=64`).
@@ -59,6 +62,7 @@ Diffusion inspired – breath cycles must not specialize to per-step tasks but a
 
 | Theory line | Banked result / ruling | Built form today |
 |---|---|---|
+| LLMs have a solver inside ("our Sudoku result in July") | **Date: the Sudoku result is v98, 2026-05-29** (breathing transformer, cell acc 0.78 easy / 0.67 medium at step 200; puzzle-level correlation 7 orders above the independent baseline = learned joint MAP inference, loopy-BP-like); June: the breathing deducer byte-identical to the KenKen oracle, general across coloring / circuits / KenKen. Caveat: its per-head masks carried the factor topology (given, not discovered). Neural-guided clean-CSP SEARCH is CLOSED (the symbolic solver does ~all the work on tractable CSPs) | the internal solver = the BT's breaths (learned BP, continuous mirror); the CALL = the symbolic CSP solver each breath (discrete mirror; the alternation ruling); only a proof crosses hard |
 | 3-rotor stack: "Spatial ROPE" | **THE RoPE RETIREMENT RULING (11-03):** RoPE retired; the T9-NS reader at two-seed parity (TW2 + CY) | Spatial position = the **T9 clock's offset gears** (a fixed-gear rotary position: RoPE's form, the clock's frequencies). **FLAGGED to Bryce 11-04**: RoPE returns only by his word. |
 | "rotating the attention space by 60°" / gears 30, 60, 180 | T2s: one 60° rotation 0.918 vs breath label 1.000; T2t multi-speed 1.000; THE T6 CLOCK RULING (10-26) | The QUERIES rotate (never the attention planes) by the clock's gears 180/60/30/15/7.5/3.75°; six breaths; 60° is one of the gears |
 | ~20 items per complex plane | measured ~20–30 keys per VECTOR / bus (crosstalk ~1/√P) | bind on demand; registers for capacity; superposition is not the superpower |

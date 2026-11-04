@@ -256,6 +256,9 @@ it governs what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form,
 
 **Core theories (condensed; the stone file is the authority).**
 - **Building the Bridge between continuous and discrete.** The core rhythm is ALTERNATION between continuous and discrete (§9).
+- **LLMs have a solver inside** (#2, added 11-04): models naturally build internal representations of CSP solvers in their weights
+  (our Sudoku result: v98, 2026-05-29 — learned joint inference ≈ loopy BP; June: byte-identical to the KenKen oracle). **The core
+  rhythm includes a CALL to a CSP solver**: the breaths are the internal (continuous) solver, the symbolic solver the external (discrete) one.
 - **The SQL cross join is the nemesis.** Traditional ML trains on the cross join of concepts (why the whole internet isn't enough data).
   Complex planes give **clean binding and unbinding** (phase angle + conjugate multiplication), so we never train on the cross join. The
   superpower is NOT superposition (~20 items per complex plane before degradation); it is clean, on-demand bind/unbind.

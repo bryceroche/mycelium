@@ -55565,3 +55565,13 @@ ORIG: BT8 op 0.974 / 0.970 vs 0.982 / 0.981; kinds −0.002 to −0.007; joint 0
 - Unused parameters (tau/tauc under FACT, slotk/lev under IDSKIP) are left out of the tinygrad optimizer, as torch's AdamW skips them.
 - **Queued (unit lfgpuq):** waits for lftwin to end, then G0 (`.cache/run_lfg0.sh`, BT4M8TG_s0 18k), then BT8b s0 → s1
   (`.cache/run_lfbt8b.sh`). No BEAM yet (untested on the BT kernels).
+
+### 2026-11-04 09:01 — THE STONE GAINS #2: "LLMs have a solver inside" (Bryce)
+
+- Inserted verbatim as the second theory line in `docs/CORE_THEORIES.md` (and the memory's verbatim copy): models naturally build internal
+  representations of CSP solvers in their weights; the core rhythm includes a CALL to a CSP solver. CLAUDE.md §8 carries it.
+- **Citation reconciled, not edited:** the text says "our Sudoku result in July"; the record has it as **v98, 2026-05-29** (learned joint MAP
+  inference, puzzle correlation 7 orders above independence) and the June breathing deducer, byte-identical to the KenKen oracle. Caveat
+  banked in the table: that deducer's per-head masks carried the factor topology (given, not discovered).
+- Built form: the breaths are the internal solver (learned BP, the continuous mirror); the CSP solver called each breath is the external
+  one (the discrete mirror; the alternation ruling). Neural-guided clean-CSP search stays CLOSED.
