@@ -56185,3 +56185,37 @@ method signature. This read asks whether the DTO schema holds enough to decide t
   heuristic finds few rates). The named fields for a next schema: a polarity bit read from the operand's own sentence, a stronger rate reader.
 - **Named next form (on DO-1 PASS, as pinned): THE SEALED OP HEAD** — the op decision reads only the DTO (operand units, kinds, values,
   return type), never the token states; the UI wire cut. Needs its own pin and word.
+
+### 2026-11-05 15:11 — SPHR VERDICT (the turning breath, BT_SPH=2): S-SPEED FAIL, S-T PASS, S-T+ FAIL (2/3 predicted; 126/176)
+
+- **S-SPEED FAIL ✓:** ORIG step 0.891 / 0.886 at 18k, never ≥ 0.90 (BT4M8: 9000 / 10000). **S-T PASS ✗ (predicted FAIL):** TEST step 0.1551 /
+  0.1453 vs BT4M8 0.1576 / 0.1488 (−0.0025 / −0.0035, mean −0.0030; bar ≥ −0.010). **S-T+ FAIL ✓.** Beside: TEST type 0.281 / 0.282;
+  TEST op 0.467 / 0.458. Rotation-only breaths fit slower and land the same TEST wall: the wall does not care how the state moves.
+- SPH read as a whole: neither form buys speed; the torus silhouette costs TEST (−0.020), the turning breath is TEST-neutral. Form closed.
+
+### 2026-11-05 15:11 — Bryce: "word given for sealed op head" — THE SEALED OP HEAD PINNED (before any build)
+
+*Serves: "The SQL cross join is the nemesis" (the op decision may not read the problem, so it cannot store problem x op) + "Discover the
+structure, then solve over it" (the text discovers the structure: kinds, stop, operands; the op is solved over the structure's DTO) +
+THE RESIDUAL-SEAL LAW (sever the bypass, never invite).*
+- **Form (BT_SEAL=1):** the type factors as p(type) = p_text(struct) x p_DTO(op): struct = the operand kinds (9) + stop, from the text
+  silhouette (the 38 atom logits marginalized over the op: log-sum-exp per struct, so the text's op preference cannot reach the decision);
+  op from **the DTO head**: 10 field tokens per slot (kind A, kind B, unit class, rate direction, return-type match per op x4, value order,
+  divisibility; all from the operands the pointers chose, the notebook's committed slot values / units, gsm_units + the OP-DIAG question
+  unit), 2 layers of plain self-attention (width 64, 4 heads, no MLP), mean-pooled -> 4 op logits. The head never sees a token state.
+  Pointers condition on the struct only (the canonical type's role phases, the struct-mean atom, p(struct) as the radius), so the
+  operand choice is op-blind. Training: teacher-forced DTO from the gold operands (values / units known iff the slot is committed, as at
+  inference). Inference: struct -> pointers -> DTO of the chosen operands -> op. ZOOM is off under SEAL (zoom IS the text's p(op) factor;
+  the seal replaces it). Every other flag as BT4RB8 (D 512, NH 8, DB 64, CYCLOCK, ROLE, T6OFF, RB8 states), UNIT=0 (single delta).
+- **Ceiling read (13:4x, no "last" flag, which the head cannot know):** the D2 table without the last-step flag = 0.5845 TEST op.
+- **Comparator:** BT4RB8 s0 / s1 (tinygrad): TEST op 0.4683 / 0.4847, **TEST ptr 0.2154 / 0.2144**, TEST step 0.1634 / 0.1664, ORIG op 0.978 / 0.987.
+- **Bars (SEAL s0 / s1, 18k on the GPU):** **SO-S (the seal holds):** ORIG op ≤ 0.70 on both seeds (no memorization through the DTO; the
+  table's TRAIN fit is 0.60). **SO-P (op-blind pointers keep their fit):** ORIG ptr ≥ 0.90 both. **SO-H (the head reaches the table):** TEST
+  op under GOLD operands ≥ 0.55 both. **SO-1:** TEST op − BT4RB8 mean ≥ +0.010, both seeds > 0. **SO-2:** TEST step, same form.
+- **PREDICTIONS:** SO-S PASS; SO-P PASS (moderate); SO-H PASS; **SO-1 FAIL** (TEST pointers are right 0.215 of the time, so most DTOs are
+  read off the wrong operands; the gold-operand ceiling 0.58 does not survive the wall); **SO-2 FAIL** (step needs the pointer too).
+  The honest reading in advance: **the pointer wall (0.215) is bigger than the op wall (0.477)**; the seal shows whether a DTO decision
+  degrades gracefully on wrong operands. Limitation stated: SEAL drops ZOOM too, so an SO-1 FAIL does not separate the seal from zoom's
+  loss (SO-H separates the head from the pointers).
+- **Next form named (not pinned): THE POINTER WALL** — what the pointer reads on TEST; a DTO for operand choice (units relative to the
+  question) is the same dependency rule one layer down.
