@@ -56140,3 +56140,28 @@ trying to memorize the cross join when we should be using phase binding to stop 
   ceiling is set early, and slowing memorization only lowers it. Caveat: SPHT ran on the MBR8 states (lfgq predates P9); the comparator
   BT4M8 is torch, and tinygrad sat 0.003 under torch on TEST step at G0, so the −0.020 is not an engine artifact.
 - SPHR (BT_SPH=2) s0 at 15k (ORIG 0.836, TEST step 0.153); its verdict banks when s1 lands (~14:35). lfub (UNIT-BIND) starts after (~18:40).
+
+### 2026-11-05 13:43 — Bryce: "word given" — THE DTO ORACLE PINNED (zero GPU; before any build or read)
+
+*Serves: "The SQL cross join is the nemesis" (the op decision reads the whole problem = a stored cross join) + "Discover the structure,
+then solve over it" (the DTO is the structure handed to the solver).* Origin: Bryce's 3-tier .NET analogy (UI / business / data). Critique
+banked (on the Gemini relay): no breakthroughs to explain (SPHT FAIL, UB not run); OD-X refutes "synonyms shatter it" (the memorized
+object is the whole problem); a heuristic unit mismatch is evidence, not proof, so it may bias the beam but never roll back (the bridge
+rule). The lesson kept: **the dependency rule** — the business layer sees a typed request object (DTO), never the UI's controls; our op
+decision reads every token state (the UI wire), and the SEAL is cutting that wire. Plus **the return type**: the question's unit is the
+method signature. This read asks whether the DTO schema holds enough to decide the op BEFORE any sealed form is built.
+- **Read** `scripts/gsm_dto_oracle.py` (CPU, no model): per GOLD step on TEST (gold pointers = an oracle ceiling, said so), predict the op
+  from a DTO alone with a lookup table fit on TRAIN gold (exact key; backoff to the coarser key when the TRAIN count < 5; majority op last).
+  Units by `gsm_units` (UNIT-BIND's exponent algebra); slots' units by the same algebra over the gold program; the question unit by the
+  OP-DIAG heuristic. Arms: **D0** = the OP-DIAG unit class (same / dim / rate / diff / unk) — the sanity row (must reproduce 0.4598);
+  **D1** = D0 + rate direction (A's denominator = B / A = B's numerator / ...) + operand kinds (token / slot / const) + last-step flag;
+  **D1R** = D1 + the return type (for each op: does its result unit equal the question unit; unknown when either is); **D2** = D1R + operand
+  values (a > b, b divides a, a == b; never the result, which would leak the key).
+- **Comparator:** the reader's TEST op, BT4RB8 0.4683 / 0.4847 (mean 0.4765); the majority prior ('*') 0.3824.
+- **Bars:** **DO-1 (the schema's ceiling):** D2 TEST op ≥ 0.4965 (reader mean + 0.020). **DO-2 (the return type earns):** D1R − D1 ≥ +0.020.
+  **DO-G (a table that transfers):** D2's TRAIN − TEST gap ≤ 0.05 (the reader's gap is ~0.50: 0.98 vs 0.48). Beside (no bar): per-op
+  confusion, coverage of each feature, the family accuracy.
+- **PREDICTIONS:** DO-1 PASS (low confidence: the 5-row class alone reached 0.460, and a > b / divisibility separate − and ÷);
+  DO-2 FAIL (OP-DIAG found the gold final unit equals the question unit on only 0.276 of 772 last steps: the return-type heuristic is too
+  noisy to earn +0.020); DO-G PASS. **On DO-1 PASS** the named next form is the SEALED OP HEAD (the op reads only the DTO; pinned on its
+  own word). **On DO-1 FAIL** the schema is missing fields: the per-op confusion names which.
