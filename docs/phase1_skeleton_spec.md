@@ -55997,3 +55997,30 @@ hit@1 1.000, TR-2 0.038 rad, TR-3 +0.871. Random atoms gave 0.024, 1.620 rad, +0
 - **Why the ruling is affordable (banked):** FB-P (11-04): after BEAM-1 + the solver, the factored arms that never trained the cross join sit
   at parity with the joint (TEST ans −0.0025 BT8, −0.0059 BT8b). The cross join's TEST edge after the solver is ≤ 0.006. The conditioning the
   joint memorized is recovered per problem by the text (the reader) and the solver (the beam).
+
+### 2026-11-04 20:31 — WORD GIVEN ("word given for OP-DIAG - Salute!"; Bryce: "we are on a mission to remove all SQL cross joins!"): OP-DIAG pinned
+
+*Serves: "the SQL cross join is the nemesis", now at the TEXT level (the reader maps phrases to operations: a phrase × op lookup table) +
+"discover the structure" (the operation is discovered from what the quantities ARE). Zero training; `scripts/gsm_opdiag_read.py`.*
+- **Units (a heuristic, never gold):**
+  - For each text number: the first content token after it, skipping a stop list. "$" before or "dollar(s)" → dollar; "%" or "percent" → %.
+    Crude singular.
+  - Word multipliers (half, twice, double, triple, thrice, quarter) and constants are dimensionless ("1").
+  - "per / an / a / every" + noun after the unit → a rate X/Y.
+  - Units propagate through the GOLD program: + / − keep the unit; × cancels a rate (X/Y × Y = X) or carries "1"; ÷ of the same unit → "1",
+    X ÷ X/Y → Y, else X/Y.
+  - Question unit: the noun after "how many" in the last sentence; "how much" + money words → dollar.
+- **The unit class of a step** (from its operands' units): same / dimensionless / rate-match / different / unknown. P(op | class) is fit on TRAIN
+  gold (a 5-row table: a rule over unit relations, NOT a phrase table). The unit classifier = argmax.
+- **BT ops:** BT4M8 s0/s1, the committed type at each gold step's slot in the BT6-gate loop (each arm's fitted rho0), TEST.
+- **Families:** additive {+, −} vs multiplicative {×, ÷}.
+- **OD-F (the floor):** BT TEST op accuracy − the majority-op baseline (the TRAIN-majority op) ≥ +0.10 on both seeds. **Prediction PASS** (low confidence).
+- **OD-U (units beat the reader on the family):** unit-class family accuracy on TEST ≥ the BT's family accuracy + 0.05 (each seed). **Prediction FAIL.**
+- **OD-C (units complement the reader):** among TEST steps where the BT's family is wrong and the unit class is known, the unit family is right
+  ≥ 0.50 (each seed). **Prediction PASS** (low confidence).
+- **OD-Q (units as a certificate):** the share of TEST gold programs whose final derived unit equals the question unit (both known) ≥ 0.50.
+  **Prediction FAIL** (the heuristic loses units through compounds).
+- **OD-X (the text-level cross join signature):** BT TEST op accuracy, lowest-third − highest-third of bigram novelty (the share of the step's
+  sentence bigrams unseen in TRAIN) ≥ +0.10 on both seeds. **Prediction FAIL** (the miss is unseen COMBINATIONS, not unseen phrases).
+- Beside: unit coverage, the P(op | class) table, the BT op confusion matrix, OD-X by tertile.
+- **Instrument check:** 30 random TRAIN (number → unit) pairs are eyeballed BEFORE any bar is computed. Units only: no op or BT numbers.
