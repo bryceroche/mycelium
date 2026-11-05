@@ -55963,3 +55963,37 @@ the cross join" (phase binding as the GLUE between charts: chart(op, ka, kb) = O
 - **Predictions (clean, counted):** TR-1 FAIL, TR-1b FAIL, TR-2 FAIL, TR-3 FAIL. BT4M8's atoms are Welford means of a Linear map's outputs,
   trained with a joint 37-way head and op-level zoom atoms. Nothing in it rewards rotation-related atoms, and the zoom (an op-level
   centroid) rewards ADDITIVE op structure if anything (so offset ≥ phase).
+
+### 2026-11-04 20:14 — TRANSIT VERDICT: TR-1 FAIL / TR-1b FAIL / TR-2 PASS / TR-3 FAIL (3/4 predicted; 106/153) + BRYCE'S RULING: glue on the fly, no memorized cross join
+
+*Serves: "connecting local charts" + "never train on the cross join".* Instrument check first (synthetic only): the planted glued atlas gave
+hit@1 1.000, TR-2 0.038 rad, TR-3 +0.871. Random atoms gave 0.024, 1.620 rad, +0.002. Real: BT4M8, all 36 atoms valid (Cn ≥ 50), 22 charts, 252 LOO transits.
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| TR-1: phase hit@1 ≥ 0.50 | 0.028 | 0.024 | **FAIL ✓** (chance 0.028) |
+| TR-1b: phase − offset ≥ +0.10 | 0.028 − 0.187 | 0.024 − 0.135 | **FAIL ✓** (offset > phase, as predicted) |
+| TR-2: cocycle residual ≤ π/4 (0.785) | 0.742 | 0.739 | **PASS ✗** |
+| TR-3: axes overlap gain ≥ +0.10 | −0.184 | −0.192 | **FAIL ✓** |
+
+- **TR-2 is real, not the common mode.** The atoms share a large common component (|mean atom|² ≈ 0.8× the mean spread; mean pairwise
+  phase difference 1.07 rad vs random 1.57). A **label-shuffled null** (the same atoms, types scrambled, 20 shuffles) gives 1.06 rad
+  (range 0.97–1.15) on both seeds. The real 0.74 is outside every shuffle. So the op-to-op phase shifts compose consistently
+  ~1/3 of the way from random to a glued atlas.
+- **Beside:**
+  - Procrustes hit@1 0.23 / 0.25.
+  - Offset 0.19 / 0.14.
+  - A per-plane complex gain (rotation × radius) 0.091 / 0.087, vs shuffled 0.020 / 0.016.
+  - TR-4: phase predictions sit farther from the target than the mean atom does (residual 1.3); there is no relation to count.
+  - Resultant median 0.81.
+- **Reading:** BT4M8's joint head has a weak phase skeleton between operations (the shifts compose), but each atom is mostly its own
+  memorized point. The learned atlas IS largely the cross join. Nothing in that training asked for glue.
+- **BRYCE'S RULING (20:1x), verbatim:** *"we dont want to memorize the SQL cross join. we want the engine to glue each step together on the
+  fly for each problem with phase binding. so every problem should be handled the same way."* This strikes the form I proposed at 19:4x
+  (glue as a prior + a per-combination learned residual shrunk by n/(n+κ)). That form stores the cross join wherever data is dense, and handles
+  familiar and new problems by different paths. **Rule: one path for every problem; a step's chart is BUILT by binding each breath, never
+  looked up per combination.** The Tree still stores FACTS and the generator atoms (op, roles, kinds) ("overfit the facts to the Tree"). It
+  never stores per-combination step charts.
+- **Why the ruling is affordable (banked):** FB-P (11-04): after BEAM-1 + the solver, the factored arms that never trained the cross join sit
+  at parity with the joint (TEST ans −0.0025 BT8, −0.0059 BT8b). The cross join's TEST edge after the solver is ≤ 0.006. The conditioning the
+  joint memorized is recovered per problem by the text (the reader) and the solver (the beam).
