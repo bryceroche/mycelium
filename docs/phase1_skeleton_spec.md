@@ -56128,3 +56128,15 @@ trying to memorize the cross join when we should be using phase binding to stop 
   (4.1468 / 3.5938 / 3.5746 / 3.3552 both); (3) the dry run of `.cache/run_lfub.sh` itself (DRY=1 on a fresh unpatched copy): patches
   applied with the chain's invocation, four 2-step runs, both verdict calls, exit 0; its artifacts deleted.
 - **Queue:** lfub waits for lfgq (SPHT s0 at step 4000 now; SPH ends ~14:20), then UB s0/s1 (~18:10) → verdict → UBP only on UB-1 PASS.
+
+### 2026-11-05 12:13 — SPHT VERDICT (the torus silhouette, BT_SPH=1): S-SPEED FAIL, S-T FAIL, S-T+ FAIL (2/3 predicted; 121/170)
+
+*Serves: "clean binding, unbinding and snap-to-centroid let long chains run without degrading the representation" (pin 11-04 11:54).*
+- **S-SPEED FAIL ✓ (predicted FAIL):** ORIG step never reaches 0.90 in 18k on either seed (0.870 / 0.873 at 18k; BT4M8 crossed at 9000 /
+  10000). The torus SLOWS the fit: ORIG 0.525 / 0.533 at 10k.
+- **S-T FAIL ✗ (predicted PASS):** TEST step 0.1259 / 0.1403, mean 0.1331 vs BT4M8 0.1532 = **−0.0201** (bar ≥ −0.010).
+- **S-T+ FAIL ✓.** Beside: TEST type 0.2645 / 0.2798 (BT4M8 0.3064 / 0.2843); TEST op 0.4442 / 0.4550.
+- Reading: a slower fit did not buy transfer. TEST step is flat at ~0.13–0.14 from step 8k while ORIG climbs 0.43 → 0.87: the TEST
+  ceiling is set early, and slowing memorization only lowers it. Caveat: SPHT ran on the MBR8 states (lfgq predates P9); the comparator
+  BT4M8 is torch, and tinygrad sat 0.003 under torch on TEST step at G0, so the −0.020 is not an engine artifact.
+- SPHR (BT_SPH=2) s0 at 15k (ORIG 0.836, TEST step 0.153); its verdict banks when s1 lands (~14:35). lfub (UNIT-BIND) starts after (~18:40).
