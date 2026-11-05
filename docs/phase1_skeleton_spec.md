@@ -55920,7 +55920,7 @@ Fit: all of TRAIN (5,337 items, 20,938 gold steps); 22 charts with n ≥ 50 (99.
   replicate CH-4's +0.027. With the full fit, 22 charts instead of 14 should narrow the CFNAME loss but not close it.
 - **Step 2** (online PPCA charts in the Tree, trained on the GPU) is pinned only on CI-T PASS.
 
-### 2026-11-04 19:36 — CHART-IN VERDICT: gate PASS; CI-T FAIL / CI-A FAIL / CI-S FAIL (smoke-contaminated predictions all right; not tallied; tally stays 103/149)
+### 2026-11-04 19:35 — CHART-IN VERDICT: gate PASS; CI-T FAIL / CI-A FAIL / CI-S FAIL (smoke-contaminated predictions all right; not tallied; tally stays 103/149)
 
 - **Gate PASS:** the CHIN=0 control reproduces the banked FB NT2 TEST beam per item on both seeds (rho0 and lam identical).
 
