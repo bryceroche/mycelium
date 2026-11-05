@@ -11,7 +11,7 @@ Usage: dr_main_guard.py [path]   (default scripts/distill_reader.py; dry runs pa
 import ast, os, sys
 
 R = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
-P = sys.argv[1] if len(sys.argv) > 1 else os.path.join(R, "scripts", "distill_reader.py")
+P = sys.argv[1] if len(sys.argv) > 1 else os.path.join(R, "distill_reader.py")
 A = "ap = argparse.ArgumentParser()\n"
 s = open(P).read()
 assert s.count("\n" + A) == 1 and 'if __name__ == "__main__":' not in s, "anchor not found once, or already guarded"

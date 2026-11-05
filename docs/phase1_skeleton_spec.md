@@ -55830,3 +55830,22 @@ moves out of the classifier and into the search: neural proposes, symbolic dispo
 - **FB-W (width helps the factored arm more than the joint):** [factored NT8 − NT2] − [BT4M8 NT8 − NT2], mean ≥ +0.010, both > 0.
   **Prediction FAIL** (both arms): BEAM-1 moved TEST ans only ~+0.005, and the TEST wall is type recognition beyond rank 2–8, not ranking.
 - Beside: oracle@8 per read, ORIG ans, and the engine tag (BT8b tinygrad, the rest torch).
+
+### 2026-11-04 18:48 — FB VERDICT (6/6 predicted; 103/149): the search does not recover the conditioning; + lfgq stalled 18:02 on a patch path bug, fixed, relaunched 18:45
+
+*Serves: "the SQL cross join is the nemesis" + "beam search across top choices". Reads 17:23–17:47 (`.cache/gsm_fb_verdict.txt`).*
+
+| Bar | BT8b (chained) | BT8 (factored) | Predicted |
+|---|---|---|---|
+| FB-1: NT8 − BT4M8 NT2 | −0.0049 / −0.0059 → FAIL | −0.0010 / −0.0030 → FAIL | FAIL ✓✓ |
+| FB-P: NT8 − BT4M8 NT8 ≥ −0.010 | mean −0.0059 → PASS | mean −0.0025 → PASS | PASS ✓✓ |
+| FB-W: width gain − BT4M8's | −0.0000 / −0.0010 → FAIL | +0.0020 / −0.0020 → FAIL | FAIL ✓✓ |
+
+- Widening from 2 to 8 types moves TEST ans by at most +0.002 in any arm. Oracle@8 rises only slightly (BT8b 0.120 → 0.131; BT4M8 0.152 → 0.157).
+  The right program is rarely within reach even at NT 8, so the TEST wall sits before ranking: recognition (as in BT6 and BEAM). After the solver,
+  the factored arms are at parity with the joint (FB-P). The cross join's TEST edge left after the beam is ≤ 0.006.
+- **The guard bug (instrument, not science):** `dr_main_guard.py`'s DEFAULT path was `scripts/patches/../scripts/distill_reader.py`. The
+  dry run passed an explicit copy path, so the default was never exercised. lfgq died at 18:02, after the rb8x4 export landed (13,300
+  texts → `gsmb_rb8_states.npy`, intact). Fixed the default to `../distill_reader.py`. Relaunched lfgq 18:45: it skipped the export, and the guard
+  applied (117 statements, AST identical; the file parses). Role feats → BT4RB8 are running now. Lost: ~2.7 h of GPU queue.
+  Rule: **a dry run exercises the exact invocation the chain will use** (same args, same defaults).
