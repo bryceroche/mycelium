@@ -56114,3 +56114,17 @@ trying to memorize the cross join when we should be using phase binding to stop 
   torch vs tinygrad from a shared init: tensors ≤ 1e-4, then a 40-step smoke; (3) the instrument: unit coverage on number tokens, and a planted
   check that rate × count lands exactly on the count's partner phase; (4) the dry run uses the chain's exact patch invocation on a copy.
 - Queue: unit lfub waits for lfgq (SPH) to end, applies the RB8 default switch + unit_bind, then UB s0/s1 → verdict → (UBP s0/s1 if UB-1 PASS).
+
+### 2026-11-05 07:03 — UNIT-BIND built, gated, queued (unit lfub)
+
+- **Build:** `scripts/gsm_units.py` (the OP-DIAG heuristic + the exponent algebra), staged patch `scripts/patches/unit_bind.py` (gsm_breath_reader.py
+  only: the unit block rides the role and certificate roads, so the tinygrad engine reads the widths off the parameter dict, unedited),
+  `scripts/patches/p9_defaults.py` (the P9 default switch to RB8 states), `scripts/gsm_ub_verdict.py`. Params 6,636,977 (+69,632 = 68 × 512 × 2).
+- **Instrument (TRAIN number tokens):** unit 0.827, dimensionless 0.102, unknown 0.071. On 128 TRAIN gold notebooks, 430 slot unit blocks are
+  identical to a same-unit token's; real cancellations appear (kg/month × month → kg, sentence/minute × minute → sentence); planted X/Y × Y
+  vs X: max |d| 0.0.
+- **Gates PASS:** (1) BT_UNIT=0 vs the unpatched code on banked BT4RB8_s0: every per-item array identical (ORIG / TEST 128, torch and tg);
+  (2) BT_UNIT=1 and =2 torch vs tinygrad from a shared init: ≤ 5.7e-6, argmax agree 1.000; 40-step smoke losses identical to 4 decimals
+  (4.1468 / 3.5938 / 3.5746 / 3.3552 both); (3) the dry run of `.cache/run_lfub.sh` itself (DRY=1 on a fresh unpatched copy): patches
+  applied with the chain's invocation, four 2-step runs, both verdict calls, exit 0; its artifacts deleted.
+- **Queue:** lfub waits for lfgq (SPHT s0 at step 4000 now; SPH ends ~14:20), then UB s0/s1 (~18:10) → verdict → UBP only on UB-1 PASS.
