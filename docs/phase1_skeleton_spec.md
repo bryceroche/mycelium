@@ -56165,3 +56165,23 @@ method signature. This read asks whether the DTO schema holds enough to decide t
   DO-2 FAIL (OP-DIAG found the gold final unit equals the question unit on only 0.276 of 772 last steps: the return-type heuristic is too
   noisy to earn +0.020); DO-G PASS. **On DO-1 PASS** the named next form is the SEALED OP HEAD (the op reads only the DTO; pinned on its
   own word). **On DO-1 FAIL** the schema is missing fields: the per-op confusion names which.
+
+### 2026-11-05 13:44 — DTO ORACLE VERDICT: DO-1 PASS, DO-2 FAIL, DO-G PASS (3/3 predicted; 124/173)
+
+*Serves: "The SQL cross join is the nemesis" + "Discover the structure, then solve over it".* `scripts/gsm_dto_oracle.py` (CPU, no model).
+| arm (lookup table on TRAIN gold) | TRAIN op | TEST op | TEST family | keys |
+|---|---|---|---|---|
+| D0 the OP-DIAG unit class | 0.4608 | 0.4598 (sanity OK) | 0.6679 | 5 |
+| D1 + rate direction, operand kinds, last step | 0.5329 | 0.5254 | 0.7393 | 119 |
+| D1R + the return type | 0.5486 | 0.5425 | 0.7592 | 292 |
+| D2 + operand values (a vs b, b divides a) | 0.6107 | **0.5930** | 0.7886 | 729 |
+- **DO-1 PASS ✓:** D2 0.5930 vs the bar 0.4965; **+0.117 over the reader's mean 0.4765**, with no text at all.
+- **DO-2 FAIL ✓:** the return type adds +0.0171 (bar +0.020): known on 0.696 of steps but some op's result matches it on only 0.198.
+- **DO-G PASS ✓:** D2's TRAIN − TEST gap +0.0176 (the reader's ~0.50). The table transfers because it cannot see the problem.
+- **Caveats (the oracle's advantages, stated):** gold pointers and gold slot values (the reader picks its own operands; its executor knows
+  a slot's value only once committed). So 0.593 is a ceiling for a DTO-only op head given correct operands, not a promise.
+- **What is missing (the confusion, gold → pred):** + vs − (− → + 234, + → − 105): the DTO has no POLARITY field (gain / loss, "left",
+  "more than"); +/− → × 439: the add family without a unit relation defaults to ×. The rate relation fires on only 180 / 3978 steps (the
+  heuristic finds few rates). The named fields for a next schema: a polarity bit read from the operand's own sentence, a stronger rate reader.
+- **Named next form (on DO-1 PASS, as pinned): THE SEALED OP HEAD** — the op decision reads only the DTO (operand units, kinds, values,
+  return type), never the token states; the UI wire cut. Needs its own pin and word.
