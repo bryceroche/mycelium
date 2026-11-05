@@ -55811,7 +55811,7 @@ be sure the T6 clock is turned on. word given for the whole queue -- salute!"*
   constraints (neural proposes, symbolic disposes; discovery ↔ solving). This is zero-training on the banked BT8 / BT8b weights:
   factored top-2 × 2 × 2 through BEAM-1, against BT4M8's joint BEAM-1.
 
-### 2026-11-04 17:05 — WORD GIVEN ("word given for the whole queue - Salute!"): FB THE FACTORED BEAM pinned and fired (zero training, CPU)
+### 2026-11-04 17:23 — WORD GIVEN ("word given for the whole queue - Salute!"): FB THE FACTORED BEAM pinned and fired (zero training, CPU)
 
 *Serves: "the SQL cross join is the nemesis" + "beam search across top choices" + "discover the structure, then solve over it" (the conditioning
 moves out of the classifier and into the search: neural proposes, symbolic disposes).*

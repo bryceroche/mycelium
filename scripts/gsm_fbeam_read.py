@@ -1,4 +1,4 @@
-"""FB THE FACTORED BEAM (ledger 2026-11-04 16:3x, word given): move the conditioning OUT of the classifier and INTO the search.
+"""FB THE FACTORED BEAM (ledger 2026-11-04 17:23, word given): move the conditioning OUT of the classifier and INTO the search.
 
 A zero-training read on banked BT weights. BEAM-1 (scripts/gsm_beam_read.py) keeps the top-2 step types per slot at its commit cycle; here
 the slot keeps the top-NT types (FB_NT, default 8) of the BT's own type distribution, each with its top-2 a x top-2 b pointers, and the
