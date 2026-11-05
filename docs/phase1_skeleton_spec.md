@@ -56057,3 +56057,60 @@ steps 0.869.
   - **UNIT-BEAM** (zero training): log P(op | unit class) as a soft factor on BEAM-1's type candidates, its weight fit on TRAIN[:600] like lam.
     Soft, never a hard prune: a unit mismatch is not a proof (adults + children).
   - **UNIT-BIND** (GPU): the reader phase-binds each number to its unit token on the fly, and the unit relation enters the op decision.
+
+### 2026-11-05 06:39 — THE OVERNIGHT VERDICTS (lfgq): P9 PASS; W128 / BT9 FAIL; AG2 2 FAIL + 1 PASS (9/9 predicted; 119/167)
+
+All tinygrad on the GPU, 18k steps, the T6 clock on; the controls are the torch BT4M8 runs (the engine tag on every line, ±2% accepted).
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| P9: BT4 TEST step on RB8 states (mean) ≥ BT4M8 mean − 0.010 | 0.1634 | 0.1664 | mean 0.1649 vs 0.1532 (+0.0117): **PASS ✓** |
+| W1: TEST type BTW128 − BT4M8 (+0.010, both > 0) | −0.0143 | −0.0025 | **FAIL ✓** |
+| W2: TEST step BTW128 − BT4M8 | −0.0141 | −0.0030 | **FAIL ✓** |
+| B9-0: BT9 ORIG step ≥ 0.90 | 0.9426 | 0.9521 | **PASS ✓** |
+| B9-1: TEST type BT9 − BT4M8 | −0.0473 | −0.0035 | **FAIL ✓** |
+| B9-2: TEST step BT9 − BT4M8 | −0.0317 | −0.0083 | **FAIL ✓** |
+| AG2-1: TEST ans AGREE − BEAM-1 (four reads, +0.010, all > 0) | +0.0148 / +0.0020 | +0.0040 / −0.0010 | **FAIL ✓** |
+| AG2-I: shared-value rate across readers > 0.348 + 0.03 | 0.351 | | **FAIL ✓** |
+| AG2-C: certificate precision > 3 × BEAM-1 | 0.4474 / 0.2174 | vs 0.1586 / 0.1660 | **PASS ✓** (coverage 0.042) |
+
+- **P9:** the 8M Tree-descending reader (RB8) holds TEST step (+0.012 over the torch controls, inside the engine band); per the pin the default
+  switch to RB8 states is staged as a patch, applied between chains. BT4RB8 is now the same-engine comparator for new BT forms.
+- **W128 / BT9:** neither a wider waist nor the ID skip buys transfer; both fit ORIG slightly worse. Size and skips do not reach the TEST wall.
+- **AG2:** a second reader does not agree on different values; when two readers DO agree, the agreement is a 2–3× better certificate than one beam
+  (but covers 4% of items).
+- SPH (SPHT s0 running since ~06:30, then s1, SPHR s0/s1) continues; the applied sph patch is committed with this entry.
+
+### 2026-11-05 06:39 — Bryce: "no for unit beam. yes for unit bind" — UNIT-BIND PINNED (before any build or read)
+
+Bryce: *"so our neural reader is no better than a coin flip on unseen text, right? I suspect the text level SQL cross join strikes again. we're
+trying to memorize the cross join when we should be using phase binding to stop memorizing the vocabulary. no for unit beam. yes for unit bind"*
+
+- **The numbers behind "coin flip":** add-vs-multiply family 0.643 / 0.615 vs always-multiply 0.558 and a coin 0.50; the 4-way op 0.473 / 0.438
+  vs always-'×' 0.382 and random 0.25. Barely above the prior, not literally a coin. And OD-X says the memorized object is not the VOCABULARY
+  (novel phrases do no worse): it is the whole problem (AG3: 0.91 → 0.19 under sentence shuffle). UNIT-BEAM is closed by the word (never fired).
+- **Serves:** "The SQL cross join is the nemesis ... clean binding and unbinding" + "connecting local charts" + the glue-on-the-fly ruling (11-04).
+- **The form (BT_UNIT=1, patch `scripts/patches/unit_bind.py`, both engines):**
+  - Every number token's unit comes from the OP-DIAG heuristic (moved to `scripts/gsm_units.py`): a product of base words with integer exponents
+    (X, X/Y rates, "1" dimensionless; % is a base word; unknown stays unknown).
+  - **Per problem, per batch, every base word draws a FRESH random phase vector** (32 planes), exactly as the name IDs do: the unit's identity
+    is unlearnable, only SAMENESS is. A token's unit phase = Σ exponent × θ(word): a rate X/Y = θX − θY (the conjugate), "1" = phase 0.
+  - **The executor writes back each committed slot's unit by the same phase algebra** (× adds phases, ÷ subtracts, + / − keep operand A's):
+    X/Y × Y = X falls out of the planes (dimensional cancellation by conjugate multiplication), computed fresh per problem; never stored.
+  - Entry: tokens through the role road (role feats ‖ cos θ ‖ sin θ ‖ kind one-hot {none, unknown, dimensionless, unit}); slots through the
+    notebook's certificate road (cf ‖ the same block). Both are mandatory roads (no gain), trained from scratch.
+  - Same config as BT4RB8 (RB8 states + role feats, BT4M8 flags, T6 clock on, 18k, tinygrad GPU), seeds 0 / 1. The rng for the unit phases is
+    derived from the batch rng's state without consuming it: batches and masks are the BT4RB8 runs' exactly.
+- **Bars (vs BT4RB8 s0 / s1, same engine and states: TEST op 0.4683 / 0.4847, type 0.3012 / 0.3095, step 0.1634 / 0.1664):**
+  - **UB-0 FIT:** ORIG step ≥ 0.90 both. **Prediction PASS.**
+  - **UB-1 THE OP WALL:** TEST step_op UB − BT4RB8 mean ≥ +0.010, both seeds > 0. **Prediction FAIL** (low confidence).
+  - **UB-2:** TEST type_ok, same form. **Prediction FAIL.**
+  - **UB-3:** TEST step_all, same form. **Prediction FAIL.**
+  - Why FAIL: TRAIN op is already ~0.98 from memorizing the problems; a new road is used only where it is cheaper than the memorized one (the
+    residual-seal law). If UB-1 fails with ORIG fit unmoved, the named next form is the SEAL: the op decided with the memorization road severed.
+- **Placebo (attribution, runs only if UB-1 PASSES):** BT_UNIT=2, every number token and slot draws an INDEPENDENT phase (kinds kept): same
+  features, no sameness. **UB-P:** UB − UBP TEST step_op mean ≥ +0.010, both > 0.
+- **Gates before queuing:** (1) BT_UNIT=0 is item-identical to the unpatched code on banked BT4RB8_s0 (ORIG / TEST 128, three metrics); (2) BT_UNIT=1
+  torch vs tinygrad from a shared init: tensors ≤ 1e-4, then a 40-step smoke; (3) the instrument: unit coverage on number tokens, and a planted
+  check that rate × count lands exactly on the count's partner phase; (4) the dry run uses the chain's exact patch invocation on a copy.
+- Queue: unit lfub waits for lfgq (SPH) to end, applies the RB8 default switch + unit_bind, then UB s0/s1 → verdict → (UBP s0/s1 if UB-1 PASS).

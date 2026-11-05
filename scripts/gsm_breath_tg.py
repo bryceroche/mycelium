@@ -84,13 +84,20 @@ def ang(sid, off):
     return Tensor.cat(sid.cast(dtypes.float).unsqueeze(-1) * WH, off.cast(dtypes.float).unsqueeze(-1) * WH, dim=-1)
 
 
-def attn(P, n, xq, xk, aq, ak, mask):
+def torus(z):
+    """(SPH) every plane of z (..., 2P) on the unit circle (the torch formula)"""
+    sh = z.shape; zz = z.reshape(*sh[:-1], sh[-1] // 2, 2)
+    return (zz / ((zz * zz).sum(-1, keepdim=True) + 1e-12).sqrt()).reshape(sh)
+
+
+def attn(P, n, xq, xk, aq, ak, mask, turn=False):
     B, Lq, Lk = xq.shape[0], xq.shape[1], xk.shape[1]
     q = rot(lin(P, lnorm(P, xq, n + ".lnq"), n + ".q").reshape(B, Lq, NH, DH).transpose(1, 2), aq.unsqueeze(1))
     kv = lin(P, lnorm(P, xk, n + ".lnk"), n + ".kv")
     k = rot(kv[..., :D].reshape(B, Lk, NH, DH).transpose(1, 2), ak.unsqueeze(1)); v = kv[..., D:].reshape(B, Lk, NH, DH).transpose(1, 2)
     sc = ((q @ k.transpose(-2, -1)) * (1 / math.sqrt(DH)) + mask).clip(-1e4, 1e4)
-    return xq + lin(P, (sc.softmax(-1) @ v).transpose(1, 2).reshape(B, Lq, D), n + ".o")
+    o_ = (sc.softmax(-1) @ v).transpose(1, 2).reshape(B, Lq, D)
+    return rot(xq, lin(P, o_, n + ".oa")) if turn else xq + lin(P, o_, n + ".o")                 # (SPH=2) a rotation, never an add
 
 
 # ---- FACTOR CODEBOOKS (BT8; successors branch here) -------------------------------------------------------------------------
@@ -162,8 +169,9 @@ def breath(P, t, xq, nb, cyc, sp=None):
     sa = ang(t["sid"][:, Lq:], t["off"][:, Lq:]); ka = ang(t["sid"], t["off"])
     if BR.CYCLOCK: sa = sa + cyc.cast(dtypes.float).reshape(B, 1, 1) * W
     mask = t["pad"][:, None, None, :].where(-1e4, 0.0)
-    for i in range(NLB): h = attn(P, f"core.{i}", h, Tensor.cat(xk_q, h, dim=1), sa, ka, mask)
+    for i in range(NLB): h = attn(P, f"core.{i}", h, Tensor.cat(xk_q, h, dim=1), sa, ka, mask, BR.SPH == "2")
     z = lin(P, lnorm(P, h, "down.0"), "down.1")
+    if BR.SPH != "0": z = torus(z)                                                              # (SPH) on the torus
     lfine = None
     if FACT: logit, lfine = fact_logits(P, z)
     else: logit = -((z.unsqueeze(2) - P["C"].detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tau"].exp()

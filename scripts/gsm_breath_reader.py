@@ -42,6 +42,7 @@ GATE = os.environ.get("BT_GATE", "")                 # (ledger 11-02 BT6) infere
 CHAIN = os.environ.get("BT_FACT") == "2"             # (ledger 11-04 BT8b) chained binding: kind keys bound to op (a) and op + kind a (b)
 FACT = os.environ.get("BT_FACT") in ("1", "2")              # (ledger 11-03 BT8) the factored silhouette: op / kind a / kind b phase-bound, conjugate unbind
 IDSKIP = os.environ.get("BT_IDSKIP") == "1"          # (ledger 11-03 BT9) slot id + tree level bypass the waist as phase tags (the ID skip)
+SPH = os.environ.get("BT_SPH", "0")                 # (ledger 11-04 SPH) 1 = the torus silhouette; 2 = + the turning breath (rotation-only updates)
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -130,9 +131,14 @@ def make_net():
         c, s_ = a.cos(), a.sin(); re, im = z[..., 0::2], z[..., 1::2]
         return torch.stack([re * c - im * s_, re * s_ + im * c], -1).flatten(-2)
 
+    def torus(z):                                                                          # (SPH) every plane on the unit circle
+        zz = z.unflatten(-1, (-1, 2)); return (zz / (zz.pow(2).sum(-1, keepdim=True) + 1e-12).sqrt()).flatten(-2)
+
     class Attn(nn.Module):
-        def __init__(s):
+        def __init__(s, turn=False):
             super().__init__(); s.lnq = nn.LayerNorm(D); s.lnk = nn.LayerNorm(D)
+            s.turn = turn
+            if turn: s.oa = nn.Linear(D, D // 2); nn.init.zeros_(s.oa.weight); nn.init.zeros_(s.oa.bias)   # (SPH=2) the turn angles
             s.q = nn.Linear(D, D); s.kv = nn.Linear(D, 2 * D); s.o = nn.Linear(D, D)
 
         def forward(s, xq, xk, aq, ak, mask):
@@ -140,7 +146,8 @@ def make_net():
             q = rot(s.q(s.lnq(xq)).reshape(B, Lq, NH, DH).transpose(1, 2), aq[:, None])
             k, v = (t.reshape(B, Lk, NH, DH).transpose(1, 2) for t in s.kv(s.lnk(xk)).chunk(2, -1))
             k = rot(k, ak[:, None])
-            return xq + s.o(F.scaled_dot_product_attention(q, k, v, attn_mask=mask).transpose(1, 2).reshape(B, Lq, D))
+            o_ = F.scaled_dot_product_attention(q, k, v, attn_mask=mask).transpose(1, 2).reshape(B, Lq, D)
+            return rot(xq, s.oa(o_)) if s.turn else xq + s.o(o_)                              # (SPH=2) a rotation, never an add
 
     class Net(nn.Module):
         def __init__(s):
@@ -153,7 +160,7 @@ def make_net():
             s.slotk = nn.Embedding(K, D); s.maskv = nn.Parameter(torch.zeros(D)); s.cfp = nn.Linear(3, D)
             s.lev = nn.Embedding(LEVMAX + 1, D); s.reent = nn.Linear(DB, D)
             s.sre = nn.Linear(DB, D, bias=False) if SOFT else None                             # the soft notebook's road (no bias: sp=0 is the old breath)
-            s.core = nn.ModuleList([Attn() for _ in range(NLB)])                               # THE BREATH (weight-tied over cycles)
+            s.core = nn.ModuleList([Attn(SPH == "2") for _ in range(NLB)])                               # THE BREATH (weight-tied over cycles)
             s.down = nn.Sequential(nn.LayerNorm(D), nn.Linear(D, DB)); s.up = nn.Linear(DB, D); s.upc = nn.Linear(DB, D)
             s.tau = nn.Parameter(torch.zeros(1))
             s.register_buffer("C", torch.randn(NT, DB) * 0.1); s.register_buffer("Cn", torch.zeros(NT))   # the atoms (Welford)
@@ -221,6 +228,7 @@ def make_net():
             mask = torch.zeros(B, 1, K, L).masked_fill(t["pad"][:, None, None, :], -1e4)
             for blk in s.core: h = blk(h, torch.cat([xk_q, h], 1), sa, ka, mask)
             z = s.down(h)                                                                      # THE SILHOUETTE
+            if SPH != "0": z = torus(z)                                                        # (SPH) on the torus
             logit = -((z[:, :, None] - s.C[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tau.exp()
             if FACT:   # (BT8) unbind each factor, snap it against its own codebook, compose: log p(op) + log p(a) + log p(b)
                 u = s.unbind(z)
