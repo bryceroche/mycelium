@@ -55849,3 +55849,51 @@ moves out of the classifier and into the search: neural proposes, symbolic dispo
   texts → `gsmb_rb8_states.npy`, intact). Fixed the default to `../distill_reader.py`. Relaunched lfgq 18:45: it skipped the export, and the guard
   applied (117 statements, AST identical; the file parses). Role feats → BT4RB8 are running now. Lost: ~2.7 h of GPU queue.
   Rule: **a dry run exercises the exact invocation the chain will use** (same args, same defaults).
+
+### 2026-11-04 18:52 — WORD GIVEN ("word given for update to core theories and the chart read"): the charts line carved; CHART pinned and fired
+
+**(1) CORE THEORIES (carved):** Bryce, verbatim: *"so project mycelium is all about connecting local charts which are centroids in the Tree
+database."* Added to the verbatim block in `docs/CORE_THEORIES.md`, with a reconciliation row, plus CLAUDE.md §8 and memory. The row's
+reading: a chart = an atom's centroid PLUS its local coordinates. WITHIN a chart the breath moves by phase rotation (the bus torus is
+intrinsically flat, so a move there is an angle shift that the conjugate undoes exactly). BETWEEN charts, at the junctions (the step choices,
+Y-junctions, not manifold points), the bridge chooses (beam + solver). FB (11-04) located the gap at the junctions: the right next chart
+is rarely among the candidates.
+
+**(2) CHART** (`scripts/gsm_chart_read.py`; zero training; BT4M8 s0/s1; the BT6-gate commit loop at the arm's fitted rho0; silhouette +
+type log-probs recorded at each slot's commit; gold real steps only). *Serves: "connecting local charts which are centroids in the Tree" +
+"512 → 64 at the bottleneck: the Silhouette of the Dancer".* The charts are fit on TRAIN: origin = the BT's own atom C[t], axes = the top R=8
+principal directions of z − C[t], σ_t = the in-fit off-chart RMS. Charts need n ≥ 50. Measured on CFNAME (names changed, nothing else: the
+in-distribution control under the view ruling) and TEST.
+- **CH-1 (atoms are charts):** the median over charts of the variance fraction in the top 8 is ≥ 0.60 on both seeds (isotropic 0.125).
+- **CH-2 (the TEST wall is at the junctions):** among TEST wrong-typed steps, the share with the gold type at rank 2 is ≥ 0.50 on both seeds.
+- **CH-3 (TEST lies off the atlas):** the median off-chart distance to the gold chart (σ units), TEST / CFNAME, is ≥ 1.5 on both seeds.
+- **CH-4 (the chart classifier):** PPCA type over the charts − the BT's committed type, on TEST, mean ≥ +0.010 with both > 0. Types with no
+  chart cannot be predicted (stated handicap).
+- **Disclosure:** these bars were set before the smoke ran. The smoke ran (s0; 256 TRAIN items fit, 9 charts; 12 s) before this entry was written,
+  and its numbers were seen: CH-1 0.670; CH-2 0.248; CH-3 1.23; TEST chart classifier 0.338 vs BT 0.322. So the **predictions are
+  contaminated and are NOT counted in the tally**. They are CH-1 PASS, CH-2 FAIL, CH-3 FAIL, CH-4 FAIL (with all of TRAIN fitted, the rarer
+  types get charts and compete).
+
+### 2026-11-04 18:57 — CHART VERDICT: CH-1 PASS / CH-2 FAIL / CH-3 FAIL / CH-4 PASS (predictions contaminated by the smoke, not tallied; tally stays 103/149)
+
+Fit: all of TRAIN (5,337 items, 20,938 gold steps); 22 charts with n ≥ 50 (99.0% of measured gold steps have a chart). Logs `.cache/run_chart_s{0,1}.log`.
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| CH-1: median variance fraction in the top 8 of 64 (≥ 0.60) | 0.627 | 0.620 | **PASS** (isotropic 0.125; range 0.59–0.76) |
+| CH-2: TEST wrong steps with gold at rank 2 (≥ 0.50) | 0.232 | 0.233 | **FAIL** (rank ≤ 4: 0.481 / 0.471) |
+| CH-3: off-chart distance TEST / CFNAME (≥ 1.5) | 1.31 | 1.35 | **FAIL** |
+| CH-4: PPCA chart classifier − the BT's type, TEST (+0.010, both > 0) | 0.3293 − 0.3014 = **+0.0279** | 0.3037 − 0.2773 = **+0.0264** | **PASS** (predicted FAIL) |
+
+- **The atoms are charts.** Each type's silhouettes spread over about 8 of the 64 dimensions, with ~62% of the variance in those 8 (5× isotropic).
+- **TEST errors are mostly NOT at a two-chart junction:** in only 23% of TEST errors is the gold type the runner-up. They sit somewhat off the
+  charts. The median off-chart distance for TEST wrong steps is 1.41 / 1.43 σ, vs right steps 0.95 / 0.95 and CFNAME 0.96. That is off the
+  atlas, but by ~1.3×, not the pinned 1.5×.
+- **THE LEAD (CH-4):** classifying the SAME silhouette by its chart (centroid + local axes + off-plane σ), instead of by the BT's centroid-and-zoom
+  head, gains **+0.027 TEST type on both seeds** (3,978 steps each). The chart classifier costs CFNAME −0.025 / −0.034 (0.848 vs 0.873;
+  0.836 vs 0.870). So the charts trade some in-distribution sharpness for transfer: a chart knows the SHAPE of its atom's neighbourhood,
+  where the centroid knows only its centre. Zero training.
+- **Named, not pinned (needs the word): CHART-IN.** Put the chart classifier INSIDE the commit loop as the type decision (the BT's z and
+  pointers unchanged; the radius = the chart posterior). Read TEST step and ans downstream through BEAM-1. Zero training. Then, if it
+  holds: the Tree stores each atom's chart (Welford mean + low-rank covariance, the online PPCA form) so the trained BT snaps into charts
+  and not onto points.

@@ -263,6 +263,9 @@ it governs what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form,
   structure itself. THAT Is key second part of the system we need to build. the alternation is between discovering the structure and solving over
   said structure."* Each breath discovers (types + pointers = the graph, retrieved from the Tree and bound); the solver solves over it. The open
   question: what certifies a discovered structure without the key (only a proof crosses hard).
+- **Connecting local charts** (added 11-04): *"so project mycelium is all about connecting local charts which are centroids in the Tree
+  database."* A chart = an atom's centroid + its local coordinates; within a chart the breath moves by phase rotation, between charts the bridge
+  (beam + solver) chooses at the junctions.
 - **The SQL cross join is the nemesis.** Traditional ML trains on the cross join of concepts (why the whole internet isn't enough data).
   Complex planes give **clean binding and unbinding** (phase angle + conjugate multiplication), so we never train on the cross join. The
   superpower is NOT superposition (~20 items per complex plane before degradation); it is clean, on-demand bind/unbind.
