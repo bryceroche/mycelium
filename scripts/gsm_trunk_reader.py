@@ -46,7 +46,8 @@ def load():
     # RD_STATES (ledger 10-31, Llama retired): the reader's word states; (default since 11-03: the T9-NS student, below)
     # THE RoPE RETIREMENT RULING (ledger 11-03): the reader is the T9-NS student; RoPE-era states need RD_LEGACY=1
     # P8 (ledger 11-04): the default is the 8M reader MBR-8M (ALL IN ON 8M; BT4 TEST step parity 0.1535 vs 0.1590, bar -0.010)
-    st = os.environ.get("RD_STATES", "gsmb_mbr8_states.npy")
+    # P9 (ledger 11-05): the default is the 8M Tree-descending reader RB8 (BT4 TEST step 0.1649 vs 0.1532, bar -0.010)
+    st = os.environ.get("RD_STATES", "gsmb_rb8_states.npy")
     if st in ("gsmb_trunk_states.npy", "gsmb_student_states.npy") and os.environ.get("RD_LEGACY") != "1":
         raise SystemExit(f"RD_STATES={st} is a RoPE-era reader (retired 11-03); set RD_LEGACY=1 for a banked comparison or control")
     return Dt, np.load(GD.V1.C(st), mmap_mode="r")

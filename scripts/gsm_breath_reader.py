@@ -28,6 +28,7 @@ os.environ["RD_ARM"] = "TICK"                     # the chassis's encoder featur
 import gsm_trunk_reader as TR
 import gsm_bench_data as GD
 from mycelium import rotor_clock as CK
+import gsm_units as GU
 
 SEED = int(os.environ.get("BT_SEED", "0")); TAG = os.environ.get("BT_TAG", f"BT_s{SEED}")
 ORACLE = os.environ.get("BT_ORACLE") == "1"          # the oracle-type read: the gold step type is the silhouette's class (inference only)
@@ -43,6 +44,9 @@ CHAIN = os.environ.get("BT_FACT") == "2"             # (ledger 11-04 BT8b) chain
 FACT = os.environ.get("BT_FACT") in ("1", "2")              # (ledger 11-03 BT8) the factored silhouette: op / kind a / kind b phase-bound, conjugate unbind
 IDSKIP = os.environ.get("BT_IDSKIP") == "1"          # (ledger 11-03 BT9) slot id + tree level bypass the waist as phase tags (the ID skip)
 SPH = os.environ.get("BT_SPH", "0")                 # (ledger 11-04 SPH) 1 = the torus silhouette; 2 = + the turning breath (rotation-only updates)
+UNIT = os.environ.get("BT_UNIT", "0")                # (ledger 11-05 UNIT-BIND) 1 = units phase-bound per problem; 2 = the placebo
+PU = 32; NUF = 2 * PU + 4 if UNIT != "0" else 0     # the unit block: cos | sin | kind one-hot (none, unknown, dimensionless, unit)
+assert UNIT == "0" or ROLE, "UNIT-BIND rides the role road (BT_ROLE=1)"
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -58,11 +62,23 @@ SPLITS = TR.SPLITS
 
 def rolef_name():
     """the role feats built on the same reader states (RoPE retirement ruling 11-03): a mismatch fails loudly"""
-    st = os.environ.get("RD_STATES", "gsmb_mbr8_states.npy")                                # P8 (ledger 11-04): the 8M reader
-    pair = {"gsmb_mbr8_states.npy": "gsmb_role_feats_mbr8.npy", "gsmb_t9ns_states.npy": "gsmb_role_feats_t9ns.npy", "gsmb_student_states.npy": "gsmb_role_feats.npy"}
+    st = os.environ.get("RD_STATES", "gsmb_rb8_states.npy")                                 # P9 (ledger 11-05): the RB8 reader
+    pair = {"gsmb_rb8_states.npy": "gsmb_role_feats_rb8.npy", "gsmb_mbr8_states.npy": "gsmb_role_feats_mbr8.npy", "gsmb_t9ns_states.npy": "gsmb_role_feats_t9ns.npy", "gsmb_student_states.npy": "gsmb_role_feats.npy"}
     rf = os.environ.get("BT_ROLEF", pair.get(st, ""))
     assert rf and (st not in pair or rf == pair[st]), f"role feats {rf!r} were not built on the reader states {st!r}"
     return rf
+
+
+def unit_feats(U, KD, th, rnd=None):
+    """(UNIT-BIND) per row -> (n, NUF): cos | sin of the unit phase (zeros unless known) | kind one-hot; th = word -> phase vector;
+    rnd (n, PU): the placebo's independent phases for unit-bearing rows"""
+    f = np.zeros((len(U), NUF), np.float32)
+    for i, (u, kd) in enumerate(zip(U, KD)):
+        f[i, 2 * PU + kd] = 1
+        if kd < 2: continue
+        a = rnd[i] if rnd is not None and kd == 3 else sum((e * th[w] for w, e in u.items()), np.zeros(PU))
+        f[i, :PU] = np.cos(a); f[i, PU:2 * PU] = np.sin(a)
+    return f
 
 
 def step_type(op, a, b):
@@ -71,10 +87,10 @@ def step_type(op, a, b):
 
 def notebook(E, L, progs, committed, types, radius):
     """the executor's write-back for the committed slots -> slot_in arrays: typ (K; -1 masked), r, cf (K x 3), lev, cons (L)."""
-    B = len(E); typ = np.full((B, K), -1); r = np.zeros((B, K), np.float32); cf = np.zeros((B, K, 3), np.float32)
+    B = len(E); typ = np.full((B, K), -1); r = np.zeros((B, K), np.float32); cf = np.zeros((B, K, 3 + NUF), np.float32)
     lev = np.zeros((B, K), np.int64); cons = np.zeros((B, L), bool)
     for b, e in enumerate(E):
-        n, vals = e["n"], e["vals"]; sv = [None] * K; sl = [0] * K
+        n, vals = e["n"], e["vals"]; sv = [None] * K; sl = [0] * K; su = [None] * K   # su: (UNIT) each slot's unit
         for k in range(K):
             if not committed[b, k]: continue
             typ[b, k] = types[b, k]; r[b, k] = radius[b, k]; op, A, Bo = progs[b][k]
@@ -92,7 +108,12 @@ def notebook(E, L, progs, committed, types, radius):
             if x is not None and y is not None and not (op == "/" and y == 0):
                 try: sv[k] = x + y if op == "+" else x - y if op == "-" else x * y if op == "*" else x / y
                 except OverflowError: sv[k] = None
-            cf[b, k] = TR.cert(sv[k])
+            cf[b, k, :3] = TR.cert(sv[k])
+            if NUF:   # (UNIT-BIND) the slot's unit by the phase algebra, from its operands' units (tokens, earlier slots, constants = 1)
+                ua = [(e["uU"][i] if i < n else None) if kd_ == "t" else (su[i] if committed[b, i] else None) if kd_ == "s" else {}
+                      for kd_, i in (A, Bo)]
+                su[k] = GU.combine(op, *ua); kd = 1 if su[k] is None else 2 if not su[k] else 3
+                cf[b, k, 3:] = unit_feats([su[k]], [kd], e["uth"], e["urs"][k:k + 1] if UNIT == "2" else None)[0]
     return typ, r, cf, lev, cons
 
 
@@ -152,12 +173,12 @@ def make_net():
     class Net(nn.Module):
         def __init__(s):
             super().__init__()
-            s.role = nn.Linear(14, D, bias=False) if ROLE else None   # a mandatory road, no gain
+            s.role = nn.Linear(14 + NUF, D, bias=False) if ROLE else None   # a mandatory road, no gain
             s.inp = nn.Sequential(nn.LayerNorm(H), nn.Linear(H, D)); s.isn = nn.Embedding(2, D); s.isnum = nn.Embedding(2, D)
             s.off = None if T6OFF else nn.Embedding(OMAX, D); s.idp = nn.Linear(2 * PB, D); s.gp = nn.Linear(3, D)
             s.enc = nn.ModuleList([Attn() for _ in range(NLE)])                                # THE READER (once per problem)
             s.cons = nn.Embedding(2, D)                                                        # the notebook's consumed marks
-            s.slotk = nn.Embedding(K, D); s.maskv = nn.Parameter(torch.zeros(D)); s.cfp = nn.Linear(3, D)
+            s.slotk = nn.Embedding(K, D); s.maskv = nn.Parameter(torch.zeros(D)); s.cfp = nn.Linear(3 + NUF, D)
             s.lev = nn.Embedding(LEVMAX + 1, D); s.reent = nn.Linear(DB, D)
             s.sre = nn.Linear(DB, D, bias=False) if SOFT else None                             # the soft notebook's road (no bias: sp=0 is the old breath)
             s.core = nn.ModuleList([Attn(SPH == "2") for _ in range(NLB)])                               # THE BREATH (weight-tied over cycles)
@@ -312,6 +333,16 @@ def batch(its, states, tree, rng):
         r = np.zeros(t["pad"].shape + (14,), np.float32)
         for b, it in enumerate(its): n = len(it["toks"]); r[b, :n] = RF[it["st0"]:it["st0"] + n]
         t["role"] = torch.as_tensor(r)
+    if NUF:   # (UNIT-BIND) fresh word phases per problem from a generator seeded by the batch rng's state (read, never consumed)
+        ur = np.random.default_rng((rng.bit_generator.state["state"]["state"], 1105))
+        ux = np.zeros(t["pad"].shape + (NUF,), np.float32)
+        for b, it in enumerate(its):
+            U, KD = GU.token_units(it); n = len(it["toks"])
+            th = {w: ur.random(PU) * 2 * math.pi for w in sorted({w for u in U if u for w in u})}
+            rt, rs = ur.random((n, PU)) * 2 * math.pi, ur.random((K, PU)) * 2 * math.pi   # (placebo) independent phases
+            ux[b, :n] = unit_feats(U, KD, th, rt if UNIT == "2" else None)
+            E[b]["uU"], E[b]["uth"], E[b]["urs"] = U, th, rs
+        t["role"] = torch.cat([t["role"], torch.as_tensor(ux)], -1)
     return t, E
 
 

@@ -56219,3 +56219,18 @@ THE RESIDUAL-SEAL LAW (sever the bypass, never invite).*
   loss (SO-H separates the head from the pointers).
 - **Next form named (not pinned): THE POINTER WALL** — what the pointer reads on TEST; a DTO for operand choice (units relative to the
   question) is the same dependency rule one layer down.
+
+### 2026-11-05 15:30 — THE SEALED OP HEAD built, gated, queued (unit lfso, behind lfub)
+
+- **Built:** `scripts/gsm_dto.py` (the DTO: 10 field ids per slot, NV 36), `scripts/patches/seal_op.py` (staged; both engines; 14 + 9
+  anchored edits), `scripts/gsm_so_verdict.py`, `.cache/run_lfso.sh`. Params 6,604,212 (BT4RB8 − zoom's tauc + the DTO head's 36,868).
+- **Instrument:** a lookup table over the DTO ids, fit on TRAIN gold (all slots committed): TEST op **0.5905** (the oracle's D2 without the
+  last-step flag: 0.5845). With half the operand slots uncommitted the same table reads 0.4656: **commit order matters** (a risk: an
+  operand slot not yet committed at inference is an unknown unit and value).
+- **Gates PASS:** (1) BT_SEAL=0 patched vs unpatched on banked BT4RB8_s0 (torch score, ORIG / TEST 128): all 18 per-item arrays identical;
+  (2) BT_SEAL=1 torch vs tinygrad from a shared init: training form (gold cond + DTO) logit ≤ 1.4e-6, pa / pb ≤ 1.9e-6; inference form
+  ≤ 1.6e-6; argmax agree 1.000; the joint sums to 1 (2.4e-7); **pointers under another op of the same struct: max |d| 0.0 (op-blind
+  exactly)**; the torch scorer runs under SEAL (op_gold present); (3) 40-step smoke: tinygrad = torch to 4 decimals (4.9366 / 4.1011 /
+  3.8566 / 3.6720); (4) the dry run of `.cache/run_lfso.sh` itself on a fresh unpatched copy: patch applied by the chain's invocation,
+  two 2-step runs, the verdict, exit 0; artifacts deleted.
+- **Queue:** lfso waits for lfub (UB s0/s1 ~18:40, + UBP ~22:40 only if UB-1 passes), then SO s0/s1 (~4 h).
