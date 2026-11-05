@@ -56024,3 +56024,36 @@ hit@1 1.000, TR-2 0.038 rad, TR-3 +0.871. Random atoms gave 0.024, 1.620 rad, +0
   sentence bigrams unseen in TRAIN) ≥ +0.10 on both seeds. **Prediction FAIL** (the miss is unseen COMBINATIONS, not unseen phrases).
 - Beside: unit coverage, the P(op | class) table, the BT op confusion matrix, OD-X by tertile.
 - **Instrument check:** 30 random TRAIN (number → unit) pairs are eyeballed BEFORE any bar is computed. Units only: no op or BT numbers.
+
+### 2026-11-04 20:33 — OP-DIAG VERDICT: OD-F FAIL / OD-U FAIL / OD-C PASS / OD-Q FAIL / OD-X FAIL (4/5 predicted; 110/158)
+
+**Instrument (before any bar, as pinned):** the 30-pair eyeball showed four extraction faults. A comma did not end the scan ("how" taken as a
+unit). "\<num\> times" was not dimensionless. Adjectives slip through ("final", "bronze"; accepted, stated). And **the tokenizer strips "$"**
+(1 of 23,167 TRAIN numbers keeps it). Fixed before the read: comma / question words end the scan; "times" → "1"; a bare amount after a money
+word (cost, pay, earn, saves, spent, price, for, at, …) → dollar. The re-sample has ~23/30 plausible units, 4 none, 3 noise. Coverage on TEST
+steps 0.869.
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| OD-F: BT op − majority ('*' 0.382) ≥ +0.10 | 0.4729 (+0.091) | 0.4379 (+0.056) | **FAIL ✗** |
+| OD-U: unit family ≥ BT family + 0.05 (each seed) | 0.668 vs 0.643 | 0.668 vs 0.615 | **FAIL ✓** (s1 alone passes) |
+| OD-C: units right on BT-family-wrong steps ≥ 0.50 | 0.561 (n 1,233) | 0.571 (n 1,329) | **PASS ✓** |
+| OD-Q: final unit = question unit ≥ 0.50 | 0.276 (n 772) | same | **FAIL ✓** |
+| OD-X: op acc, low − high bigram-novelty third ≥ +0.10 | +0.001 | −0.034 | **FAIL ✓** |
+
+- **The reader barely reads the operation on new text:** it sits 0.06–0.09 above guessing '×' every time.
+- **A 5-row table over heuristic units does as well:** unit-class op 0.460 vs BT 0.473 / 0.438. On the add-vs-multiply family the units are ahead
+  (0.668 vs 0.643 / 0.615). Where the reader gets the family wrong, the units are right 56–57% of the time: **an independent signal.**
+- **The table (TRAIN gold):**
+  - same unit → additive 77% (+ 2,639, − 1,089, × 765, ÷ 393).
+  - a dimensionless operand → multiplicative 90%.
+  - rate-match → × 48%.
+  - "different units" is mixed (× 43%, + 26%, − 17%, ÷ 13%). Part of that is heuristic noise. Part is real: adults + children = people needs a
+    COMMON PARENT unit. That is zooming out on the Tree ("abstract reasoning = zooming out on the Tree DB").
+- **No phrase-novelty signature (OD-X):** accuracy is flat across bigram novelty (0.07 → 0.40). The miss is not unseen PHRASES. On TEST the
+  reader is close to the prior regardless of wording.
+- **The BT's STOP on gold steps:** 12–15% of TEST gold steps get '.' (the program ends too early). Part of the "op wall" is program length.
+- **Named, not pinned (needs the word):**
+  - **UNIT-BEAM** (zero training): log P(op | unit class) as a soft factor on BEAM-1's type candidates, its weight fit on TRAIN[:600] like lam.
+    Soft, never a hard prune: a unit mismatch is not a proof (adults + children).
+  - **UNIT-BIND** (GPU): the reader phase-binds each number to its unit token on the fly, and the unit relation enters the op decision.
