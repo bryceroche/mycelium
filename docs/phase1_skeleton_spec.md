@@ -55810,3 +55810,23 @@ be sure the T6 clock is turned on. word given for the whole queue -- salute!"*
   (op, kind a, kind b) on its own, with no cross join trained. The BEAM / CSP picks the combination that executes and satisfies the
   constraints (neural proposes, symbolic disposes; discovery ↔ solving). This is zero-training on the banked BT8 / BT8b weights:
   factored top-2 × 2 × 2 through BEAM-1, against BT4M8's joint BEAM-1.
+
+### 2026-11-04 17:05 — WORD GIVEN ("word given for the whole queue - Salute!"): FB THE FACTORED BEAM pinned and fired (zero training, CPU)
+
+*Serves: "the SQL cross join is the nemesis" + "beam search across top choices" + "discover the structure, then solve over it" (the conditioning
+moves out of the classifier and into the search: neural proposes, symbolic disposes).*
+- **The read** (`scripts/gsm_fbeam_read.py`, a wrapper; `gsm_beam_read.py` is untouched because AG2 re-reads it): BEAM-1 with the slot's
+  candidate list widened from the top-2 to the top-NT step types of the BT's own distribution. Each type keeps its top-2 a × top-2 b
+  pointers, and the beam + circuit breaker + soft factors choose. For BT8 / BT8b that distribution is log p(op) + log p(ka) + log p(kb), with
+  no cross join trained, so the top 8 ≈ the 2 × 2 × 2 factor grid. BT4M8 at the same NT is the width-matched placebo. rho0 and lam are fit
+  on TRAIN[:600] per arm per NT. Imports the BT first and asserts the TICK arm and the T6 clock flags.
+- **Gate PASS:** NT=2 with the banked rho0/lam (0.99; 8.0, 0.5) reproduces the banked BT4M8_s0 BEAM-1 dump item for item, 128/128 ORIG
+  and 128/128 TEST.
+- **Runs (12 reads):** {BT4M8, BT8, BT8b} × seeds {0, 1} × NT {2, 8}, on the mbr8 states, BT4 config. Each verdict below is computed for BT8b and for BT8
+  separately, paired by seed. The metric is TEST ans (beam + solver).
+- **FB-1 (the headline):** factored NT8 − BT4M8 NT2 (the joint's BEAM-1), mean ≥ +0.010, both seeds > 0. **Prediction FAIL** (both arms).
+- **FB-P (parity at matched width):** factored NT8 − BT4M8 NT8, mean ≥ −0.010. **Prediction PASS** for BT8b and BT8, low confidence: the greedy
+  TEST ans gap is −0.008 / −0.010.
+- **FB-W (width helps the factored arm more than the joint):** [factored NT8 − NT2] − [BT4M8 NT8 − NT2], mean ≥ +0.010, both > 0.
+  **Prediction FAIL** (both arms): BEAM-1 moved TEST ans only ~+0.005, and the TEST wall is type recognition beyond rank 2–8, not ranking.
+- Beside: oracle@8 per read, ORIG ans, and the engine tag (BT8b tinygrad, the rest torch).
