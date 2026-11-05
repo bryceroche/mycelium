@@ -55831,7 +55831,7 @@ moves out of the classifier and into the search: neural proposes, symbolic dispo
   **Prediction FAIL** (both arms): BEAM-1 moved TEST ans only ~+0.005, and the TEST wall is type recognition beyond rank 2–8, not ranking.
 - Beside: oracle@8 per read, ORIG ans, and the engine tag (BT8b tinygrad, the rest torch).
 
-### 2026-11-04 18:48 — FB VERDICT (6/6 predicted; 103/149): the search does not recover the conditioning; + lfgq stalled 18:02 on a patch path bug, fixed, relaunched 18:45
+### 2026-11-04 18:47 — FB VERDICT (6/6 predicted; 103/149): the search does not recover the conditioning; + lfgq stalled 18:02 on a patch path bug, fixed, relaunched 18:45
 
 *Serves: "the SQL cross join is the nemesis" + "beam search across top choices". Reads 17:23–17:47 (`.cache/gsm_fb_verdict.txt`).*
 
