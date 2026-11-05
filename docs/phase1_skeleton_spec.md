@@ -55964,7 +55964,7 @@ the cross join" (phase binding as the GLUE between charts: chart(op, ka, kb) = O
   trained with a joint 37-way head and op-level zoom atoms. Nothing in it rewards rotation-related atoms, and the zoom (an op-level
   centroid) rewards ADDITIVE op structure if anything (so offset ≥ phase).
 
-### 2026-11-04 20:14 — TRANSIT VERDICT: TR-1 FAIL / TR-1b FAIL / TR-2 PASS / TR-3 FAIL (3/4 predicted; 106/153) + BRYCE'S RULING: glue on the fly, no memorized cross join
+### 2026-11-04 20:08 — TRANSIT VERDICT: TR-1 FAIL / TR-1b FAIL / TR-2 PASS / TR-3 FAIL (3/4 predicted; 106/153) + BRYCE'S RULING: glue on the fly, no memorized cross join
 
 *Serves: "connecting local charts" + "never train on the cross join".* Instrument check first (synthetic only): the planted glued atlas gave
 hit@1 1.000, TR-2 0.038 rad, TR-3 +0.871. Random atoms gave 0.024, 1.620 rad, +0.002. Real: BT4M8, all 36 atoms valid (Cn ≥ 50), 22 charts, 252 LOO transits.
@@ -55988,7 +55988,7 @@ hit@1 1.000, TR-2 0.038 rad, TR-3 +0.871. Random atoms gave 0.024, 1.620 rad, +0
   - Resultant median 0.81.
 - **Reading:** BT4M8's joint head has a weak phase skeleton between operations (the shifts compose), but each atom is mostly its own
   memorized point. The learned atlas IS largely the cross join. Nothing in that training asked for glue.
-- **BRYCE'S RULING (20:1x), verbatim:** *"we dont want to memorize the SQL cross join. we want the engine to glue each step together on the
+- **BRYCE'S RULING (20:0x), verbatim:** *"we dont want to memorize the SQL cross join. we want the engine to glue each step together on the
   fly for each problem with phase binding. so every problem should be handled the same way."* This strikes the form I proposed at 19:4x
   (glue as a prior + a per-combination learned residual shrunk by n/(n+κ)). That form stores the cross join wherever data is dense, and handles
   familiar and new problems by different paths. **Rule: one path for every problem; a step's chart is BUILT by binding each breath, never
