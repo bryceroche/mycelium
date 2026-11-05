@@ -55792,3 +55792,21 @@ be sure the T6 clock is turned on. word given for the whole queue -- salute!"*
 
   All runs are tinygrad, 18k steps. Bars and verdict code are unchanged. Gate: a W128 (BT_DB=128) tinygrad smoke on CPU matches torch exactly
   at 10 and 20 steps (4.0383 / 3.5381). At ~2 h per GPU run, 10 runs ≈ 20 h after BT8b s1.
+
+### 2026-11-04 16:20 — BT8b VERDICT: B8b-0 PASS / B8b-C FAIL / B8b-1 FAIL / B8b-2 FAIL (3/4 predicted; 97/143) — chained phase binding does not recover the joint's conditioning
+
+*Serves: "the SQL cross join is the nemesis" (clean bind/unbind instead of training the cross join). Engine: tinygrad (BT8b) vs torch (BT8, BT4M8).*
+- **B8b-0 FIT PASS ✓:** ORIG step 0.9429 / 0.9340.
+- **B8b-C FAIL ✗ (predicted PASS, low confidence):** TEST type BT8b − BT8 +0.0123 / −0.0136 (mean −0.0006). The seeds split in sign; the
+  chain is at parity with the plain factored silhouette.
+- **B8b-1 FAIL ✓:** TEST type BT8b − BT4M8 −0.0199 / −0.0141 (mean −0.0170).
+- **B8b-2 FAIL ✓:** TEST step BT8b − BT4M8 −0.0231 / −0.0078 (mean −0.0155).
+- Beside: CFNAME step 0.791 / 0.755 (BT8 0.755 / 0.795; BT4M8 0.816 / 0.795); TEST ans 0.036 / 0.040 (BT4M8 0.046 / 0.046).
+- **Engine read:** the BT4M8 margins (−0.017 type, −0.016 step) are 3–5× G0's TEST offset (−0.003 step, −0.005 type), so the engine does not
+  explain them. Against BT8, the comparison sits inside the offset band either way.
+- **Reading:** binding the keys to op / op + kind (11 shared atoms) did not carry the conditioning the joint 37-way classifier has; the factored
+  forms (BT8, BT8b) both sit ~0.015–0.020 under the joint on TEST. **This closes the chained-key form, not the line** (patience charter).
+- **Named, not pinned (needs the word):** move the conditioning OUT of the classifier and INTO the search. Each factor proposes its top-k
+  (op, kind a, kind b) on its own, with no cross join trained. The BEAM / CSP picks the combination that executes and satisfies the
+  constraints (neural proposes, symbolic disposes; discovery ↔ solving). This is zero-training on the banked BT8 / BT8b weights:
+  factored top-2 × 2 × 2 through BEAM-1, against BT4M8's joint BEAM-1.
