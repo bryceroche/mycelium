@@ -55939,3 +55939,27 @@ Fit: all of TRAIN (5,337 items, 20,938 gold steps); 22 charts with n ≥ 50 (99.
   the BT's own loop made them). That points at **training with the charts** (the loop and the charts shaped together), not swapping
   them in afterwards. Named, not pinned: a chart-head BT trained on the GPU (online PPCA atoms, Welford mean + low-rank covariance, as
   the type head; everything else BT4M8), against BT4M8 on TEST type / step.
+
+### 2026-11-04 20:02 — WORD GIVEN ("word given for TRANSIT - Salute!"): TRANSIT pinned (zero training); instrument checked on synthetic atoms only before the real read
+
+*Serves: "connecting local charts which are centroids in the Tree" + "complex planes give clean binding and unbinding, so we never train on
+the cross join" (phase binding as the GLUE between charts: chart(op, ka, kb) = Op · Role_a · Role_b, with interactions as a shrunk residual).*
+- **Data:** the BT4M8 s0/s1 atoms C (36 step types = 4 ops × 3 kinds a × 3 kinds b; 32 complex planes, (re, im) = (0::2, 1::2) as in
+  `rot`). Valid atom: Welford count Cn ≥ 50. Charts for TR-3 are fit as in CHART (all of TRAIN, n ≥ 50, R = 8). Script `scripts/gsm_transit_read.py`.
+- **Transits:** along each factor axis (op with (ka, kb) fixed; ka with (op, kb) fixed; kb with (op, ka) fixed), for each ordered pair of values
+  with ≥ 3 shared valid contexts, the per-plane PHASE shift θ = the radius-weighted circular mean of the per-context angle differences.
+- **TR-1 (the glue exists):** leave one context out. Predict the target atom as rot(source atom, θ fit on the other contexts) and snap it to
+  the nearest valid atom (Euclidean, the BT's own metric). Pooled hit@1 ≥ 0.50 on both seeds. Beside: chance (1 / #valid).
+- **TR-1b (it is PHASE glue, not just a shift):** phase hit@1 − the offset baseline hit@1 (target = source + the mean vector difference, same
+  LOO) ≥ +0.10 on both seeds. Also reported: a general orthogonal map (Procrustes, same LOO) and the target-value mean atom.
+- **TR-2 (transitions agree on overlaps, the cocycle):** for op triples (o1, o2, o3), θ12, θ23 and θ13 are fit on DISJOINT context sets. The
+  radius-weighted mean |wrap(θ12 + θ23 − θ13)| ≤ π/4 on both seeds (a random phase gives π/2).
+- **TR-3 (the charts' axes turn with the glue):** for op transits between charted types, the subspace overlap of the rotated source axes with
+  the target axes (‖P_t rot(P_s)ᵀ‖² / 8), minus the unrotated overlap, ≥ +0.10 on both seeds (random 8-planes in 64-d give 0.125).
+- **Beside (TR-4, sizing):** each valid atom's residual after its best LOO phase prediction, ‖C − Ĉ‖² / ‖C − mean atom‖², against its
+  Welford count; per-plane resultant length of the shifts (1 = perfect glue, ~1/√n random).
+- **Instrument check (synthetic only, before the real read):** a planted glued atlas (generator phases multiplied, plus small noise) must
+  give TR-1 ≥ 0.9, TR-2 ≪ π/4 and TR-1b > 0. Random atoms must give TR-1 ≈ chance and TR-2 ≈ π/2.
+- **Predictions (clean, counted):** TR-1 FAIL, TR-1b FAIL, TR-2 FAIL, TR-3 FAIL. BT4M8's atoms are Welford means of a Linear map's outputs,
+  trained with a joint 37-way head and op-level zoom atoms. Nothing in it rewards rotation-related atoms, and the zoom (an op-level
+  centroid) rewards ADDITIVE op structure if anything (so offset ≥ phase).
