@@ -55919,3 +55919,23 @@ Fit: all of TRAIN (5,337 items, 20,938 gold steps); 22 charts with n ≥ 50 (99.
   CI-T FAIL, CI-A FAIL, CI-S FAIL. Two reasons. Inside the loop the chart's wrong commits feed the notebook, and in the smoke it did not
   replicate CH-4's +0.027. With the full fit, 22 charts instead of 14 should narrow the CFNAME loss but not close it.
 - **Step 2** (online PPCA charts in the Tree, trained on the GPU) is pinned only on CI-T PASS.
+
+### 2026-11-04 19:36 — CHART-IN VERDICT: gate PASS; CI-T FAIL / CI-A FAIL / CI-S FAIL (smoke-contaminated predictions all right; not tallied; tally stays 103/149)
+
+- **Gate PASS:** the CHIN=0 control reproduces the banked FB NT2 TEST beam per item on both seeds (rho0 and lam identical).
+
+| Bar | s0 (CHIN1 − CHIN0) | s1 | Verdict |
+|---|---|---|---|
+| CI-T: TEST type at commit | 0.3057 − 0.3014 = +0.0043 | 0.2725 − 0.2773 = −0.0048 | mean −0.0003 → **FAIL** |
+| CI-A: TEST beam ans | 0.0514 − 0.0474 = +0.0040 | 0.0603 − 0.0504 = +0.0099 | mean +0.0069, both > 0, under +0.010 → **FAIL** |
+| CI-S: CFNAME beam ans ≥ −0.030 | 0.5964 − 0.6251 = −0.0287 | 0.5457 − 0.6077 = −0.0620 | mean −0.0453 → **FAIL** |
+
+- **CH-4's +0.027 offline gain does not survive inside the loop.** Offline, the chart read silhouettes produced under the BT's OWN commits.
+  In the loop, the chart's commits (with its own radius) are written back, the next breath reads them, and the pointers lose the zoom
+  fallback. The chart is then classifying silhouettes from a notebook it shaped itself. Those silhouettes are off the distribution the charts were
+  fit on. The beside read: TEST ans moved up on both seeds (+0.004 / +0.010), inside the noise (SE ~0.006) and under the bar.
+- **This closes the inference-swap form, not the line** (patience charter). Step 2 (charts trained into the Tree) was gated on CI-T and is
+  NOT pinned. What survives: CH-1 (atoms are 8-d charts) and CH-4 (the chart reads TEST silhouettes better than the centroid head when
+  the BT's own loop made them). That points at **training with the charts** (the loop and the charts shaped together), not swapping
+  them in afterwards. Named, not pinned: a chart-head BT trained on the GPU (online PPCA atoms, Welford mean + low-rank covariance, as
+  the type head; everything else BT4M8), against BT4M8 on TEST type / step.
