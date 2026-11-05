@@ -55897,3 +55897,25 @@ Fit: all of TRAIN (5,337 items, 20,938 gold steps); 22 charts with n ≥ 50 (99.
   pointers unchanged; the radius = the chart posterior). Read TEST step and ans downstream through BEAM-1. Zero training. Then, if it
   holds: the Tree stores each atom's chart (Welford mean + low-rank covariance, the online PPCA form) so the trained BT snaps into charts
   and not onto points.
+
+### 2026-11-04 19:23 — WORD GIVEN ("word given for CHART-IN - Salute!"): CHART-IN pinned (step 1, zero training) and fired
+
+*Serves: "connecting local charts which are centroids in the Tree" (the type decision made by the chart, not by the point).*
+- **The read** (`scripts/gsm_chartin_read.py`; BT4M8 s0/s1; charts fit as in CHART on all of TRAIN). Under CHIN=1 each breath's type
+  distribution is replaced:
+  - STOP keeps the BT's p(STOP).
+  - The charted step types share 1 − p(STOP) by PPCA posterior.
+  - Uncharted types are excluded.
+
+  The pointers are recomputed under the chart's type: net.ptrs, no zoom fallback, and the pointer radius input stays the BT's p (stated).
+  The commit gate, the notebook (atom × radius of the chart's type), BEAM-1 and the solver follow. rho0 and lam are fit per arm on TRAIN[:600].
+  CHIN=0 is the control through identical code.
+- **Gate:** CHIN=0 must reproduce the banked FB NT2 BT4M8 TEST beam ans per item (else VOID).
+- **CI-T:** TEST type at commit, CHIN1 − CHIN0, mean ≥ +0.010, both seeds > 0.
+- **CI-A:** TEST beam ans, CHIN1 − CHIN0, mean ≥ +0.010, both > 0.
+- **CI-S (the cost bound):** CFNAME beam ans, CHIN1 − CHIN0, mean ≥ −0.030.
+- **Disclosure:** a 600-item smoke ran BEFORE this pin (s0; charts fit on 600 items: 14 charts, 2,382 steps). It showed TEST type 0.310 vs
+  0.308, TEST beam 0.047 vs 0.053, CFNAME type 0.759 vs 0.889, CFNAME beam 0.443 vs 0.653. **Predictions are contaminated and not tallied:**
+  CI-T FAIL, CI-A FAIL, CI-S FAIL. Two reasons. Inside the loop the chart's wrong commits feed the notebook, and in the smoke it did not
+  replicate CH-4's +0.027. With the full fit, 22 charts instead of 14 should narrow the CFNAME loss but not close it.
+- **Step 2** (online PPCA charts in the Tree, trained on the GPU) is pinned only on CI-T PASS.
