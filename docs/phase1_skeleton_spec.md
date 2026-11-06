@@ -56442,3 +56442,24 @@ phase snapping is a MODEL form (the bus's discrete mirror), to be barred, not a 
   ORIG-fit bars are read as such at 5k or get their own run.** Comparator: **BT4RB8_5k s0 / s1** (the same flags, seeds, engine; 5k steps;
   full scoring). **Bar SR-1 (the rule holds):** |BT4RB8_5k − BT4RB8 (18k)| TEST step ≤ 0.010 on both seeds. If SR-1 FAILS the rule is struck
   and 18k stays. **PREDICTION: SR-1 PASS.**
+
+### 2026-11-06 06:50 — PHASE-BOUND POINTERS PINNED (Bryce: "word given for phase bound pointers"; before any build)
+
+*Serves: "Complex planes enable clean binding and conjugate unbinding" + "Glue on the fly, no stored cross join" (a relation between two
+tokens of ONE problem, never a stored chart join; the CHART QUERY −0.030 vs the RELATIONAL QUERY +0.024) + THE POINTER WALL. Evidence: the
+reader and the raw-cosine relations miss different rows (union 0.70 vs 0.58 / 0.55).*
+- **Form (`BT_PHPTR=1`, both engines):** a native phase embedding on the token side: θ_t = Linear(D → 32)(the BT's token state), the key
+  e^{iθ_t} on 32 planes of its own (unit modulus; none of the pointer bus's planes). Three context phasors per slot k: **qn** e^{iθ} of the
+  question noun (the oracle's qnoun heuristic, disclosed), **prev** the mean e^{iθ} of the token operands of the nearest committed earlier
+  slot (the notebook writes it back; zero when none), **sib** (role b) Σ_j softmax(pa)_j e^{iθ_j} over the tokens (role a's soft choice, the
+  continuous mirror). The relation = bind the context with a learned per-relation × role phase e^{iψ} and unbind against the candidate by
+  the conjugate: rel_m(j) = mean_p Re(ctx_m,p e^{iψ_m,r,p} conj(e^{iθ_j,p})). Token pointer logits += Σ_m g_m,r rel_m(j); the gains start at
+  the oracle's fitted signs (qn_a +1.6, prev_b +2.8, sib_b −3.0, the others 0), learnable. Everything else BT4RB8 (B4 + ZOOM), single delta.
+  **Disclosed:** an ADD beside the memorizing path (the residual-seal law warns the loss may route around it; SO showed a hard seal can
+  collapse); prev = nearest committed slot, not text order.
+- **Steps:** 5,000 if SR-1 PASSES (comparator BT4RB8_5k), else 18,000 (comparator BT4RB8). s0 / s1, tinygrad GPU.
+- **Bars:** **PP-R (the road is used):** the per-pointer read (`scripts/gsm_reader_ptr_read.py` on the new weights, RESTR TEST) − the
+  comparator's ≥ +0.020 mean, both seeds > 0. **PP-1:** TEST step ptr − comparator, mean ≥ +0.010, both > 0. **PP-2:** TEST step all, same
+  form. Beside: the census (|g·rel| vs the base token logit, std on a TEST batch, pre/post), the trained gains, CFNAME, ORIG fit.
+- **PREDICTIONS:** PP-R PASS (the oracle union says the information is there and the road starts on it); **PP-1 FAIL** (the cascade:
+  0.58 per pointer → 0.215 joint is mostly wrong types / history); **PP-2 FAIL**.
