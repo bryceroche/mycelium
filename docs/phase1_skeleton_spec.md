@@ -56332,7 +56332,7 @@ keys sufficient (the gold leaf unique 0.837 of 0.852) and the query poor (type +
 - **PREDICTIONS:** QC-1 PASS (the previous chart: steps chain through nearby quantities); QC-G PASS; **QC-H FAIL** (the query's knowledge
   of WHICH quantity lives in the step's meaning, not in its neighbours' charts).
 
-### 2026-11-06 06:19 — CHART QUERY VERDICT: QC-1 / QC-G / QC-H FAIL (1/3 predicted; 138/192) — every context table HURTS TEST (−0.004 to −0.030) while fitting TRAIN: chart-to-chart statistics do not transfer
+### 2026-11-06 06:13 — CHART QUERY VERDICT: QC-1 / QC-G / QC-H FAIL (1/3 predicted; 138/192) — every context table HURTS TEST (−0.004 to −0.030) while fitting TRAIN: chart-to-chart statistics do not transfer
 
 `scripts/gsm_chartquery_oracle.py` -> `.cache/gsm_chartquery_oracle.json` / `_verdict.txt`. Sanity: base ST512 reproduces the oracle's
 0.5480 / 0.5232 exactly (same Tree). Query keys live on TEST: PREV 0.998, QN 1.000, SIB 0.299.

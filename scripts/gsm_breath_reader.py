@@ -29,6 +29,7 @@ import gsm_trunk_reader as TR
 import gsm_bench_data as GD
 from mycelium import rotor_clock as CK
 import gsm_units as GU
+import gsm_dto as DTO
 
 SEED = int(os.environ.get("BT_SEED", "0")); TAG = os.environ.get("BT_TAG", f"BT_s{SEED}")
 ORACLE = os.environ.get("BT_ORACLE") == "1"          # the oracle-type read: the gold step type is the silhouette's class (inference only)
@@ -47,6 +48,9 @@ SPH = os.environ.get("BT_SPH", "0")                 # (ledger 11-04 SPH) 1 = the
 UNIT = os.environ.get("BT_UNIT", "0")                # (ledger 11-05 UNIT-BIND) 1 = units phase-bound per problem; 2 = the placebo
 PU = 32; NUF = 2 * PU + 4 if UNIT != "0" else 0     # the unit block: cos | sin | kind one-hot (none, unknown, dimensionless, unit)
 assert UNIT == "0" or ROLE, "UNIT-BIND rides the role road (BT_ROLE=1)"
+SEAL = os.environ.get("BT_SEAL") == "1"              # (ledger 11-05) THE SEALED OP HEAD: p(type) = p_text(struct) x p_DTO(op)
+assert not SEAL or not (ZOOM or FACT or SOFT or GATE), "SEAL replaces zoom's p(op); not with FACT / SOFT / GATE"
+DW, DNH = 64, 4                                       # (SEAL) the DTO head: width, heads
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -57,6 +61,11 @@ LEVMAX, NCAP = 8, 2000
 NOP = len(GD.OPS) + 1                                 # the coarse atoms: the op, + stop
 PARENT = np.array([GD.OPS.index(o) for o, _, _ in TYPES] + [NOP - 1])
 FKA = np.array([KINDS.index(a) for _, a, _ in TYPES] + [0]); FKB = np.array([KINDS.index(b) for _, _, b in TYPES] + [0])   # (BT8) stop: no kinds
+NS = 3 * len(KINDS) + 1                               # (SEAL) the structs: operand kinds (9) + stop
+SOF = np.array([3 * KINDS.index(a) + KINDS.index(b) for _, a, b in TYPES] + [NS - 1])        # type -> struct
+OPI = np.array([GD.OPS.index(o) for o, _, _ in TYPES] + [0])                                  # type -> op (stop: masked by isstep)
+CANON = np.array([TYPES.index((GD.OPS[0], a, b)) for a in KINDS for b in KINDS] + [STOP])    # struct -> its canonical type
+assert all(j == 9 * OPI[j] + SOF[j] for j in range(STOP)), "TYPES layout: type = 9 op + struct"
 SPLITS = TR.SPLITS
 
 
@@ -147,6 +156,9 @@ def make_net():
     par = torch.as_tensor(PARENT); grp = torch.zeros(NOP, NT, dtype=torch.bool); grp[par, torch.arange(NT)] = True
     fka, fkb = torch.as_tensor(FKA), torch.as_tensor(FKB); isstep = (torch.arange(NT) != STOP).float()   # (BT8) the factor indices per type
     kmask_op = torch.stack([kmask[grp[g]].any(0) for g in range(NOP)])                    # the op-level mask: the union of its types' kinds
+    sof, opi, canon = torch.as_tensor(SOF), torch.as_tensor(OPI), torch.as_tensor(CANON)  # (SEAL) type -> struct / op; struct -> canonical
+    sgrp = torch.zeros(NS, NT, dtype=torch.bool); sgrp[sof, torch.arange(NT)] = True
+    smean = sgrp.float() / sgrp.float().sum(1, keepdim=True)                              # (SEAL) the struct-mean atom weights
 
     def rot(z, a):                                                                         # z (..., 2P) as P planes; a (..., P)
         c, s_ = a.cos(), a.sin(); re, im = z[..., 0::2], z[..., 1::2]
@@ -169,6 +181,17 @@ def make_net():
             k = rot(k, ak[:, None])
             o_ = F.scaled_dot_product_attention(q, k, v, attn_mask=mask).transpose(1, 2).reshape(B, Lq, D)
             return rot(xq, s.oa(o_)) if s.turn else xq + s.o(o_)                              # (SPH=2) a rotation, never an add
+
+    class DAttn(nn.Module):   # (SEAL) the DTO head's plain self-attention block: no rotation, no MLP
+        def __init__(s):
+            super().__init__(); s.ln = nn.LayerNorm(DW); s.q = nn.Linear(DW, DW); s.kv = nn.Linear(DW, 2 * DW); s.o = nn.Linear(DW, DW)
+
+        def forward(s, x):
+            B_, Lx, _ = x.shape; y = s.ln(x); dh = DW // DNH
+            q = s.q(y).reshape(B_, Lx, DNH, dh).transpose(1, 2)
+            k, v = (t_.reshape(B_, Lx, DNH, dh).transpose(1, 2) for t_ in s.kv(y).chunk(2, -1))
+            sc = (q @ k.transpose(-2, -1)) * (1 / math.sqrt(dh))
+            return x + s.o((sc.softmax(-1) @ v).transpose(1, 2).reshape(B_, Lx, DW))
 
     class Net(nn.Module):
         def __init__(s):
@@ -200,6 +223,15 @@ def make_net():
                     s.register_buffer("Phi", torch.rand(3, DB // 2, generator=g_) * 2 * math.pi)
             s.ln = nn.LayerNorm(D); s.qa = nn.Linear(D, D); s.qb = nn.Linear(D, D); s.kt = nn.Linear(D, D); s.ks = nn.Linear(D, D)
             s.kc = nn.Parameter(torch.randn(NC, D) * 0.02); s.pc = nn.Parameter(torch.zeros(1))
+            if SEAL:   # (ledger 11-05) THE DTO HEAD: field tokens -> 2 plain attention blocks -> 4 op log-probs; never a token state
+                s.dto_e = nn.Embedding(DTO.NV, DW); s.dto_f = nn.Parameter(torch.randn(DTO.NF, DW) * 0.02)
+                s.dto_att = nn.ModuleList([DAttn() for _ in range(2)]); s.dto_ln = nn.LayerNorm(DW); s.dto_out = nn.Linear(DW, len(GD.OPS))
+
+        def ophead(s, ids):
+            """(SEAL) (B, K, NF) DTO field ids -> (B, K, 4) log p(op)"""
+            B_, K_, _ = ids.shape; x = s.dto_e(ids.reshape(B_ * K_, -1)) + s.dto_f
+            for blk in s.dto_att: x = blk(x)
+            return s.dto_out(s.dto_ln(x.mean(1))).log_softmax(-1).reshape(B_, K_, -1)
 
         def read(s, t):
             x = s.inp(t["x"])
@@ -267,10 +299,18 @@ def make_net():
                 lc_ = (-((z[:, :, None] - s.Cc[None, None]) ** 2).sum(-1) / math.sqrt(DB) * s.tauc.exp()).log_softmax(-1)
                 lse = torch.stack([logit.masked_fill(~grp[g], -1e9).logsumexp(-1) for g in range(NOP)], -1)
                 lfine = logit - lse[..., par]; logit = lc_[..., par] + lfine
+            if SEAL:   # (ledger 11-05) the text keeps the struct (op marginalized out); the DTO head supplies the op (training: t["dto"])
+                lt_ = logit.log_softmax(-1)
+                lstr = torch.stack([lt_.masked_fill(~sgrp[g], -1e9).logsumexp(-1) for g in range(NS)], -1)   # (B, K, NS) log p(struct)
+                logit = lstr[..., sof]
+                if "dto" in t: logit = logit + s.ophead(t["dto"])[..., opi] * isstep
             p = logit.softmax(-1)
             def ptrs(c, zoom, free=False):   # (ledger 11-02 BT7a) the pointer heads under type c, from this breath's state
-                rr = p.gather(-1, c[..., None])                                                    # the radius: type confidence
-                u = s.up(z) + s.upc(rr * CA[c])                                                    # expand: silhouette + snapped atom x r
+                if SEAL:   # (ledger 11-05) op-blind: p(struct) as the radius, the struct-mean atom, the canonical type's phases
+                    cs = sof[c]; rr = lstr.exp().gather(-1, cs[..., None]); u = s.up(z) + s.upc(rr * (smean @ CA)[cs]); c = canon[cs]
+                else:
+                    rr = p.gather(-1, c[..., None])                                                    # the radius: type confidence
+                    u = s.up(z) + s.upc(rr * CA[c])                                                    # expand: silhouette + snapped atom x r
                 hu = s.ln(u)
                 tick = t["sid"][:, Lq:, None].float() * wt                                         # (B, K, NTK)
 
@@ -354,6 +394,7 @@ def train_step(net, opt, its, states, tree, rng):
     m = np.array([e["m"] for e in E]); rr = rng.random(len(E))[:, None]
     masked = rng.random((len(E), K)) < rr
     masked[np.arange(len(E)), rng.integers(0, np.minimum(m + 1, K))] = True                   # at least one supervised slot masked
+    if SEAL: t["dto"] = torch.as_tensor(DTO.dto_ids(its, progs, ~masked))                  # (SEAL) the gold operands' DTO; slots known iff committed
     nb = nb_tensors(notebook(E, L, progs, ~masked, gt, np.ones((len(E), K), np.float32)))
     xq = net.read(t); gtt = torch.as_tensor(gt)
     cyc = torch.as_tensor(np.clip(np.floor(NCYC * (1 - rr[:, 0])), 0, NCYC - 1).astype(np.int64))   # the cycle this mask level imitates
@@ -393,9 +434,20 @@ def train_step(net, opt, its, states, tree, rng):
     return float(lo.detach())
 
 
+def seal_decide(net, its, progs, com, logit, pa, pb, dec):
+    """(SEAL) the text's struct, then the op from the DTO of the operands the pointers chose -> type ids, confidence p(struct) p(op)"""
+    import torch
+    B_ = logit.shape[0]; st_ = SOF[logit.argmax(-1).numpy()]; lps = logit.max(-1).values.numpy()
+    ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
+    cand = [[(dec(ia[b, k]), dec(ib[b, k])) for k in range(K)] for b in range(B_)]
+    lop = net.ophead(torch.as_tensor(DTO.dto_ids(its, progs, com, cand))).numpy(); step = st_ != NS - 1
+    return np.where(step, 9 * lop.argmax(-1) + st_, STOP), np.exp(lps + np.where(step, lop.max(-1), 0)).astype(np.float32)
+
+
 def score(net, its, states, tree, seed=0):
     import torch
     res = dict(ans=[], prog=[], step_op=[], step_ptr=[], step_all=[], first_all=[], type_ok=[], num_for_slot=[], commit_cycle=[])
+    if SEAL: res["op_gold"] = []                                                             # (SEAL) the head's op on the GOLD operands
     with torch.no_grad():
         for s0 in range(0, len(its), 128):
             part = its[s0:s0 + 128]
@@ -414,6 +466,7 @@ def score(net, its, states, tree, seed=0):
                 if SOFT and c + 1 < NCYC: sp = (logit / TAU(torch.full((B,), c + 1))[:, None, None]).softmax(-1)   # next cycle reads it
                 ty = gt0 if ORACLE else logit.argmax(-1).numpy()
                 pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if ORACLE else p.max(-1).values.numpy()
+                if SEAL: ty, pt = seal_decide(net, part, progs, com, logit, pa, pb, dec)
                 ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
                 ca = pa.softmax(-1).max(-1).values.numpy(); cb = pb.softmax(-1).max(-1).values.numpy()
                 conf = np.where(ty == STOP, pt, pt * ca * cb)                                     # the radius of each proposal
@@ -430,6 +483,7 @@ def score(net, its, states, tree, seed=0):
                         op = TYPES[ty[b, k]][0] if ty[b, k] != STOP else "."
                         progs[b][k] = (op, dec(ia[b, k]), dec(ib[b, k])) if op != "." else (".", None, None)
             gprogs, gt = gold(E)
+            if SEAL: og = net.ophead(torch.as_tensor(DTO.dto_ids(part, gprogs, np.ones((B, K), bool)))).argmax(-1).numpy()
             for b, (it, e) in enumerate(zip(part, E)):
                 prog = []
                 for st in progs[b]:
@@ -443,6 +497,7 @@ def score(net, its, states, tree, seed=0):
                     ptk = bool(t["va"][b, k, IA[b, k]] and t["vb"][b, k, IB[b, k]])
                     res["step_op"].append(o); res["step_ptr"].append(ptk); res["step_all"].append(o and ptk)
                     res["type_ok"].append(typ[b, k] == gt[b, k]); res["commit_cycle"].append(int(cyc[b, k]))
+                    if SEAL: res["op_gold"].append(GD.OPS[og[b, k]] == gprogs[b][k][0])
                     okall &= o and ptk
                     if k == 0: res["first_all"].append(o and ptk)
                     for V, I in ((t["va"], IA), (t["vb"], IB)):

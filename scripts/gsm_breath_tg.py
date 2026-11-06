@@ -47,6 +47,12 @@ _KMOPT = _KMOP[BR.PARENT]                                                       
 _WL = np.radians(BR.CK.t6_plane_speeds(max(NLV, 1))).astype(np.float32)
 _OHA = np.eye(3, dtype=np.float32)[BR.FKA]; _OHB = np.eye(3, dtype=np.float32)[BR.FKB]           # (BT8) type -> its kind factors
 _ISSTEP = (np.arange(NT) != STOP).astype(np.float32)
+SEAL = BR.SEAL                                                                               # (ledger 11-05) the sealed op head
+_SOFM = np.zeros((BR.NS, NT), np.float32); _SOFM[BR.SOF, np.arange(NT)] = 1                # type -> struct (one-hot gathers)
+_OPM = np.zeros((len(BR.GD.OPS), NT), np.float32); _OPM[BR.OPI, np.arange(NT)] = 1; _OPM[:, STOP] = 0
+_CANM = np.zeros((BR.NS, NT), np.float32); _CANM[np.arange(BR.NS), BR.CANON] = 1             # struct -> its canonical type
+SOFM, SGRP, OPM, CANM = Tensor(_SOFM).realize(), Tensor(_SOFM > 0).realize(), Tensor(_OPM).realize(), Tensor(_CANM).realize()
+SMEAN = Tensor(_SOFM / _SOFM.sum(1, keepdims=True)).realize()
 W, WH, WT, WL = Tensor(_W).realize(), Tensor(_WH).realize(), Tensor(_WT).realize(), Tensor(_WL).realize()
 OHA, OHB, ISSTEP = Tensor(_OHA).realize(), Tensor(_OHB).realize(), Tensor(_ISSTEP).realize()
 KM6, KMOP6 = Tensor(_KM.reshape(NT, 6)).realize(), Tensor(_KMOPT.reshape(NT, 6)).realize()
@@ -142,6 +148,19 @@ def fact_welford(P, zz, oh):
     return [("Fopn", "Fop", oh @ PARM.T, u[0]), ("Fan", "Fa", ohs @ OHA, u[1]), ("Fbn", "Fb", ohs @ OHB, u[2])]
 
 
+def ophead(P, ids):
+    """(SEAL) the DTO head (torch Net.ophead): (B, K, NF) field ids -> (B, K, 4) log p(op); one-hot gathers, plain attention"""
+    B_, K_ = ids.shape[0], ids.shape[1]; DW, DNH = BR.DW, BR.DNH; dh = DW // DNH
+    x = ids.reshape(B_ * K_, -1).one_hot(BR.DTO.NV).cast(dtypes.float) @ P["dto_e.weight"] + P["dto_f"]; Lx = x.shape[1]
+    for i in range(2):
+        n = f"dto_att.{i}"; y = lnorm(P, x, n + ".ln"); kv = lin(P, y, n + ".kv")
+        q = lin(P, y, n + ".q").reshape(-1, Lx, DNH, dh).transpose(1, 2)
+        k = kv[..., :DW].reshape(-1, Lx, DNH, dh).transpose(1, 2); v = kv[..., DW:].reshape(-1, Lx, DNH, dh).transpose(1, 2)
+        sc = (q @ k.transpose(-2, -1)) * (1 / math.sqrt(dh))
+        x = x + lin(P, (sc.softmax(-1) @ v).transpose(1, 2).reshape(-1, Lx, DW), n + ".o")
+    return lin(P, lnorm(P, x.mean(1), "dto_ln"), "dto_out").log_softmax(-1).reshape(B_, K_, -1)
+
+
 def read(P, t):
     x = lin(P, lnorm(P, t["x"], "inp.0"), "inp.1")
     th = t["nid"].maximum(0).one_hot(NNAME).cast(dtypes.float) @ t["theta"]
@@ -179,7 +198,13 @@ def breath(P, t, xq, nb, cyc, sp=None):
         lc_ = (-((z.unsqueeze(2) - P["Cc"].detach()) ** 2).sum(-1) * (1 / math.sqrt(DB)) * P["tauc"].exp()).log_softmax(-1)
         lse = Tensor.stack(*[GRP[g].where(logit, -1e9).logsumexp(-1) for g in range(NOP)], dim=-1)
         lfine = logit - lse @ PARM; logit = lc_ @ PARM + lfine
-    return dict(logit=logit, p=logit.softmax(-1), z=z, lfine=lfine, xk_q=xk_q, cons=cons, t=t, Lq=Lq, CA=CA, lev=lev)
+    ls = None
+    if SEAL:   # (ledger 11-05) the text keeps the struct (op marginalized out); the DTO head supplies the op (training: t["dto"])
+        lt_ = logit.log_softmax(-1)
+        ls = Tensor.stack(*[SGRP[g].where(lt_, -1e9).logsumexp(-1) for g in range(BR.NS)], dim=-1)
+        logit = ls @ SOFM
+        if "dto" in t: logit = logit + ophead(P, t["dto"]) @ OPM
+    return dict(logit=logit, p=logit.softmax(-1), z=z, lfine=lfine, xk_q=xk_q, cons=cons, t=t, Lq=Lq, CA=CA, lev=lev, ls=ls)
 
 
 def ptrs(P, o, c, zoom=False, free=False):
@@ -187,8 +212,13 @@ def ptrs(P, o, c, zoom=False, free=False):
     t, xk_q, cons, Lq, z, p = o["t"], o["xk_q"], o["cons"], o["Lq"], o["z"], o["p"]
     B = z.shape[0]; L = Lq + K
     oc = c.one_hot(NT).cast(dtypes.float)
-    rr = (p * oc).sum(-1, keepdim=True)
-    u = lin(P, z, "up") + lin(P, rr * (oc @ o["CA"]), "upc"); hu = lnorm(P, u, "ln")
+    if SEAL:   # (ledger 11-05) op-blind: p(struct) as the radius, the struct-mean atom, the canonical type's phases
+        cs = oc @ SOFM.T; rr = (o["ls"].exp() * cs).sum(-1, keepdim=True)
+        u = lin(P, z, "up") + lin(P, rr * (cs @ (SMEAN @ o["CA"])), "upc"); oc = cs @ CANM
+    else:
+        rr = (p * oc).sum(-1, keepdim=True)
+        u = lin(P, z, "up") + lin(P, rr * (oc @ o["CA"]), "upc")
+    hu = lnorm(P, u, "ln")
     tick = t["sid"][:, Lq:].cast(dtypes.float).unsqueeze(-1) * WT
     E0 = 2 * (NTK + NLV)                                                                      # (BT9) the bus starts after the level planes
 
@@ -264,8 +294,9 @@ class Trainer:
         for v in s.params: v.requires_grad = True
         s.opt = AdamW(s.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); s.jits = {}
 
-    def _step(s, x, theta, nid, isn, isnum, g, off, sid, pad, role, typ, r, cf, lev, cons, gt, mk, am, va, vb, cyc, sp):
+    def _step(s, x, theta, nid, isn, isnum, g, off, sid, pad, role, typ, r, cf, lev, cons, gt, mk, am, va, vb, cyc, sp, dto=None):
         P = s.P; t = dict(x=x, theta=theta, nid=nid, isn=isn, isnum=isnum, g=g, off=off, sid=sid, pad=pad, role=role)
+        if SEAL: t["dto"] = dto
         with Tensor.train():
             s.opt.zero_grad()
             xq = read(P, t); o = breath(P, t, xq, (typ, r, cf, lev, cons), cyc, sp if BR.SOFT else None)
@@ -311,6 +342,7 @@ class Trainer:
         soft = BR.SOFT and rng.random() < 0.5
         Lq = L - K; Lb = max(64, int(math.ceil(Lq / 32) * 32)); t = repad(t, Lb)
         nb = BR.notebook(E, Lb + K, progs, ~masked, gt, np.ones((len(E), K), np.float32))
+        dx = [Tensor(BR.DTO.dto_ids(its, progs, ~masked).astype(np.int32))] if SEAL else []   # (SEAL) the gold operands' DTO
         tt = tens(t); nbt = nb_t(nb); gtt = Tensor(gt.astype(np.int32)); cyct = Tensor(cyc)
         sp = Tensor.zeros(len(E), K, NT).contiguous()
         if soft:   # the self-conditioning pre-pass (no grad), as torch's: the model's own belief at this mask level
@@ -319,12 +351,13 @@ class Trainer:
         key = (Lb, soft)
         if key not in s.jits: s.jits[key] = TinyJit(s._step)
         return float(s.jits[key](*[tt[k] for k in FIELDS if k in tt], *nbt, gtt, Tensor(masked.astype(np.float32)),
-                                 Tensor((t["am"] & masked).astype(np.float32)), Tensor(t["va"]), Tensor(t["vb"]), cyct, sp).numpy())
+                                 Tensor((t["am"] & masked).astype(np.float32)), Tensor(t["va"]), Tensor(t["vb"]), cyct, sp, *dx).numpy())
 
 
 # ---- inference ------------------------------------------------------------------------------------------------------------------
 def score(P, its, states, tree, seed=0):
     """BR.score's schedule loop on the tinygrad net (eager) -> the same metric dict"""
+    assert not SEAL, "tg score: not ported under SEAL (train mode scores with BR.score)"
     res = dict(ans=[], step_op=[], step_ptr=[], step_all=[], type_ok=[])
     for s0 in range(0, len(its), 128):
         part = its[s0:s0 + 128]
@@ -425,7 +458,7 @@ if __name__ == "__main__":
                     op = BR.TYPES[typ[b, k]][0] if typ[b, k] != STOP else "."
                     progs[b][k] = (op, dec(int(pa_t[b, k].argmax())), dec(int(pb_t[b, k].argmax()))) if op != "." else (".", None, None)
         N = int(os.environ.get("TG_PARN", "128"))
-        for split in ("ORIG", "TEST"):
+        for split in (() if SEAL else ("ORIG", "TEST")):   # (SEAL: the tg scorer is not ported)
             Rt = BR.score(tn, Dt[split][:N], states, tree); Rg = score(P, Dt[split][:N], states, tree)
             if os.environ.get("TG_DUMP"): np.savez(f"{os.environ['TG_DUMP']}_{split}.npz", **{f"tg_{m}": Rg[m] for m in Rg}, **{f"torch_{m}": Rt[m] for m in Rt})
             print(f"[tg] parity score {split} n {N}: " + " | ".join(f"{m} torch {Rt[m].mean():.4f} tg {Rg[m].mean():.4f} (d {Rg[m].mean() - Rt[m].mean():+.4f}; "
