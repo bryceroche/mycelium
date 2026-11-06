@@ -56425,3 +56425,20 @@ per-row dump: `scripts/gsm_relquery_oracle.py` with `RQ_DUMP=1` (an added, off-b
 - **Implication for the phase form (Option B):** the relational terms are complementary to the learned pointer (R-ALL only 0.12 of rows),
   so the form is ADD them as a road into the pointer bus (the context token's key bound in, the sibling as a repulsive term), sealed so the
   memorizing path cannot carry the rows the relations solve (the residual-seal law).
+
+### 2026-11-06 06:35 — THE PERF LINE PINNED (Bryce: "agreed on the perf gains -- word given for (a) and (b)"): the step profile + THE SHORT-RUN RULE
+
+*Serves: the 10x ambition (Bryce 11-06: "we're going for a 10x gain ... iterate even faster") by cutting wall-clock per verdict, with the
+model unchanged. Critique on record (the quantization relay): the BT step is not FLOP-bound (6.6M params at batch 64 ≈ 0.5–1 TFLOP per
+step, tens of ms at the card's peak, vs 0.38 s measured), so INT8 / fp16 shrink the small part; tinygrad has no INT8 training path; Z_256
+phase snapping is a MODEL form (the bus's discrete mirror), to be barred, not a speed trick; T256 counts planes, not angles.*
+- **(a) THE STEP PROFILE** (`scripts/gsm_bt_profile.py`, GPU, no checkpoint, behind gpu.lock; BT4RB8's flags, batch 64, 300 steps): the
+  tinygrad Trainer.step split into host batch build (BR.batch), host gold / masks / notebook (numpy), uploads, and the JIT call to the
+  loss's sync; steady frame from step 21; plus the periodic eval (BR.score on ORIG + TEST 600, torch CPU) and the FINAL scoring (all four
+  splits) timed once on the init weights. A measurement, no bars; it says where the next speed work goes (host glue -> device; kernels ->
+  BEAM / fp16).
+- **(b) THE SHORT-RUN RULE:** the banked BT4RB8 curves show TEST step at its final level by ~3k–5k steps (s0 0.164 @ 3k, 0.169 @ 5k, final
+  0.163; s1 0.157 / 0.158 / 0.166; LR constant, no schedule), steps 5k–18k buy ORIG fit only. **From now, TEST-side bars run 5,000 steps;
+  ORIG-fit bars are read as such at 5k or get their own run.** Comparator: **BT4RB8_5k s0 / s1** (the same flags, seeds, engine; 5k steps;
+  full scoring). **Bar SR-1 (the rule holds):** |BT4RB8_5k − BT4RB8 (18k)| TEST step ≤ 0.010 on both seeds. If SR-1 FAILS the rule is struck
+  and 18k stays. **PREDICTION: SR-1 PASS.**
