@@ -56443,7 +56443,7 @@ phase snapping is a MODEL form (the bus's discrete mirror), to be barred, not a 
   full scoring). **Bar SR-1 (the rule holds):** |BT4RB8_5k − BT4RB8 (18k)| TEST step ≤ 0.010 on both seeds. If SR-1 FAILS the rule is struck
   and 18k stays. **PREDICTION: SR-1 PASS.**
 
-### 2026-11-06 06:50 — PHASE-BOUND POINTERS PINNED (Bryce: "word given for phase bound pointers"; before any build)
+### 2026-11-06 06:38 — PHASE-BOUND POINTERS PINNED (Bryce: "word given for phase bound pointers"; before any build)
 
 *Serves: "Complex planes enable clean binding and conjugate unbinding" + "Glue on the fly, no stored cross join" (a relation between two
 tokens of ONE problem, never a stored chart join; the CHART QUERY −0.030 vs the RELATIONAL QUERY +0.024) + THE POINTER WALL. Evidence: the
