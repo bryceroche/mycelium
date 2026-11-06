@@ -48,6 +48,8 @@ _WL = np.radians(BR.CK.t6_plane_speeds(max(NLV, 1))).astype(np.float32)
 _OHA = np.eye(3, dtype=np.float32)[BR.FKA]; _OHB = np.eye(3, dtype=np.float32)[BR.FKB]           # (BT8) type -> its kind factors
 _ISSTEP = (np.arange(NT) != STOP).astype(np.float32)
 SEAL = BR.SEAL                                                                               # (ledger 11-05) the sealed op head
+PHPTR, PR = BR.PHPTR, BR.PR                                                                  # (ledger 11-06) phase-bound pointers
+ZQ, NCH = BR.ZQ, BR.NCH                                                                      # (ledger 11-06) the zooming query
 _SOFM = np.zeros((BR.NS, NT), np.float32); _SOFM[BR.SOF, np.arange(NT)] = 1                # type -> struct (one-hot gathers)
 _OPM = np.zeros((len(BR.GD.OPS), NT), np.float32); _OPM[BR.OPI, np.arange(NT)] = 1; _OPM[:, STOP] = 0
 _CANM = np.zeros((BR.NS, NT), np.float32); _CANM[np.arange(BR.NS), BR.CANON] = 1             # struct -> its canonical type
@@ -176,7 +178,7 @@ def read(P, t):
 
 def breath(P, t, xq, nb, cyc, sp=None):
     """one cycle -> dict(logit, p, z, lfine, ctx) ; ptrs(P, out, c, zoom) gives the pointer logits under types c"""
-    typ, r, cf, lev, cons = nb
+    typ, r, cf, lev, cons = nb[:5]; prevm = nb[5] if PHPTR else None
     B, Lq = xq.shape[0], xq.shape[1]; L = Lq + K
     com = typ >= 0
     CA = fact_atoms(P) if FACT else P["C"].detach()                                          # (BT8) the rebound atoms
@@ -204,7 +206,7 @@ def breath(P, t, xq, nb, cyc, sp=None):
         ls = Tensor.stack(*[SGRP[g].where(lt_, -1e9).logsumexp(-1) for g in range(BR.NS)], dim=-1)
         logit = ls @ SOFM
         if "dto" in t: logit = logit + ophead(P, t["dto"]) @ OPM
-    return dict(logit=logit, p=logit.softmax(-1), z=z, lfine=lfine, xk_q=xk_q, cons=cons, t=t, Lq=Lq, CA=CA, lev=lev, ls=ls)
+    return dict(logit=logit, p=logit.softmax(-1), z=z, lfine=lfine, xk_q=xk_q, cons=cons, t=t, Lq=Lq, CA=CA, lev=lev, ls=ls, prevm=prevm)
 
 
 def ptrs(P, o, c, zoom=False, free=False):
@@ -239,10 +241,25 @@ def ptrs(P, o, c, zoom=False, free=False):
     if zoom:
         unsure = ((o["lfine"] * oc).sum(-1)).exp() < BR.ZOOM_TAU
         km = unsure.reshape(B, K, 1, 1).where((oc @ KMOP6).reshape(B, K, 2, 3) > 0.5, km)
+    if PHPTR:   # (ledger 11-06 PP) the native phase embedding (torch ptrs, mirrored; contexts by matmul over the flattened planes)
+        thx = lin(P, xk_q, "pth", bias=False); ezf = Tensor.stack(thx.cos(), thx.sin(), dim=-1).reshape(B, Lq, PR * 2)
+        cq = (t["qn"].one_hot(Lq).cast(dtypes.float).reshape(B, 1, Lq) @ ezf).expand(B, K, PR * 2)
+        pm_ = o["prevm"][:, :, :Lq].cast(dtypes.float); cp = (pm_ @ ezf) / pm_.sum(-1).maximum(1).unsqueeze(-1)
+
+        def rel(ctx, m, role):
+            a_ = P["ppsi"][m, role]; c_, s_ = a_.cos(), a_.sin(); cc = ctx.reshape(B, K, PR, 2); re_, im_ = cc[..., 0], cc[..., 1]
+            cr = Tensor.stack(re_ * c_ - im_ * s_, re_ * s_ + im_ * c_, dim=-1).reshape(B, K, PR * 2)
+            return (cr @ ezf.transpose(-1, -2)) * (1 / PR)
     outs = []
     for role, n in ((0, "qa"), (1, "qb")):
         q = bind(lin(P, hu, n), role)
         lt = q @ kt.transpose(-1, -2) + P["pc"] * cnt[:, None, :Lq] * math.sqrt(D)
+        if PHPTR:
+            ctxs = [cq, cp] + ([outs[0].softmax(-1)[..., :Lq] @ ezf] if role == 1 else [])
+            lt = lt + sum(P["pg"][m, role] * rel(cx, m, role) for m, cx in enumerate(ctxs)) * math.sqrt(D)
+        if ZQ:   # (ledger 11-06 ZQ) the coarse level (torch ptrs, mirrored; the gather as a one-hot matmul)
+            lch = (q @ P["zck"].T * (1 / math.sqrt(D))).log_softmax(-1) + math.log(NCH)   # centred: uniform = 0
+            lt = lt + (lch @ t["ch"][:, :Lq].one_hot(NCH).cast(dtypes.float).transpose(-1, -2)) * math.sqrt(D)
         lt = (t["isnum"][:, None, :Lq].logical_not() | km[:, :, role, 0:1].logical_not()).where(-1e4, lt)
         ls = levrot(tickrot(q)) @ ksl.transpose(-1, -2) + P["pc"] * cnt[:, None, Lq:] * math.sqrt(D)
         ls = (TRIL.logical_not().unsqueeze(0) | km[:, :, role, 1:2].logical_not()).where(-1e4, ls)
@@ -262,7 +279,7 @@ def repad(t, Lq_new):
     L = t["pad"].shape[1]; Lq = L - K; ex = Lq_new - Lq
     if ex == 0: return t
     out = dict(t)
-    for k in ("x", "isn", "isnum", "sid", "off", "nid", "g", "pad", "role"):
+    for k in ("x", "isn", "isnum", "sid", "off", "nid", "g", "pad", "role", "ch"):          # (ZQ: ch pads are masked keys)
         if k not in t: continue
         a = t[k]; fill = np.ones if k == "pad" else (lambda s, dtype: np.full(s, -1, dtype)) if k == "nid" else np.zeros
         mid = fill((a.shape[0], ex) + a.shape[2:], dtype=a.dtype)
@@ -274,16 +291,16 @@ def repad(t, Lq_new):
 
 def tens(t):
     out = {}
-    for k in FIELDS:
+    for k in FIELDS + ("qn", "ch"):                                                       # (PHPTR) + the question noun, (ZQ) the charts
         if k not in t: continue
         a = t[k]
         out[k] = Tensor(a.astype(np.int32)) if a.dtype in (np.int64, np.int32) else Tensor(a.astype(np.float32)) if a.dtype != bool else Tensor(a)
     return out
 
 
-def nb_t(arrs):
-    typ, r, cf, lev, cons = arrs
-    return Tensor(typ.astype(np.int32)), Tensor(r.astype(np.float32)), Tensor(cf.astype(np.float32)), Tensor(lev.astype(np.int32)), Tensor(cons)
+def nb_t(arrs):   # (PHPTR: a 6th array, the prev mask; the first five as before)
+    return tuple(Tensor(a.astype(np.int32)) if a.dtype in (np.int64, np.int32) else Tensor(a.astype(np.float32)) if a.dtype != bool
+                 else Tensor(a) for a in arrs)
 
 
 # ---- training -------------------------------------------------------------------------------------------------------------------
@@ -294,12 +311,15 @@ class Trainer:
         for v in s.params: v.requires_grad = True
         s.opt = AdamW(s.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); s.jits = {}
 
-    def _step(s, x, theta, nid, isn, isnum, g, off, sid, pad, role, typ, r, cf, lev, cons, gt, mk, am, va, vb, cyc, sp, dto=None):
+    def _step(s, x, theta, nid, isn, isnum, g, off, sid, pad, role, typ, r, cf, lev, cons, gt, mk, am, va, vb, cyc, sp, *ex):
         P = s.P; t = dict(x=x, theta=theta, nid=nid, isn=isn, isnum=isnum, g=g, off=off, sid=sid, pad=pad, role=role)
-        if SEAL: t["dto"] = dto
+        ex = list(ex); prevm = None
+        if SEAL: t["dto"] = ex.pop(0)
+        if PHPTR: t["qn"] = ex.pop(0); prevm = ex.pop(0)                                       # (PHPTR) the question noun, the prev mask
+        if ZQ: t["ch"] = ex.pop(0)                                                               # (ZQ) the charts
         with Tensor.train():
             s.opt.zero_grad()
-            xq = read(P, t); o = breath(P, t, xq, (typ, r, cf, lev, cons), cyc, sp if BR.SOFT else None)
+            xq = read(P, t); o = breath(P, t, xq, (typ, r, cf, lev, cons) + ((prevm,) if PHPTR else ()), cyc, sp if BR.SOFT else None)
             pa, pb = ptrs(P, o, gt)
             ce = -(o["logit"].log_softmax(-1) * gt.one_hot(NT).cast(dtypes.float)).sum(-1).contiguous()
             mw = (mk / mk.sum()).contiguous(); aw = (am / am.sum().maximum(1)).contiguous()
@@ -348,16 +368,20 @@ class Trainer:
         if soft:   # the self-conditioning pre-pass (no grad), as torch's: the model's own belief at this mask level
             tau = (2.0 ** (1.0 - 2.0 * cyc / (NCYC - 1))).astype(np.float32)
             o0 = breath(s.P, tt, read(s.P, tt), nbt, cyct); sp = (o0["logit"] / Tensor(tau).reshape(-1, 1, 1)).softmax(-1).detach().realize()
+        px = [tt["qn"], nbt[5]] if PHPTR else []                                              # (PHPTR) after the DTO, in _step's order
+        zx = [tt["ch"]] if ZQ else []                                                          # (ZQ) last
         key = (Lb, soft)
         if key not in s.jits: s.jits[key] = TinyJit(s._step)
-        return float(s.jits[key](*[tt[k] for k in FIELDS if k in tt], *nbt, gtt, Tensor(masked.astype(np.float32)),
-                                 Tensor((t["am"] & masked).astype(np.float32)), Tensor(t["va"]), Tensor(t["vb"]), cyct, sp, *dx).numpy())
+        return float(s.jits[key](*[tt[k] for k in FIELDS if k in tt], *nbt[:5], gtt, Tensor(masked.astype(np.float32)),
+                                 Tensor((t["am"] & masked).astype(np.float32)), Tensor(t["va"]), Tensor(t["vb"]), cyct, sp, *dx, *px, *zx).numpy())
 
 
 # ---- inference ------------------------------------------------------------------------------------------------------------------
 def score(P, its, states, tree, seed=0):
     """BR.score's schedule loop on the tinygrad net (eager) -> the same metric dict"""
     assert not SEAL, "tg score: not ported under SEAL (train mode scores with BR.score)"
+    assert not PHPTR, "tg score: not ported under PHPTR (train mode scores with BR.score)"
+    assert not ZQ, "tg score: not ported under ZQ (train mode scores with BR.score)"
     res = dict(ans=[], step_op=[], step_ptr=[], step_all=[], type_ok=[])
     for s0 in range(0, len(its), 128):
         part = its[s0:s0 + 128]
@@ -458,7 +482,7 @@ if __name__ == "__main__":
                     op = BR.TYPES[typ[b, k]][0] if typ[b, k] != STOP else "."
                     progs[b][k] = (op, dec(int(pa_t[b, k].argmax())), dec(int(pb_t[b, k].argmax()))) if op != "." else (".", None, None)
         N = int(os.environ.get("TG_PARN", "128"))
-        for split in (() if SEAL else ("ORIG", "TEST")):   # (SEAL: the tg scorer is not ported)
+        for split in (() if SEAL or PHPTR or ZQ else ("ORIG", "TEST")):   # (SEAL: the tg scorer is not ported)
             Rt = BR.score(tn, Dt[split][:N], states, tree); Rg = score(P, Dt[split][:N], states, tree)
             if os.environ.get("TG_DUMP"): np.savez(f"{os.environ['TG_DUMP']}_{split}.npz", **{f"tg_{m}": Rg[m] for m in Rg}, **{f"torch_{m}": Rt[m] for m in Rt})
             print(f"[tg] parity score {split} n {N}: " + " | ".join(f"{m} torch {Rt[m].mean():.4f} tg {Rg[m].mean():.4f} (d {Rg[m].mean() - Rt[m].mean():+.4f}; "

@@ -51,6 +51,12 @@ assert UNIT == "0" or ROLE, "UNIT-BIND rides the role road (BT_ROLE=1)"
 SEAL = os.environ.get("BT_SEAL") == "1"              # (ledger 11-05) THE SEALED OP HEAD: p(type) = p_text(struct) x p_DTO(op)
 assert not SEAL or not (ZOOM or FACT or SOFT or GATE), "SEAL replaces zoom's p(op); not with FACT / SOFT / GATE"
 DW, DNH = 64, 4                                       # (SEAL) the DTO head: width, heads
+PHPTR = os.environ.get("BT_PHPTR") == "1"            # (ledger 11-06 PP) PHASE-BOUND POINTERS: token phases, relations by the conjugate
+PR = 32                                               # (PHPTR) the token phase planes
+assert not PHPTR or not (SEAL or SOFT), "PHPTR: not with SEAL / SOFT"
+ZQ = os.environ.get("BT_ZQ") == "1"                  # (ledger 11-06 ZQ) THE ZOOMING QUERY: log p(the token's Tree chart | q) on the pointer
+NCH = 65                                              # (ZQ) 64 ST64 charts + none
+CH = None                                             # (ZQ) the chart memmap, loaded on first use
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -90,6 +96,18 @@ def unit_feats(U, KD, th, rnd=None):
     return f
 
 
+def qnoun(it):
+    """(PHPTR) the question noun: the content word after "how many / much" in the last sentence, else the token before the last "?"
+    (the CHART QUERY oracle's heuristic, verbatim in effect)"""
+    toks, sid = it["toks"], it["sid"]; q0 = sid.index(max(sid)); q = toks[q0:]
+    for i in range(len(q) - 1):
+        if q[i] == "how" and q[i + 1] in ("many", "much"):
+            j, _ = GU.content(q, i + 2)
+            if j is not None: return q0 + j
+    last = max(i for i, t in enumerate(toks) if t == "?") if "?" in toks else len(toks) - 1
+    return max(0, last - 1)
+
+
 def step_type(op, a, b):
     return STOP if op == "." else TYPES.index((op, a[0], b[0]))
 
@@ -123,6 +141,15 @@ def notebook(E, L, progs, committed, types, radius):
                       for kd_, i in (A, Bo)]
                 su[k] = GU.combine(op, *ua); kd = 1 if su[k] is None else 2 if not su[k] else 3
                 cf[b, k, 3:] = unit_feats([su[k]], [kd], e["uth"], e["urs"][k:k + 1] if UNIT == "2" else None)[0]
+    if PHPTR:   # (ledger 11-06 PP) per slot: the token operands of the nearest committed earlier step (the prev context)
+        pm = np.zeros((B, K, L), bool)
+        for b, e in enumerate(E):
+            for k in range(K):
+                js = [j for j in range(k) if committed[b, j] and progs[b][j][0] != "."]
+                if not js: continue
+                for kind, i in progs[b][js[-1]][1:]:
+                    if kind == "t" and i < e["n"]: pm[b, k, i] = True
+        return typ, r, cf, lev, cons, pm
     return typ, r, cf, lev, cons
 
 
@@ -226,6 +253,11 @@ def make_net():
             if SEAL:   # (ledger 11-05) THE DTO HEAD: field tokens -> 2 plain attention blocks -> 4 op log-probs; never a token state
                 s.dto_e = nn.Embedding(DTO.NV, DW); s.dto_f = nn.Parameter(torch.randn(DTO.NF, DW) * 0.02)
                 s.dto_att = nn.ModuleList([DAttn() for _ in range(2)]); s.dto_ln = nn.LayerNorm(DW); s.dto_out = nn.Linear(DW, len(GD.OPS))
+            if PHPTR:   # (ledger 11-06 PP) the token phase map, the relation phases psi (m = qn / prev / sib, role), the gains
+                s.pth = nn.Linear(D, PR, bias=False); s.ppsi = nn.Parameter(torch.zeros(3, 2, PR))
+                s.pg = nn.Parameter(torch.tensor([[1.6, 0.0], [0.0, 2.8], [0.0, -3.0]]))
+            if ZQ:   # (ledger 11-06 ZQ) the chart keys (LAST)
+                s.zck = nn.Parameter(torch.randn(NCH, D) * 0.02)
 
         def ophead(s, ids):
             """(SEAL) (B, K, NF) DTO field ids -> (B, K, 4) log p(op)"""
@@ -268,7 +300,7 @@ def make_net():
             """one cycle: every slot proposed in parallel. nb = notebook tensors; cond (B, K) = the step type the keys condition on
             (gold in training, the snapped prediction at inference; None = the snapped prediction)."""
             B, Lq, _ = xq.shape; L = Lq + K
-            typ, r, cf, lev, cons = nb
+            typ, r, cf, lev, cons = nb[:5]; prevm = nb[5] if PHPTR else None
             com = typ >= 0
             CA = s.atoms() if FACT else s.C                                                   # (BT8) the rebound atoms
             re = s.reent(r[..., None] * CA[typ.clamp(min=0)])                                  # committed: atom x radius
@@ -333,10 +365,26 @@ def make_net():
                 if zoom:                                                          # unsure of the fine type -> zoom out to the op
                     unsure = lfine.gather(-1, c[..., None])[..., 0].exp() < ZOOM_TAU
                     km = torch.where(unsure[..., None, None], kmask_op[par[c]], km)
+                if PHPTR:   # (ledger 11-06 PP) the native phase embedding: e^{i theta_t} on PR planes of its own
+                    thx = s.pth(xk_q); ez = torch.stack([thx.cos(), thx.sin()], -1)                  # (B, Lq, PR, 2)
+                    cq = ez[torch.arange(B), t["qn"]][:, None].expand(-1, K, -1, -1)              # the question noun
+                    pm_ = prevm[:, :, :Lq].float()
+                    cp = torch.einsum("bkl,blpc->bkpc", pm_, ez) / pm_.sum(-1).clamp(min=1)[..., None, None]   # the prev step's tokens
+
+                    def rel(ctx, m, role):   # bind the context by e^{i psi}, unbind against each token by the conjugate: mean_p Re(.)
+                        a_ = s.ppsi[m, role]; c_, s_ = a_.cos(), a_.sin(); re_, im_ = ctx[..., 0], ctx[..., 1]
+                        cr = torch.stack([re_ * c_ - im_ * s_, re_ * s_ + im_ * c_], -1)
+                        return torch.einsum("bkpc,blpc->bkl", cr, ez) / PR
                 outs = []
                 for role, proj in ((0, s.qa), (1, s.qb)):
                     q = bind(proj(hu), role)
                     lt = torch.einsum("bkd,bld->bkl", q, kt) + s.pc * cnt[:, None, :Lq] * math.sqrt(D)
+                    if PHPTR:   # the relations (sib: role a's soft choice, the continuous mirror)
+                        ctxs = [cq, cp] + ([torch.einsum("bkl,blpc->bkpc", outs[0].softmax(-1)[..., :Lq], ez)] if role == 1 else [])
+                        lt = lt + sum(s.pg[m, role] * rel(cx, m, role) for m, cx in enumerate(ctxs)) * math.sqrt(D)
+                    if ZQ:   # (ledger 11-06 ZQ) the coarse level: the query searches the Tree's charts; + log p(the token's chart | q)
+                        lch = (torch.einsum("bkd,cd->bkc", q, s.zck) / math.sqrt(D)).log_softmax(-1) + math.log(NCH)   # centred: uniform = 0
+                        lt = lt + lch.gather(-1, t["ch"][:, None, :Lq].expand(-1, K, -1)) * math.sqrt(D)
                     lt = lt.masked_fill(~t["isnum"][:, None, :Lq] | ~km[:, :, role, 0:1], -1e4)
                     ls = torch.einsum("bkd,bjd->bkj", levrot(tickrot(q)), ksl) + s.pc * cnt[:, None, Lq:] * math.sqrt(D)
                     ls = ls.masked_fill(~torch.ones(K, K, dtype=torch.bool).tril(-1) | ~km[:, :, role, 1:2], -1e4)
@@ -361,8 +409,7 @@ def TAU(cyc):
 
 def nb_tensors(arrs):
     import torch
-    typ, r, cf, lev, cons = arrs
-    return (torch.as_tensor(typ), torch.as_tensor(r), torch.as_tensor(cf), torch.as_tensor(lev), torch.as_tensor(cons))
+    return tuple(torch.as_tensor(a) for a in arrs)                                     # (PHPTR: a 6th array, the prev mask)
 
 
 def batch(its, states, tree, rng):
@@ -383,6 +430,13 @@ def batch(its, states, tree, rng):
             ux[b, :n] = unit_feats(U, KD, th, rt if UNIT == "2" else None)
             E[b]["uU"], E[b]["uth"], E[b]["urs"] = U, th, rs
         t["role"] = torch.cat([t["role"], torch.as_tensor(ux)], -1)
+    if PHPTR: t["qn"] = torch.as_tensor(np.array([qnoun(it) for it in its], np.int64))   # (PHPTR) the question noun
+    if ZQ:   # (ZQ) the Tree's ST64 chart per position (NCH - 1 = none)
+        global CH
+        if CH is None: CH = np.load(GD.V1.C("gsmb_chart64_rb8.npy"), mmap_mode="r")
+        ch = np.full(t["pad"].shape, NCH - 1, np.int64)
+        for b, it in enumerate(its): n = len(it["toks"]); ch[b, :n] = CH[it["st0"]:it["st0"] + n]
+        t["ch"] = torch.as_tensor(ch)
     return t, E
 
 

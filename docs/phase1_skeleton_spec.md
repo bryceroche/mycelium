@@ -56577,3 +56577,34 @@ jit_cache attribute; disclosed).
   while q · kt is not. ZQ does not share the flaw: its chart logits come from the same q and scale with it.
 - **Queue:** lfpp (PP_s1 at step 14000 at 12:04) -> lfzq: the PP census -> patch -> ZQ s0 / s1 (18k, ~2.2 h each) -> the per-pointer read +
   the key-chart probe on ZQ -> the ZQ verdict -> the BEAM profile (BEAM=2, 300 steps; timeout 4 h; a measurement).
+
+### 2026-11-06 12:41 — PHASE-BOUND POINTERS: PP-R / PP-1 / PP-2 all FAIL (2/3 predicted: PP-R PASS was wrong; 147/203) + the census: the road is drowned
+
+`.cache/gsm_pp_verdict.txt` (unit lfpp, tinygrad GPU, 18k — the SR-1 FAIL branch — vs the banked BT4RB8; per-pointer reads torch CPU):
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| PP-R: per-pointer RESTR TEST − BT4RB8 (mean ≥ +0.020, both > 0) | −0.0085 | −0.0042 | **FAIL ✗** (predicted PASS) |
+| PP-1: TEST step ptr (mean ≥ +0.010, both > 0) | −0.0131 | −0.0123 | **FAIL ✓** |
+| PP-2: TEST step all | −0.0078 | −0.0146 | **FAIL ✓** |
+
+- Beside: per-pointer TRAIN RESTR 0.8436 / 0.8437 vs 0.8420; TEST RESTR 0.5744 / 0.5769; the overlap with R-ALL barely moved (R-ALL-only rows
+  0.1215 / 0.1209 of TEST vs the banked reader's ~0.12): the relations did not enter the pointer's choices. ORIG step 0.9596 / 0.9584 (vs
+  0.9514 / 0.9660); CFNAME 0.8234 / 0.8445; CFNUM 0.8719 / 0.8939 (a hair above BT4RB8 on the fit / counterfactual side, below on TEST).
+- **The census (`scripts/gsm_pp_census.py`, TEST[:256], the per-pointer protocol, exact gain ablation; numerals the kind mask leaves open):**
+
+| | s0 | s1 |
+|---|---|---|
+| std of the base token logit (all gains 0), role a / b | 34.0 / 33.6 | 31.7 / 32.1 |
+| post-gain qn_a / prev_b / sib_b | 0.19 / 0.49 / 1.37 | 0.19 / 0.48 / 1.36 |
+| as a share of the base | 0.01 / 0.01 / 0.04 | 0.01 / 0.02 / 0.04 |
+| trained gains qn_a / prev_b / sib_b (init 1.6 / 2.8 / −3.0) | 1.47 / 1.78 / −4.16 | 1.47 / 1.79 / −4.12 |
+
+- **Reading (the pre/post knob law):** the gains moved little and stayed signed as the oracle fit them, but the road is bounded (|g| x a mean
+  cosine, ≤ |g| nats) while the base q · kt grew to ~33 nats of spread: the relations ride at ≤ 4% of the base and cannot flip a pick. A
+  bounded road beside an unbounded one is an invitation through a gain in effect, and it was drowned (the MANDATORY-ROAD law's lesson in a new
+  coat). **Closes the form** (bounded relation terms added to an unbounded pointer logit), not the line: the relational information (RQ-1
+  +0.024, the union 0.70) is still unused. The next relational form must scale with the query (as ZQ's does) or replace the base term.
+  My PP-R prediction was wrong.
+- The applied phase_ptr + zoom_query patches are committed with this entry (the live files now carry both flags; both off by default).
+- lfzq: the census ran both seeds; ZQ_s0 started 12:41 (params 6,600,625 = BT4RB8 + 65 x 512 chart keys).
