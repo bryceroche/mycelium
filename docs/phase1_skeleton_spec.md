@@ -56463,3 +56463,14 @@ reader and the raw-cosine relations miss different rows (union 0.70 vs 0.58 / 0.
   form. Beside: the census (|g·rel| vs the base token logit, std on a TEST batch, pre/post), the trained gains, CFNAME, ORIG fit.
 - **PREDICTIONS:** PP-R PASS (the oracle union says the information is there and the road starts on it); **PP-1 FAIL** (the cascade:
   0.58 per pointer → 0.215 joint is mostly wrong types / history); **PP-2 FAIL**.
+
+### 2026-11-06 06:52 — THE STEP PROFILE (perf line (a); a measurement): the BT step is 86% GPU kernel time; host glue is 7%
+
+`scripts/gsm_bt_profile.py` (unit lfprof, BT4RB8 flags, batch 64, 300 steps, PCI+AMD) -> `.cache/gsm_bt_profile.json`. Steady frame (279
+steps after capture): **wall 0.359 s/step = JIT call 0.310 (86%) + uploads 0.022 (6%) + batch build 0.019 (5%) + gold / masks / notebook 0.007
+(2%)**. Periodic eval (ORIG + TEST 600, torch CPU) 16 s per 1000 steps; FINAL scoring 138 s (ORIG 38, CFNUM 68, CFNAME 17, TEST 15). Modeled
+run: **18k 1.91 h, 5k 0.56 h** (3.4x, the short-run rule). The kernel count per captured step was not read (tinygrad's CapturedJit has no
+jit_cache attribute; disclosed).
+- **Reading:** the step is GPU-bound in the kernels, not in host glue (my pre-profile guess, "host glue", is struck), and not FLOP-bound
+  either (~1 TFLOP in 0.31 s ≈ 3 TFLOP/s vs the card's ~60 fp16): many small kernels. The next lever is kernel-side: BEAM search (the 8M
+  reader took 1.77x from BEAM=2, 11-03) before any precision change; fp16 only if a BEAM'd profile shows bandwidth-bound kernels.

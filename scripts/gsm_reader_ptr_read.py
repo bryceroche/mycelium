@@ -11,6 +11,9 @@ import json, os, sys
 for k_, v_ in dict(BT_D="512", BT_NH="8", BT_DB="64", BT_CYCLOCK="1", BT_ZOOM="1", BT_ROLE="1", BT_T6OFF="1",
                    RD_STATES="gsmb_rb8_states.npy", BT_ROLEF="gsmb_role_feats_rb8.npy").items():
     os.environ[k_] = v_                                                         # BT4RB8's own flags (the banked run's B4 + ZOOM)
+ARMT = os.environ.get("RP_TAG", "BT4RB8")                                      # (ledger 11-06 PP) the weights read: .cache/gsmb_breath_{ARMT}_s{0,1}.pt
+if os.environ.get("RP_PHPTR") == "1": os.environ["BT_PHPTR"] = "1"             # (PP) the phase-bound pointers' flag
+OUT = "" if ARMT == "BT4RB8" else f"_{ARMT}"                                   # the banked read keeps its file names
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -60,7 +63,7 @@ def read(net, its):
 
 o, rq = {}, json.load(open(".cache/gsm_relquery_rows.json"))
 for s in (0, 1):
-    net = BR.make_net(); net.load_state_dict(torch.load(f".cache/gsmb_breath_BT4RB8_s{s}.pt")); net.eval()
+    net = BR.make_net(); net.load_state_dict(torch.load(f".cache/gsmb_breath_{ARMT}_s{s}.pt")); net.eval()
     for sp in SPL:
         r = read(net, Dt[sp]); q = np.asarray(rq[sp]); assert len(q) == len(r["RESTR"]), (len(q), len(r["RESTR"]))
         o[f"s{s}_{sp}"] = dict(n=len(q), RESTR=float(r["RESTR"].mean()), FREE=float(r["FREE"].mean()), RALL=float(q.mean()),
@@ -69,7 +72,7 @@ for s in (0, 1):
         o[f"s{s}_{sp}_rows"] = r["RESTR"].tolist()
         print(f"[ptr] s{s} {sp} {o[f's{s}_{sp}']}", flush=True)
 a0, a1 = (np.asarray(o[f"s{s}_TEST_rows"]) for s in (0, 1)); o["seed_agree_TEST"] = float((a0 == a1).mean())
-json.dump(o, open(".cache/gsm_reader_ptr_read.json", "w"))
+json.dump(o, open(f".cache/gsm_reader_ptr_read{OUT}.json", "w"))
 
 m = (o["s0_TEST"]["RESTR"] + o["s1_TEST"]["RESTR"]) / 2
 band = "BELOW raw cosine" if m < 0.5467 else "BETWEEN" if m < 0.6876 else "NEAR CEILING"
@@ -81,4 +84,4 @@ L += [f"  {sp}: RESTR {f2(sp, 'RESTR')} | FREE {f2(sp, 'FREE')} | both {f2(sp, '
 L.append(f"RP-W: RESTR TEST seed mean {m:.4f} -> {band} (BELOW < 0.5467 <= BETWEEN < 0.6876 <= NEAR CEILING)")
 L.append(f"RP-G: RESTR TRAIN - TEST {gaps[0]:+.4f} / {gaps[1]:+.4f} (bar >= 0.15 both) -> {'PASS' if min(gaps) >= 0.15 else 'FAIL'}")
 L.append(f"  beside: the seeds agree on {o['seed_agree_TEST']:.4f} of TEST rows")
-print("\n".join(L)); open(".cache/gsm_reader_ptr_read_verdict.txt", "w").write("\n".join(L) + "\n")
+print("\n".join(L)); open(f".cache/gsm_reader_ptr_read{OUT}_verdict.txt", "w").write("\n".join(L) + "\n")
