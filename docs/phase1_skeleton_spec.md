@@ -56504,3 +56504,19 @@ jit_cache attribute; disclosed).
   struck and 18k stays; lfpp therefore took its FAIL branch (PP at 18k vs BT4RB8). Speed has to come from the kernels (BEAM), not from cutting
   steps. My prediction was wrong.
 - lfpp: PP_s0 done (FINAL TEST step 0.156, ptr 0.202), PP_s1 running (step 2000 at 10:35); the verdict follows the per-pointer reads.
+
+### 2026-11-06 10:43 — Bryce: "word given" — THE KEY-CHART PROBE PINNED (zero GPU, banked BT4RB8 s0 / s1; before any read)
+
+- **Serves:** "connecting local charts" + "composite keys bypass the waist ... rejoin via the skip" (the U-Net skip, Bryce's brainstorm 11-06):
+  is the token-side U-Net (chart = macro, address = micro, bound) worth building? Correction to my proposal: `kt` is a full-rank D x D linear
+  map of the read state, so a linear probe on kt equals one on its input xq; the probe reads xq.
+- **Frame (the oracle's: rows, candidates, consumed rule, the nested Tree of RB8 states, seed 0; `scripts/gsm_keychart_probe.py`):**
+  - **KP-1 (does the key's input carry the chart?):** multinomial logistic probe of the ST64 chart on TRAIN numerals, scored on TEST numerals;
+    r = acc(xq) / acc(raw 2048-d state), seed mean. **CARRIED r ≥ 0.90 / PARTIAL / DROPPED r < 0.70.** Beside: ST8; a random 512-d projection of
+    the raw state (dimension control).
+  - **KP-E (what kind of error?):** the reader per-pointer read's RESTR picks on TEST rows with a valid candidate; of the WRONG picks, the share
+    whose ST64 chart equals some valid candidate's chart. **≥ 0.50 ADDRESS errors dominate (the micro side) / < 0.50 CHART errors dominate (the
+    macro side).** Beside: the base rate (a uniformly random wrong candidate in a valid chart), and the share at ST512.
+- **PREDICTIONS:** KP-1 CARRIED (the charts are k-means of the same states the reader reads); KP-E CHART errors dominate (with ~4 candidates
+  and 64 charts, same-chart collisions are rare). Reading rule: CARRIED + CHART-dominated = the chart is in the key but the QUERY does not
+  ask for it -> the next form is query-side (what the slot asks for), not a token-side skip; DROPPED = room for the token-side chart skip.
