@@ -56390,3 +56390,18 @@ stored per chart) + THE POINTER WALL. The CHART QUERY found global chart tables 
 - **Named next (not pinned):** (a) THE READER PER-POINTER READ (zero GPU: banked BT4RB8 weights, teacher-forced gold types and history,
   the oracle's rows) — the comparator this line has lacked; (b) the phase form of R-ALL in the BT's pointer bus (bind the context
   token's key, unbind against the candidates; sib as a repulsive term).
+
+### 2026-11-06 06:25 — THE READER PER-POINTER READ PINNED (Bryce: "word given for the reader per-pointer read"; zero GPU, banked weights)
+
+*Serves: THE POINTER WALL + "Discover the structure" (pointers are the graph): place the learned reader against the oracle line's
+ceilings before the phase form of the relational query is built.*
+- **Read:** banked BT4RB8 s0 / s1 (`.cache/gsmb_breath_BT4RB8_s{0,1}.pt`, torch CPU, its own flags: B4 + ZOOM), on the oracle's rows (every
+  gold token operand, TRAIN + TEST). Per gold step k: the notebook holds the gold slots < k committed (the oracle's consumed rule exactly:
+  the teacher's first operands), cond = the gold types (the pointer heads under the gold type; zoom off as at cond), the cycle stamp =
+  floor(k · NCYC / K) (the cycle that commits k slots); slot k's pa / pb read. **RESTR** = argmax over the oracle's candidates (comparable to
+  its arms); **FREE** = argmax over the full domain, correct iff in the valid token set.
+- **Frame (RP-W, by the seed mean of RESTR TEST):** BELOW raw cosine (< 0.5467, R-ALL) / BETWEEN (0.5467 – 0.6876) / NEAR CEILING (≥ 0.6876).
+  **RP-G (the reader memorizes the pointer):** RESTR TRAIN − TEST ≥ 0.15 on both seeds. Beside: FREE; the seeds' agreement; the overlap
+  with R-ALL (both right / reader only / R-ALL only).
+- **PREDICTIONS:** RP-W **BETWEEN** (joint TEST ptr 0.215 under its own history; with gold history + gold type per pointer, about 0.6);
+  RP-G **PASS** (ORIG ptr 0.95 vs TEST 0.21).
