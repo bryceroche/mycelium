@@ -56261,3 +56261,36 @@ Tree (RB8 adds level rows additively, looked up by lexical key; phase binding + 
   back off to P0 on TEST); **PC-G FAIL** (512 contextual leaves x ctx fit in-sample too).
 - **Limitation stated:** gold type, gold history, per pointer: NOT comparable to the reader's 0.215 (both pointers, its own decoded
   program). The ceiling says whether chart-keyed pointers are worth building; a reader comparator needs the reader's per-pointer read.
+
+### 2026-11-05 18:38 — POINTER-CHART ORACLE VERDICT: PC-C PASS, PC-1 PASS, PC-L FAIL, PC-G PASS (2/4 predicted; 128/180) — the Tree's leaves CAN address operands (0.837), and they generalize (gap 0.025 vs lexical 0.120); the wall is the QUERY: knowing the type gives only +0.06 over position
+
+`scripts/gsm_ptrchart_oracle.py` (9 s CPU) -> `.cache/gsm_ptrchart_oracle.json` / `_verdict.txt`. Token operands TRAIN 24,340 / TEST 4,706;
+mean candidates TEST 3.26; **0.148 of TEST token operands have NO valid unconsumed candidate** (the gold reuses a consumed token): every arm's
+ceiling is 0.852 (disclosed; the consumed rule is the pin's).
+
+| arm | TRAIN | TEST | gold chart unique (TEST) |
+|---|---|---|---|
+| P0 rank | 0.4613 | 0.4637 | |
+| LEX1 prev word | 0.4582 | 0.4441 | 0.6808 |
+| LEX2 prev + next | 0.6036 | 0.4836 | 0.7920 |
+| UNIT word | 0.4737 | 0.4575 | 0.6041 |
+| UNITQ (vs question unit) | 0.4680 | 0.4630 | 0.3878 |
+| ST8 | 0.4887 | 0.4943 | 0.5461 |
+| ST64 | 0.5157 | 0.5153 | 0.7871 |
+| **ST512 (flat leaf)** | 0.5480 | **0.5232** | **0.8372** |
+| TREE (descent) | 0.5329 | 0.5074 | |
+| **TREE+U (primary)** | 0.5237 | 0.4968 | |
+
+- **PC-C PASS** (0.8372 ≥ 0.50; ✓ predicted): the leaf chart singles out a valid operand on 0.837 of 0.852 possible.
+- **PC-1 PASS** (+0.0331 ≥ +0.020; ✓).
+- **PC-L FAIL** (+0.0132 < +0.020; predicted PASS ✗).
+- **PC-G PASS** (LEX2 gap +0.1200 − TREE+U gap +0.0269 = +0.0931; predicted FAIL ✗): lexical charts memorize, state charts do not.
+- **Readings (unbarred):** (1) **the question-unit relation HURTS** (TREE 0.5074 → TREE+U 0.4968; UNITQ alone = P0): the OP-DIAG unit
+  heuristic does not address operands. (2) **The flat leaf beats the descent** (ST512 0.5232 > TREE 0.5074): backing off toward the root
+  costs here; the coarse levels carry less. (3) **Keys are not the wall, the query is:** the gold chart is unique 0.837, yet a query that
+  knows the gold type + role picks right 0.52 — the type explains little of WHICH chart the step wants. The step needs a query that knows
+  what it wants (the 10-15 lesson, "the wall moved to the query side", on the BT).
+- **Named next (not pinned):** THE CHART QUERY — what context names the operand's chart: the notebook state (which charts earlier steps
+  consumed), the question's chart (the question numeral / noun's state leaf, not the unit heuristic), the sibling operand's chart (b given
+  a). Each is a table arm in this same oracle (zero GPU) before any native phase-binding embedding is built; the embedding's chart planes
+  are justified by PC-C/PC-G.
