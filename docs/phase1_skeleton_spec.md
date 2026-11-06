@@ -56464,7 +56464,7 @@ reader and the raw-cosine relations miss different rows (union 0.70 vs 0.58 / 0.
 - **PREDICTIONS:** PP-R PASS (the oracle union says the information is there and the road starts on it); **PP-1 FAIL** (the cascade:
   0.58 per pointer → 0.215 joint is mostly wrong types / history); **PP-2 FAIL**.
 
-### 2026-11-06 06:52 — THE STEP PROFILE (perf line (a); a measurement): the BT step is 86% GPU kernel time; host glue is 7%
+### 2026-11-06 06:50 — THE STEP PROFILE (perf line (a); a measurement): the BT step is 86% GPU kernel time; host glue is 7%
 
 `scripts/gsm_bt_profile.py` (unit lfprof, BT4RB8 flags, batch 64, 300 steps, PCI+AMD) -> `.cache/gsm_bt_profile.json`. Steady frame (279
 steps after capture): **wall 0.359 s/step = JIT call 0.310 (86%) + uploads 0.022 (6%) + batch build 0.019 (5%) + gold / masks / notebook 0.007
