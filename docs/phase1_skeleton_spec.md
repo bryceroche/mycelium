@@ -56367,3 +56367,26 @@ stored per chart) + THE POINTER WALL. The CHART QUERY found global chart tables 
 - **Bars (TEST):** **RQ-1:** R-ALL − ST512 ≥ +0.020. **RQ-G:** R-ALL TRAIN − TEST ≤ 0.05. **RQ-H:** R-ALL ≥ 0.6876 (half the headroom).
   Beside: each single arm − ST512; the fitted weights.
 - **PREDICTIONS:** RQ-1 PASS (a step's operands share context: "5 apples ... 3 apples"); RQ-G PASS (7 parameters); **RQ-H FAIL**.
+
+### 2026-11-06 06:21 — RELATIONAL QUERY VERDICT: RQ-1 PASS, RQ-G PASS, RQ-H FAIL (3/3 predicted; 141/195) — per-problem relations transfer where chart tables did not, but raw-state cosines carry only +0.024
+
+`scripts/gsm_relquery_oracle.py` -> `.cache/gsm_relquery_oracle.json` / `_verdict.txt`. Base ST512 reproduces 0.5480 / 0.5232.
+
+| arm | TRAIN | TEST | vs ST512 | fitted weights |
+|---|---|---|---|---|
+| R-QN | 0.5481 | 0.5204 | −0.0028 | base 0.65, qn_a +1.50, qn_b −0.61 |
+| R-PREV | 0.5526 | 0.5274 | +0.0042 | base 0.65, prev_a −0.24, prev_b +2.65 |
+| R-SIB | 0.5685 | 0.5421 | +0.0189 | base 0.67, sib_b −2.91 |
+| **R-ALL** | 0.5726 | **0.5467** | **+0.0236** | base 0.67, qn_a +1.60, qn_b −0.23, prev_a −0.44, prev_b +2.85, sib_b −3.01 |
+
+- **RQ-1 PASS** (+0.0236 ≥ +0.020; ✓; a deterministic read, no seed axis; it clears the bar by 0.004). **RQ-G PASS** (gap +0.0259 = the
+  base's own +0.0248: the relations add no overfit; ✓). **RQ-H FAIL** (0.5467 vs 0.6876; ✓).
+- **Readings:** (1) the CHART QUERY's sign flipped: the same three contexts as global tables cost −0.030 on TEST; as in-problem relations
+  they buy +0.024 with no added gap. Glue on the fly transfers; stored chart joins do not (the North Star line, measured). (2) **Operand b is
+  DISSIMILAR to operand a** (sib_b −3.0: a step pairs two different quantities, not two look-alikes), **b resembles the previous operand**
+  (prev_b +2.8: chaining), **a resembles the question noun** (qn_a +1.6). (3) Raw reader-state cosine is a weak relation: 0.547 of the
+  0.852 ceiling. The learned form of this relation is attention's q·k; a BT per-pointer read on the same rows would place the reader
+  against these ceilings (never measured: its 0.215 is both pointers under its own program).
+- **Named next (not pinned):** (a) THE READER PER-POINTER READ (zero GPU: banked BT4RB8 weights, teacher-forced gold types and history,
+  the oracle's rows) — the comparator this line has lacked; (b) the phase form of R-ALL in the BT's pointer bus (bind the context
+  token's key, unbind against the candidates; sib as a repulsive term).
