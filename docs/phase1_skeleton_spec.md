@@ -56234,3 +56234,30 @@ THE RESIDUAL-SEAL LAW (sever the bypass, never invite).*
   3.8566 / 3.6720); (4) the dry run of `.cache/run_lfso.sh` itself on a fresh unpatched copy: patch applied by the chain's invocation,
   two 2-step runs, the verdict, exit 0; artifacts deleted.
 - **Queue:** lfso waits for lfub (UB s0/s1 ~18:40, + UBP ~22:40 only if UB-1 passes), then SO s0/s1 (~4 h).
+
+### 2026-11-05 18:36 — THE POINTER-CHART ORACLE PINNED (Bryce: "word given for the build and fire"; zero GPU, no model)
+
+*Serves: "Connecting local charts (centroids in the Tree)" + "The SQL cross join is the nemesis" (a pointer query that names a CHART,
+not a word, matches any token in that chart) + "Discover the structure" (pointers ARE the graph). Opens THE POINTER WALL (BT4RB8 TEST
+ptr 0.2154 / 0.2144 < TEST op 0.468 / 0.485). The brainstorm's finding on record: today the BT's TOKEN side carries no phase binding to the
+Tree (RB8 adds level rows additively, looked up by lexical key; phase binding + conjugate unbind live only on the step / pointer side).*
+- **Question:** before any native phase-binding embedding is built, can a Tree chart ADDRESS a step's operand, and does an abstract chart
+  generalize where a lexical one does not?
+- **Task (gold-given, a ceiling):** every gold step operand whose teacher operand is a token (TRAIN 24,340 / TEST 4,706 of 41,876 / 7,956);
+  candidates = the problem's numeral tokens not consumed by an earlier gold step (the notebook's consumed rule: the teacher's first
+  operand); correct = the choice is in the operand's valid set. The query context = the gold step type (op, kind A, kind B) + role (a / b).
+- **Arms** (tables fit on TRAIN gold; backoff when a key's TRAIN count < 5; score = log P(chart | ctx) + log P(rank | ctx), ties by text
+  order; rank = the candidate's order among the unconsumed, capped at 6):
+  P0 rank only (no chart) | LEX1 chart = the previous word | LEX2 = previous + next word (the reader DB's L1 / L2 keys minus the constant
+  `<num>`) | UNITQ = the unit's relation to the question unit (unknown / dimensionless / % / rate-with-qu-numerator / rate-with-qu-denominator /
+  other rate / = qu / other), gsm_units + the OP-DIAG question unit | **TREE+U (PRIMARY)**: a nested Tree of RB8 reader states at numeral
+  tokens (k-means 8 per node, three levels: 8 / 64 / 512 leaves, fit on TRAIN numerals, seed 0), the score at the deepest level whose
+  (ctx, node) has TRAIN count ≥ 5, backing off toward the root (the descent), + UNITQ | beside: ST8 / ST64 / ST512 alone, UNIT (the unit
+  word itself).
+- **Bars (TEST):** **PC-C (the Tree can address):** the gold chart at the leaf level (ST512) is unique among the candidates (no non-valid
+  candidate shares it) ≥ 0.50. **PC-1 (charts carry operand choice):** TREE+U − P0 ≥ +0.020. **PC-L (abstract beats lexical):** TREE+U −
+  LEX2 ≥ +0.020. **PC-G (generalization):** (LEX2 TRAIN − TEST) − (TREE+U TRAIN − TEST) ≥ +0.020 (TRAIN read in-sample).
+- **PREDICTIONS:** PC-C PASS; PC-1 PASS (the question-unit relation should pick operands position cannot); PC-L PASS (sparse lexical keys
+  back off to P0 on TEST); **PC-G FAIL** (512 contextual leaves x ctx fit in-sample too).
+- **Limitation stated:** gold type, gold history, per pointer: NOT comparable to the reader's 0.215 (both pointers, its own decoded
+  program). The ceiling says whether chart-keyed pointers are worth building; a reader comparator needs the reader's per-pointer read.
