@@ -168,6 +168,14 @@ for a, cols in ARMS.items():
     w = np.array([1.0]) if a == "ST512" else fit(cols)
     o[a] = {sp: acc(sp, cols, w) for sp in SPL}; o[a]["w"] = {NAMES[c]: round(float(x), 4) for c, x in zip(cols, w)}
 json.dump(o, open(".cache/gsm_relquery_oracle.json", "w"), indent=1)
+if os.environ.get("RQ_DUMP") == "1":   # (ledger 11-06 the READER PER-POINTER READ's overlap) per row, in R's order: R-ALL right?
+    w = fit(ARMS["R-ALL"]); dmp = {}
+    for sp in SPL:
+        it_ = iter(D[sp]); dmp[sp] = []
+        for g, r in R[sp]:
+            if not r["cand"]: dmp[sp].append(False); continue
+            F, y = next(it_); dmp[sp].append(bool(y[int(np.argmax(F[:, ARMS["R-ALL"]] @ w))]))
+    json.dump(dmp, open(".cache/gsm_relquery_rows.json", "w"))
 
 t = lambda a: o[a]["TEST"]; gap = o["R-ALL"]["TRAIN"] - o["R-ALL"]["TEST"]
 L = [f"token operands TRAIN {N['TRAIN']} TEST {N['TEST']}"]

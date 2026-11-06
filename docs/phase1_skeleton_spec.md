@@ -56405,3 +56405,23 @@ ceilings before the phase form of the relational query is built.*
   with R-ALL (both right / reader only / R-ALL only).
 - **PREDICTIONS:** RP-W **BETWEEN** (joint TEST ptr 0.215 under its own history; with gold history + gold type per pointer, about 0.6);
   RP-G **PASS** (ORIG ptr 0.95 vs TEST 0.21).
+
+### 2026-11-06 06:31 — READER PER-POINTER READ VERDICT: RP-W BETWEEN, RP-G PASS (2/2 predicted; 143/197) — the reader picks 0.582 per pointer on TEST (raw cosine 0.547, ceiling 0.852) and memorizes (TRAIN 0.842 = the ceiling); it and R-ALL miss DIFFERENT rows
+
+`scripts/gsm_reader_ptr_read.py` (unit lfptr, torch CPU, banked BT4RB8 s0 / s1) -> `.cache/gsm_reader_ptr_read.json` / `_verdict.txt`. The R-ALL
+per-row dump: `scripts/gsm_relquery_oracle.py` with `RQ_DUMP=1` (an added, off-by-default branch; its read reproduced 0.5467).
+
+| | RESTR | FREE | both right | reader only | R-ALL only |
+|---|---|---|---|---|---|
+| TRAIN s0 / s1 | 0.8420 / 0.8420 | 0.9934 / 0.9931 | 0.567 / 0.567 | 0.275 / 0.275 | 0.006 / 0.005 |
+| TEST s0 / s1 | 0.5829 / 0.5812 | 0.5903 / 0.5937 | 0.431 / 0.425 | 0.152 / 0.157 | 0.116 / 0.122 |
+
+- **RP-W BETWEEN** (seed mean 0.5820; ✓ predicted). **RP-G PASS** (TRAIN − TEST +0.2591 / +0.2608; ✓).
+- **Readings:** (1) on TRAIN the reader sits AT the RESTR ceiling (0.842 of 0.852) and FREE 0.993 (it also finds the reused tokens): the
+  pointer is memorized. (2) On TEST it beats raw cosine by only +0.035, and **the two miss different rows: the union (either right) is
+  0.70 / 0.70 > the half-headroom mark 0.6876** — the per-problem relations hold information the learned pointer does not use. (3) The
+  cascade: 0.58 per pointer under gold history and type vs the joint TEST step ptr 0.215 under its own program; most of the joint loss is
+  error propagation (wrong types / wrong history), not the single pointer. (4) The seeds agree on 0.799 of TEST rows.
+- **Implication for the phase form (Option B):** the relational terms are complementary to the learned pointer (R-ALL only 0.12 of rows),
+  so the form is ADD them as a road into the pointer bus (the context token's key bound in, the sibling as a repulsive term), sealed so the
+  memorizing path cannot carry the rows the relations solve (the residual-seal law).
