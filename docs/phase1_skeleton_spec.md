@@ -56354,7 +56354,7 @@ keys sufficient (the gold leaf unique 0.837 of 0.852) and the query poor (type +
   similarity of its state to the question noun's, to the previous operand's, to operand a's), no table, nothing stored to memorize; then the
   phase form (bind the context, unbind against the candidates) if the relation carries.
 
-### 2026-11-06 06:27 — THE RELATIONAL QUERY PINNED (Bryce: "word given for the relational query"; zero GPU, no model)
+### 2026-11-06 06:18 — THE RELATIONAL QUERY PINNED (Bryce: "word given for the relational query"; zero GPU, no model)
 
 *Serves: "Glue on the fly, no stored cross join" + "Connecting local charts" (a relation between two tokens' states in ONE problem, nothing
 stored per chart) + THE POINTER WALL. The CHART QUERY found global chart tables memorize (TRAIN +0.024, TEST −0.030).*
