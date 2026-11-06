@@ -56294,3 +56294,40 @@ ceiling is 0.852 (disclosed; the consumed rule is the pin's).
   consumed), the question's chart (the question numeral / noun's state leaf, not the unit heuristic), the sibling operand's chart (b given
   a). Each is a table arm in this same oracle (zero GPU) before any native phase-binding embedding is built; the embedding's chart planes
   are justified by PC-C/PC-G.
+
+### 2026-11-06 06:12 — UNIT-BIND VERDICT (landed 11-05 18:37): UB-0 PASS, UB-1/2/3 FAIL (4/4 predicted; 132/184); placebo not run (as pinned)
+
+`.cache/gsm_ub_verdict.txt` (tinygrad, both sides; comparator BT4RB8): **UB-0 FIT PASS** ORIG step 0.9557 / 0.9493. **UB-1 FAIL** TEST step op
++0.0186 / −0.0191 (mean −0.0003). **UB-2 FAIL** TEST type +0.0025 / −0.0244 (mean −0.0109). **UB-3 FAIL** TEST step +0.0035 / −0.0226 (mean
+−0.0096). Beside: TEST ptr 0.2124 / 0.1860 vs 0.2154 / 0.2144; CFNAME step 0.7941 / 0.8247 vs 0.8086 / 0.8464. The seeds disagree in sign on
+every bar: units phase-bound per problem on the role road buy nothing on TEST. UNIT-BIND closes as a form; UBP was not run (UB-1 gate).
+
+### 2026-11-06 06:12 — SEALED OP HEAD VERDICT (landed 11-05 22:49): SO-S/P/H PASS, SO-1/2 FAIL (5/5 predicted; 137/189) — the seal holds and the head reaches the table on gold operands (0.591), but on its own operands TEST op COLLAPSES to 0.35 (−0.127)
+
+`.cache/gsm_so_verdict.txt`: **SO-S PASS** ORIG op 0.5371 / 0.5461 (≤ 0.70: no memorization through the DTO). **SO-P PASS** ORIG ptr 0.9587 /
+0.9687. **SO-H PASS** TEST op on gold operands 0.5910 / 0.5910 (the table read 0.5905; identical on both seeds to 4 places, the head
+converges to the table). **SO-1 FAIL** TEST op −0.1244 / −0.1287 (0.344 / 0.356 vs 0.468 / 0.485). **SO-2 FAIL** TEST step −0.0659 / −0.0654.
+Beside: TEST ptr 0.1828 / 0.1941 (vs 0.2154 / 0.2144: op-blind pointers lose 0.03), TEST type 0.2154 / 0.2207 (vs 0.30), ORIG step 0.52 /
+0.53 (vs 0.95), CFNAME step 0.43 / 0.44.
+- **Reading:** a text-blind DTO decision does NOT degrade gracefully: on the wrong operands it is worse than the text's guess (0.35 < 0.47),
+  and its ceiling (0.59) caps ORIG too. The text's op signal is real information the DTO lacks (ORIG 0.98 vs 0.54 is not all memorization:
+  CFNAME, a re-worded fit, falls 0.81 → 0.43). The dependency rule as a HARD seal closes as a form; the DTO's +0.12 on gold operands stays
+  banked as evidence for a DTO FIELD beside the text (an invitation the residual-seal law warns about) or for fixing the pointers first.
+  The pointer wall is confirmed the first wall.
+
+### 2026-11-06 06:13 — THE CHART QUERY PINNED (Bryce: "word given for the chart query arms"; zero GPU, no model)
+
+*Serves: "Connecting local charts (centroids in the Tree)" (a chart-to-chart transition table IS a connection between local charts) +
+"Discover the structure" (pointers are the graph) + THE POINTER WALL (confirmed the first wall by SO).* The POINTER-CHART ORACLE found the
+keys sufficient (the gold leaf unique 0.837 of 0.852) and the query poor (type + role: 0.52). Which context names the operand's chart?
+- **Same frame** as the oracle (`scripts/gsm_ptrchart_oracle.py`: same rows, candidates, consumed rule, Tree, tables on TRAIN gold, backoff
+  < 5). **Base = ST512** (the oracle's best TEST arm, 0.5232; chosen after its read, disclosed). Each query arm adds a pointwise term
+  log P(c64 | qkey) − log P(c64 | role) for the candidate's ST64 chart (0 when the qkey's TRAIN count < 5):
+  **Q-PREV** qkey = (role, the ST64 chart of the most recently consumed token; "none" at the first token step) — the chart transition;
+  **Q-QN** qkey = (role, the question's chart: k-means 16 on TRAIN states of the question noun — the content word after "how many / much",
+  else the token before the last "?") ; **Q-SIB** (role b only) qkey = (op, the ST64 chart of operand a's gold token; none if a is not a
+  token) ; **Q-ALL** (PRIMARY) = base + all three terms.
+- **Bars (TEST):** **QC-1:** Q-ALL − ST512 ≥ +0.020. **QC-G:** Q-ALL TRAIN − TEST ≤ 0.05. **QC-H (half the headroom):** Q-ALL ≥ 0.6876 =
+  (0.5232 + 0.852) / 2. Beside: each single arm − ST512.
+- **PREDICTIONS:** QC-1 PASS (the previous chart: steps chain through nearby quantities); QC-G PASS; **QC-H FAIL** (the query's knowledge
+  of WHICH quantity lives in the step's meaning, not in its neighbours' charts).
