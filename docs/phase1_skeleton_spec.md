@@ -56353,3 +56353,17 @@ keys sufficient (the gold leaf unique 0.837 of 0.852) and the query poor (type +
 - **Named next (not pinned): THE RELATIONAL QUERY** — glue on the fly: score a candidate by its per-problem relation to the context (the
   similarity of its state to the question noun's, to the previous operand's, to operand a's), no table, nothing stored to memorize; then the
   phase form (bind the context, unbind against the candidates) if the relation carries.
+
+### 2026-11-06 06:27 — THE RELATIONAL QUERY PINNED (Bryce: "word given for the relational query"; zero GPU, no model)
+
+*Serves: "Glue on the fly, no stored cross join" + "Connecting local charts" (a relation between two tokens' states in ONE problem, nothing
+stored per chart) + THE POINTER WALL. The CHART QUERY found global chart tables memorize (TRAIN +0.024, TEST −0.030).*
+- **Same frame** as the CHART QUERY (`scripts/gsm_chartquery_oracle.py`'s rows, candidates, consumed rule, Tree, base ST512 = 0.5232 TEST).
+  Relations = the cosine of the candidate's RB8 state (L2-normalized) to a context token's state in the same problem:
+  **R-QN** the question noun (the CHART QUERY's qnoun) ; **R-PREV** the most recently consumed token (0 when none) ; **R-SIB** (role b) operand
+  a's gold token (0 when a is not a token) ; **R-ALL (PRIMARY)** all three.
+- **Combination:** a conditional logit over each row's candidates, features = [the base score, each relation x role (role-specific
+  weights)], fit on TRAIN gold rows by L-BFGS (≤ 7 parameters: nothing to memorize), applied to TEST; single arms fit their own weights.
+- **Bars (TEST):** **RQ-1:** R-ALL − ST512 ≥ +0.020. **RQ-G:** R-ALL TRAIN − TEST ≤ 0.05. **RQ-H:** R-ALL ≥ 0.6876 (half the headroom).
+  Beside: each single arm − ST512; the fitted weights.
+- **PREDICTIONS:** RQ-1 PASS (a step's operands share context: "5 apples ... 3 apples"); RQ-G PASS (7 parameters); **RQ-H FAIL**.
