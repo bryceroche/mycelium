@@ -56489,3 +56489,18 @@ jit_cache attribute; disclosed).
   The lfsr chain's own dry run also exited 0 (artifacts deleted).
 - **Queue:** lfsr (BT4RB8_5k s0 / s1, ~1.2 h incl. scoring) -> SR-1 -> lfpp (PP at 5k vs BT4RB8_5k if SR-1 PASSES, else 18k vs BT4RB8) ->
   the per-pointer reads (CPU) -> the PP verdict.
+
+### 2026-11-06 10:35 — THE SHORT-RUN RULE: SR-1 FAIL (prediction PASS, wrong; 143/198) — the rule is struck, 18k stays (verdict landed 08:00)
+
+`.cache/gsm_sr_verdict.txt` (unit lfsr, tinygrad GPU, BT4RB8 flags, 5,000 steps vs the banked 18k BT4RB8):
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| SR-1: \|TEST step all 5k − 18k\| ≤ 0.010 both | −0.0030 | −0.0118 | **FAIL ✗** |
+
+- Beside: TEST ptr 0.2092 / 0.1998 vs 0.2154 / 0.2144; TEST op 0.4754 / 0.4648 vs 0.4683 / 0.4847; TEST type 0.3027 / 0.3024 vs 0.3012 /
+  0.3095; ORIG step 0.70 / 0.69 vs 0.95 / 0.97 (5k is far from fitted).
+- **Reading:** s0 sits inside the band, s1 misses by 0.002; the pointer column drops on both seeds (−0.006 / −0.015). Per the pin the rule is
+  struck and 18k stays; lfpp therefore took its FAIL branch (PP at 18k vs BT4RB8). Speed has to come from the kernels (BEAM), not from cutting
+  steps. My prediction was wrong.
+- lfpp: PP_s0 done (FINAL TEST step 0.156, ptr 0.202), PP_s1 running (step 2000 at 10:35); the verdict follows the per-pointer reads.
