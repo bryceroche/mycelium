@@ -56556,3 +56556,24 @@ jit_cache attribute; disclosed).
   +0.010, both > 0. **ZQ-2** TEST step all, same form. **ZQ-E (the mechanism)** the key-chart probe's KP-E on the ZQ weights: wrong picks in a
   valid chart ≥ 0.15 on both seeds (BT4RB8 0.046; base rate 0.042), i.e. the query now asks for the chart.
 - **PREDICTIONS:** ZQ-E PASS; ZQ-R PASS; ZQ-1 FAIL; ZQ-2 FAIL (the cascade, as PP's pin).
+
+### 2026-11-06 12:21 — THE ZOOMING QUERY built + 4 gates PASS; queued as lfzq behind lfpp (with the PP census and the BEAM profile)
+
+- **Built:** `scripts/gsm_chart_build.py` -> `.cache/gsmb_chart64_rb8.npy` (53,431 numerals over every split, all 64 charts in use; TRAIN
+  takes its fit labels); `scripts/patches/zoom_query.py` (staged; applied after phase_ptr; 4 + 9 anchored edits); `scripts/gsm_zq_verdict.py`;
+  `scripts/gsm_pp_census.py`; `scripts/gsm_keychart_probe.py` takes `KP_TAG` (the banked read keeps its file names); `.cache/run_lfzq.sh`.
+- **A design fix found by a gate (before any run):** with the chart keys at 0 the uncentred log p(chart) = −log 65 lands on TOKEN logits only
+  (slots and consts untouched), a −4.2 nat handicap on every token pointer at init (ZQ=1 at zck = 0 moved TEST ptr items). **Centred:** the term
+  is log p(chart | q) + log 65 (a uniform search adds 0), both engines. The pin's form is otherwise unchanged.
+- **Gates:** (1) BT_ZQ=0 patched vs live on banked BT4RB8_s0 (torch score, ORIG / TEST 128): all 18 per-item arrays identical; BT_ZQ=1 with zck = 0:
+  identical; at the init scale (0.02): pointer items identical. (2) torch vs tinygrad, BT_ZQ=1, init weights with zck x100: read 5.5e-6, logit
+  ≤ 2.4e-6, pa ≤ 4.4e-6, pb ≤ 5.3e-6; on banked weights (|x| to 80) 1e-4-level, the read alone already 1.8e-4 (pre-ZQ float noise); the road is
+  live (zck x100 vs 0: pa moves up to 3.4, 54% of argmaxes move). (3) 40-step smoke: tinygrad = torch to 4 decimals (4.0874 / 3.5631 / 3.5704 /
+  3.3435). (4) the dry run of `.cache/run_lfzq.sh` itself on a fresh copy of the live (PP-patched) scripts: patch, two 2-step runs, both reads,
+  the verdict, exit 0; artifacts deleted.
+- **The PP census, previewed on PP_s0 (the chain re-runs it on both seeds; banked with the PP verdict):** the base token logit (gains 0) has std
+  34.0 / 33.6 nats (roles a / b, numerals the kind mask leaves open); the trained relations add qn_a 0.19, prev_b 0.49, sib_b 1.37 (≤ 0.04x
+  the base). Trained gains qn_a 1.47, prev_b 1.78, sib_b −4.16. **The relational road is drowned:** its term is bounded (|g| x a mean cosine)
+  while q · kt is not. ZQ does not share the flaw: its chart logits come from the same q and scale with it.
+- **Queue:** lfpp (PP_s1 at step 14000 at 12:04) -> lfzq: the PP census -> patch -> ZQ s0 / s1 (18k, ~2.2 h each) -> the per-pointer read +
+  the key-chart probe on ZQ -> the ZQ verdict -> the BEAM profile (BEAM=2, 300 steps; timeout 4 h; a measurement).

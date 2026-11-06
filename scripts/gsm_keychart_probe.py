@@ -11,6 +11,8 @@ import json, os, sys
 for k_, v_ in dict(BT_D="512", BT_NH="8", BT_DB="64", BT_CYCLOCK="1", BT_ZOOM="1", BT_ROLE="1", BT_T6OFF="1",
                    RD_STATES="gsmb_rb8_states.npy", BT_ROLEF="gsmb_role_feats_rb8.npy").items():
     os.environ[k_] = v_                                                         # BT4RB8's own flags
+TAG = os.environ.get("KP_TAG", "BT4RB8")                                       # (ledger 11-06 ZQ) the weights read: .cache/gsmb_breath_{TAG}_s{0,1}.pt
+OUT = "" if TAG == "BT4RB8" else f"_{TAG}"                                     # (an arm's flags, e.g. BT_ZQ=1, come from the caller's env)
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -113,11 +115,11 @@ o["raw_ST64"] = probe(X["TRAIN"], X["TEST"], lab64["TRAIN"], lab64["TEST"]); o["
 o["rp512_ST64"] = probe(X["TRAIN"] @ RP, X["TEST"] @ RP, lab64["TRAIN"], lab64["TEST"])
 print(f"[kp] raw ST64 {o['raw_ST64']:.4f} ST8 {o['raw_ST8']:.4f} | random-512 ST64 {o['rp512_ST64']:.4f}", flush=True)
 for s in (0, 1):
-    net = BR.make_net(); net.load_state_dict(torch.load(f".cache/gsmb_breath_BT4RB8_s{s}.pt")); net.eval()
+    net = BR.make_net(); net.load_state_dict(torch.load(f".cache/gsmb_breath_{TAG}_s{s}.pt")); net.eval()
     (Ftr, _), (Fte, pk) = read(net, "TRAIN"), read(net, "TEST")
     o[f"s{s}"] = dict(xq_ST64=probe(Ftr, Fte, lab64["TRAIN"], lab64["TEST"]), xq_ST8=probe(Ftr, Fte, lab8["TRAIN"], lab8["TEST"]), **kinds(pk))
     print(f"[kp] s{s} {o[f's{s}']}", flush=True)
-json.dump(o, open(".cache/gsm_keychart_probe.json", "w"), indent=1)
+json.dump(o, open(f".cache/gsm_keychart_probe{OUT}.json", "w"), indent=1)
 
 r = np.mean([o[f"s{s}"]["xq_ST64"] for s in (0, 1)]) / o["raw_ST64"]
 band = "CARRIED" if r >= 0.90 else "DROPPED" if r < 0.70 else "PARTIAL"
@@ -129,4 +131,4 @@ L = [f"numerals TRAIN {len(keys['TRAIN'])} TEST {len(keys['TEST'])} | probe TEST
      f"KP-E: wrong picks (n {f2('n_wrong')}) in a valid candidate's ST64 chart {f2('addr64')} (mean {e:.4f}) -> "
      f"{'ADDRESS errors dominate' if e >= 0.50 else 'CHART errors dominate'} (bar 0.50)",
      f"  beside: random-wrong base rate {f2('base64')} | at ST512 {f2('addr512')}"]
-print("\n".join(L)); open(".cache/gsm_keychart_probe_verdict.txt", "w").write("\n".join(L) + "\n")
+print("\n".join(L)); open(f".cache/gsm_keychart_probe{OUT}_verdict.txt", "w").write("\n".join(L) + "\n")
