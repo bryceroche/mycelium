@@ -56474,3 +56474,18 @@ jit_cache attribute; disclosed).
 - **Reading:** the step is GPU-bound in the kernels, not in host glue (my pre-profile guess, "host glue", is struck), and not FLOP-bound
   either (~1 TFLOP in 0.31 s ≈ 3 TFLOP/s vs the card's ~60 fp16): many small kernels. The next lever is kernel-side: BEAM search (the 8M
   reader took 1.77x from BEAM=2, 11-03) before any precision change; fp16 only if a BEAM'd profile shows bandwidth-bound kernels.
+
+### 2026-11-06 07:01 — PHASE-BOUND POINTERS built + 4 gates PASS; queued as lfpp behind lfsr (THE SHORT-RUN RULE's comparator, launched 06:50)
+
+- **Built:** `scripts/patches/phase_ptr.py` (staged; both engines; 9 + 15 anchored edits), `scripts/gsm_pp_verdict.py`, `.cache/run_lfpp.sh`;
+  `scripts/gsm_reader_ptr_read.py` takes `RP_TAG` / `RP_PHPTR` (the banked read keeps its file names). Params 6,583,927 (+16,582: pth 512x32,
+  psi 3x2x32, gains 3x2).
+- **Gates:** (1) BT_PHPTR=0 patched vs unpatched on banked BT4RB8_s0 (torch score, ORIG / TEST 128): all 18 per-item arrays identical.
+  (2) BT_PHPTR=1 torch vs tinygrad from a shared init with psi random and every gain live: training form logit ≤ 2.2e-6, pa ≤ 2.8e-6, pb ≤
+  2.4e-6; inference form the same; the prev mask live on 82 / 160 slots; the road is live (zeroing the gains moves pa up to 0.83, pb 0.52);
+  the torch scorer runs under PHPTR. (3) 40-step smoke: tinygrad = torch to 4 decimals (4.1042 / 3.5695 / 3.5771 / 3.3463). (4) The dry run of
+  `.cache/run_lfpp.sh` itself on a fresh unpatched copy (DRY_SR=PASS): patch, two 2-step runs, the per-pointer read on their weights, the
+  verdict vs the banked BT4RB8 read, exit 0 (the first attempt died on the copy root's missing .cache link, no artifacts); artifacts deleted.
+  The lfsr chain's own dry run also exited 0 (artifacts deleted).
+- **Queue:** lfsr (BT4RB8_5k s0 / s1, ~1.2 h incl. scoring) -> SR-1 -> lfpp (PP at 5k vs BT4RB8_5k if SR-1 PASSES, else 18k vs BT4RB8) ->
+  the per-pointer reads (CPU) -> the PP verdict.
