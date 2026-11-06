@@ -56520,3 +56520,20 @@ jit_cache attribute; disclosed).
 - **PREDICTIONS:** KP-1 CARRIED (the charts are k-means of the same states the reader reads); KP-E CHART errors dominate (with ~4 candidates
   and 64 charts, same-chart collisions are rare). Reading rule: CARRIED + CHART-dominated = the chart is in the key but the QUERY does not
   ask for it -> the next form is query-side (what the slot asks for), not a token-side skip; DROPPED = room for the token-side chart skip.
+
+### 2026-11-06 10:48 — THE KEY-CHART PROBE: KP-1 CARRIED, KP-E CHART errors dominate (2/2 predicted; 145/200)
+
+`scripts/gsm_keychart_probe.py` (unit lfkp, CPU, banked BT4RB8 s0 / s1) -> `.cache/gsm_keychart_probe.json` + `_verdict.txt`.
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| KP-1: r = acc(xq) / acc(raw), ST64 TEST | 0.9605 / 0.9852 | 0.9639 / 0.9852 | r 0.9767: **CARRIED ✓** |
+| KP-E: wrong picks in a valid candidate's ST64 chart | 0.0474 (n 1267) | 0.0455 (n 1275) | mean 0.0464: **CHART errors dominate ✓** |
+
+- Beside: random-512 projection of the raw state 0.9834 (the dimension costs nothing); ST8 raw 0.9951 / xq 0.987; the random-wrong base rate
+  0.0432 / 0.0404; at ST512 0.0095 / 0.0149.
+- **Reading:** the chart is in the key's input (0.96 linearly decodable), yet the BT's wrong picks land in a valid chart at the RANDOM BASE RATE
+  (0.046 vs 0.042): with gold types and gold history the pointer's errors are chart-blind, and address errors (right chart, wrong token) are
+  ~5% of errors. The token side is not the deficit; **the slot's QUERY does not ask for the target chart.** The token-side chart skip and
+  address-bound values would carry what is already carried: not built. The next form is query-side: the slot predicts the target chart
+  (coarse-to-fine: chart, then address; the "zoom out on the Tree" line), to be pinned after the PP verdict.
