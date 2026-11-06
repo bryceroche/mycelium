@@ -56331,3 +56331,25 @@ keys sufficient (the gold leaf unique 0.837 of 0.852) and the query poor (type +
   (0.5232 + 0.852) / 2. Beside: each single arm − ST512.
 - **PREDICTIONS:** QC-1 PASS (the previous chart: steps chain through nearby quantities); QC-G PASS; **QC-H FAIL** (the query's knowledge
   of WHICH quantity lives in the step's meaning, not in its neighbours' charts).
+
+### 2026-11-06 06:19 — CHART QUERY VERDICT: QC-1 / QC-G / QC-H FAIL (1/3 predicted; 138/192) — every context table HURTS TEST (−0.004 to −0.030) while fitting TRAIN: chart-to-chart statistics do not transfer
+
+`scripts/gsm_chartquery_oracle.py` -> `.cache/gsm_chartquery_oracle.json` / `_verdict.txt`. Sanity: base ST512 reproduces the oracle's
+0.5480 / 0.5232 exactly (same Tree). Query keys live on TEST: PREV 0.998, QN 1.000, SIB 0.299.
+
+| arm | TRAIN | TEST | vs ST512 (TEST) |
+|---|---|---|---|
+| ST512 (base) | 0.5480 | 0.5232 | |
+| Q-PREV | 0.5645 | 0.5193 | −0.0038 |
+| Q-QN | 0.5452 | 0.5074 | −0.0157 |
+| Q-SIB | 0.5538 | 0.5068 | −0.0164 |
+| Q-ALL | 0.5721 | 0.4936 | −0.0295 |
+
+- **QC-1 FAIL** (−0.0295; predicted PASS ✗). **QC-G FAIL** (gap +0.0784 > 0.05; predicted PASS ✗). **QC-H FAIL** (0.4936; ✓).
+- **Reading:** a GLOBAL table over chart IDs (which chart follows which, which chart a question cluster wants) is the cross join again at
+  chart granularity: it fits TRAIN (+0.024) and loses TEST (−0.030). Which quantity a step wants is a relation INSIDE the problem, not a
+  statistic across problems (the binding theorem: concepts are bindings, not classifiable from surface). Limitation: naive-Bayes stacking of
+  the terms double-counts (Q-ALL); each single arm also fails, so the verdict does not rest on the stacking.
+- **Named next (not pinned): THE RELATIONAL QUERY** — glue on the fly: score a candidate by its per-problem relation to the context (the
+  similarity of its state to the question noun's, to the previous operand's, to operand a's), no table, nothing stored to memorize; then the
+  phase form (bind the context, unbind against the candidates) if the relation carries.
