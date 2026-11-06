@@ -56537,3 +56537,22 @@ jit_cache attribute; disclosed).
   ~5% of errors. The token side is not the deficit; **the slot's QUERY does not ask for the target chart.** The token-side chart skip and
   address-bound values would carry what is already carried: not built. The next form is query-side: the slot predicts the target chart
   (coarse-to-fine: chart, then address; the "zoom out on the Tree" line), to be pinned after the PP verdict.
+
+### 2026-11-06 11:59 — Bryce: "word given for the whole queue" — THE ZOOMING QUERY PINNED (before any build); the queue named
+
+- **The queue (the word covers it):** lfpp (PP s1 at 18k -> per-pointer reads -> PP verdict) -> the PP census (CPU, the pin's beside) -> ZQ
+  build + gates (now, on a copy; staged patch) -> ZQ s0 / s1 (GPU, 18k) -> per-pointer + key-chart reads -> ZQ verdict -> the BEAM profile
+  (a measurement, no claim; BEAM-searched kernels change the engine, so no run adopts BEAM without a same-engine comparator).
+- **Serves:** "abstract reasoning = zooming out on the Tree DB" + "connecting local charts" + "MHA searches the Tree" (the pointer zooms:
+  chart first, then address). Evidence: the KEY-CHART PROBE (the chart is in the key, 0.977; wrong picks chart-blind at the base rate).
+- **The form (BT_ZQ=1, patch `scripts/patches/zoom_query.py`, both engines; BT4RB8's flags, PHPTR off):**
+  - The Tree's charts: `.cache/gsmb_chart64_rb8.npy` (int16 per states row): the ST64 node of every numeral (the oracle's nested Tree on
+    RB8 states, fit on TRAIN numerals, seed 0; other splits predicted down the tree); 64 = no chart. Built by `scripts/gsm_chart_build.py`.
+  - 65 learned chart keys zck (65 x D, created LAST, init 0.02 randn). Per slot and role, the bound query q searches the charts:
+    log p(chart | q) = log_softmax_c(q · zck_c / √D); every token's pointer logit += log p(its chart | q) (the coarse level), the existing
+    q · kt term is the fine level. **A mandatory road: no gain.** No new loss: the pointer CE splits into chart CE + within-chart CE.
+  - BT_ZQ=0 leaves every init draw, tensor and array as before.
+- **Bars (vs BT4RB8 at 18k, same engine, s0 / s1):** **ZQ-R** per-pointer RESTR TEST mean ≥ +0.020, both > 0. **ZQ-1** TEST step ptr mean ≥
+  +0.010, both > 0. **ZQ-2** TEST step all, same form. **ZQ-E (the mechanism)** the key-chart probe's KP-E on the ZQ weights: wrong picks in a
+  valid chart ≥ 0.15 on both seeds (BT4RB8 0.046; base rate 0.042), i.e. the query now asks for the chart.
+- **PREDICTIONS:** ZQ-E PASS; ZQ-R PASS; ZQ-1 FAIL; ZQ-2 FAIL (the cascade, as PP's pin).
