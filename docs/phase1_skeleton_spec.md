@@ -56738,3 +56738,33 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
   pinned):** (a) **CF-stable charts**: a Tree whose charts are fit to be invariant across the CF pairs (ORIG ↔ CFNUM / CFNAME numerals as
   positives; the fixture's TRAIN side only), with the stability read as its gate (≥ 0.90 at ST64) before any pointer touches it; (b) the
   level-0 seal (8 charts, 0.84–0.85 stable) as a cheaper probe of the same question, oracle first, CF splits included.
+
+### 2026-11-07 00:31 — Bryce: "lets build layers of charts ... the .net 3 tier architecture ... each layer of the architecture needs its own set of charts" — THE TIER CENSUS PINNED (zero GPU; before any read)
+
+**Theory line:** connecting local charts (CORE_THEORIES) + the binding theorem (concepts are bindings, not surface) + hill "tests +
+contracts". **The architecture (Bryce's tiers in Mycelium's terms):** a tier is defined by its INVARIANCE CONTRACT — which counterfactual
+edits its charts must ignore and which they must follow. Levels (coarse-to-fine) live INSIDE a tier; tiers are different spaces.
+
+| Tier (.NET) | Mycelium | Must ignore | Must follow |
+|---|---|---|---|
+| UI | surface: names, vocabulary, the per-problem volatile keys (T9 stamp, entity id) | — (per problem; never a global chart) | names |
+| Business | role charts: what a numeral DOES in the program (op, side, distractor) | CFNAME and CFNUM | the program |
+| Data | values: magnitude phases; exact values live in the executor, never in the reasoning state (alternation ruling) | CFNAME | the numbers |
+| Database | the Tree DB itself (Welford / BIRCH), one table set per tier | — | — |
+
+The CS FAIL in these terms: the 64 charts were fit on raw reader states, a monolith of all three tiers (stability 0.50 / 0.49), and the
+pointer was sealed to a business decision on them.
+
+**The census (zero GPU; `scripts/gsm_tier_census.py`):** for each candidate representation of numerals, the oracle's Tree recipe (k-means
+8 x 3 levels, fit on TRAIN numerals, seed 0, L2-normalized), then on ORIG items paired to CFNUM / CFNAME by gid:
+- **STAB**: share of numerals keeping their ST8 / ST64 chart under each edit;
+- **ISO** (usefulness; a constant chart is stable and worthless): over the oracle's token-operand rows on ORIG / CFNUM / CFNAME / TEST, the
+  share where the gold operand's ST64 chart differs from every non-valid candidate's (the chart alone isolates it).
+Candidates: (A) raw RB8 states (the CS charts; STAB must reproduce 0.504 / 0.493); (B) the role features (14-d, the Tree's certified-role
+memory; keyed on (prev, tok, next), so partly surface by construction); (C) BT4RB8 s0 xq (the pointer's key input); (D) the gold role
+label (7 classes; the ceiling: STAB 1.0 by construction, its ISO the best a pure business chart could do).
+- **Bar T2 (the business tier exists among A–C):** some candidate has STAB ≥ 0.90 at ST64 on BOTH edits AND ISO on TEST ≥ (A)'s ISO on
+  TEST. PASS -> it is the business tier's substrate (its pointer oracle is read next, CF splits included). FAIL -> no existing
+  representation is a business tier; the next form builds one by construction (states of a names/numbers-abstracted view), never by
+  fitting invariance on the CF fixture (it is the measurement; my 00:10 form (a) "CF pairs as positives" is STRUCK for that reason).
+- **Predictions:** (A) reproduces; (B) STAB below 0.90 on CFNUM (the tok key); (C) STAB below 0.90; **T2 FAIL**.
