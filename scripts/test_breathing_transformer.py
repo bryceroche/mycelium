@@ -96,6 +96,10 @@ m1 = chart_mass(bt.breath(io, 0), kc)
 check("THE SEAL: the micro score cannot move mass between charts", np.allclose(m0, m1, atol=1e-5), f"max shift {np.abs(m0 - m1).max():.2e}")
 cr.k.weight = Tensor(w0).contiguous()
 
+o1 = bt.breath(io, 1)
+check("token self-attention runs on breath 0 only (default)", "token_self" in out["logp"] and "token_self" not in o1["logp"]
+      and np.allclose(o1["h"]["token"].numpy(), io.h["token"].numpy()))
+
 # 6. keys never pass the waist; queries do (a BT with the cross road only)
 c1 = BTM.BTConfig(**{**CFG, "roads": tuple(r for r in CFG["roads"] if r.name in ("cross",))}); Tensor.manual_seed(0)
 b1 = BTM.BreathingTransformer(c1); io1, _ = inputs(b1)

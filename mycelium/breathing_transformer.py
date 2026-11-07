@@ -19,7 +19,8 @@ THE SPEC (each line is enforced by construction here; `scripts/test_breathing_tr
     weight). The match is the conjugate unbind, Re(e^{i q} e^{-i k}) = cos(q - k), averaged over the factor's planes. The query's
     angle = its own stamp + a learned turn (zero-init): queries rotate, keys never do.
   - THREE SEPARATE ROADS per breath block, each its own softmax, heads, tier tables and contract: token self-attention, slot
-    self-attention (relations), slot -> token cross-attention. POINTER roads use the same scorer and return log-probs instead of
+    self-attention (relations), slot -> token cross-attention (a road may run on a subset of breaths: RoadSpec.breaths; token
+    self-attention defaults to breath 0). POINTER roads use the same scorer and return log-probs instead of
     writing a residual.
   - THE TWO-TIER SOFTMAX on a road with charts: log p(key) = log p(chart(key) | q) + log p(key | chart, q). Tier 1 (macro) is the
     waist's query against the head's Tree chart centroids; tier 2 (micro) is content + composite-key match within the chart. The
@@ -88,17 +89,22 @@ class RoadSpec:
     match: tuple                               # per head: tuple of factor names
     n_charts: tuple = ()                       # per head (empty = no charts on this road)
     residual: bool = True                      # False = a POINTER road (returns log-probs, writes nothing)
+    breaths: tuple = None                      # the breaths this road runs on (None = every breath); the weights are the same
+
+    def runs(self, b):
+        return self.breaths is None or b in self.breaths
 
     def charted(self):
         return any(c > 0 for c in self.n_charts)
 
 
-def default_roads(n_heads=8, n_charts=0, pointer_heads=1):
-    """The three roads of the ruling + one pointer road. Token self matches token address (T9) and identity; slot self matches slot
+def default_roads(n_heads=8, n_charts=0, pointer_heads=1, token_breaths=(0,)):
+    """The three roads of the ruling + one pointer road. Token self-attention runs on breath 0 only by default (Bryce 11-07: "we dont
+    have to run token self attention every breath"; token_breaths=None = every breath). Token self matches token address (T9) and identity; slot self matches slot
     order + breath time; cross matches the token address and the Tree table/level; every head of a road shares the default match
     (heads still specialize through their weights and their own Tree partitions)."""
     cc = lambda h: (n_charts,) * h if n_charts else ()
-    return (RoadSpec("token_self", "token", "token", n_heads, (("t9", "token_id"),) * n_heads),
+    return (RoadSpec("token_self", "token", "token", n_heads, (("t9", "token_id"),) * n_heads, breaths=token_breaths),
             RoadSpec("slot_self", "slot", "slot", n_heads, (("slot_id", "t6"),) * n_heads),
             RoadSpec("cross", "slot", "token", n_heads, (("t9", "table", "level"),) * n_heads, cc(n_heads)),
             RoadSpec("pointer", "slot", "token", pointer_heads, (("t9", "table", "level"),) * pointer_heads, cc(pointer_heads), False))
@@ -355,6 +361,7 @@ class BreathingTransformer:
         tau = self.c.tau(b); h = dict(io.h); lps = {}
         for blk in self.blocks:
             for spec in self.c.roads:
+                if not spec.runs(b): continue
                 s, k = spec.query, spec.key
                 z, u = self.waist[s](h[s])
                 hq, lp = blk.roads[spec.name](h[s], z, u, h[k], io.angles[s], io.angles[k], io.presence[k], io.valid[spec.name],
