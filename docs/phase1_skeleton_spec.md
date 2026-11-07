@@ -56692,3 +56692,12 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
   artifacts deleted.
 - **The CS-C baseline banked:** the key-chart probe re-run on BT4RB8 reproduces every banked key exactly; hit64 0.6990 / 0.6965.
 - lfbeam (the BEAM=2 rerun, PARALLEL=0, launched 16:50) is still searching; the CS chain waits for it (the gpu lock + an is-active wait).
+
+### 2026-11-06 18:38 — THE BEAM PROFILE (rerun, PARALLEL=0) stopped: host memory leak; no reading
+
+- lfbeam (BEAM=2, PARALLEL=0, launched 16:50) was at 1 h 47 min of kernel search with no profile line yet; the process held 23.9 GB resident
+  of the box's 30 GB and grew ~270 MB/min (three 20 s samples), 4 GB available: an OOM kill within ~15 min. Stopped by `systemctl --user
+  stop lfbeam` at 18:38 (memory back to 27 GB available); the banked BEAM=0 profile is intact. **No BEAM reading banked.** Both attempts died
+  on the host side (lock contention, then memory), not on a measurement. Next form for the speed line, if wanted: BEAM on one jitted step
+  with a bounded search (`BEAM_UPCAST_MAX` / fewer TG_STEPS, `CACHELEVEL` on), memory watched; not re-fired without the word.
+- The GPU is free; the CS chain no longer waits on anything but the word.
