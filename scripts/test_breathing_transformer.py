@@ -133,11 +133,29 @@ with Tensor.train():
     nbx = O.Notebook(B, K, LT); nbx.write(0, 0, atom=1, radius=0.5, cert=[0, 1, 0], tick=0)
     hs2 = bt2.enter_slots(**nbx.tensors(), belief=nb_belief, atoms=Tensor(np.ones((5, 8), np.float32)))
     loss = sum(v.exp().mul(v.clip(-50, 0)).sum() for v in o2["logp"].values()) + o2["h"]["token"].square().mean() \
-        + o2["h"]["slot"].square().mean() + o2["z"]["slot"].square().mean() + hs2.square().mean()
+        + o2["h"]["slot"].square().mean() + o2["z"]["slot"].square().mean() + hs2.square().mean() \
+        + bt2.silhouette_logp(o2["z"]["slot"], Tensor(np.ones((5, 8), np.float32)), 1.0)[..., 0].mean() \
+        + bt2.condition(o2["h"]["slot"], Tensor(np.zeros((B, K), np.int32)), Tensor.ones(B, K), Tensor(np.ones((5, 8), np.float32))).square().mean()
     loss.backward()
 sd = bt2.state_dict(); idp = {id(v): k for k, v in sd.items()}
 none = [idp.get(id(p), "?") for p in ps if p.grad is None]
 check("every parameter gets a gradient (the two-terminal law)", not none, ", ".join(none[:6]))
+
+# 9b. per-example temperature, constants, marks, a road subset
+cx = BTM.BTConfig(**{**CFG, "n_const": 4, "d_mark": 1, "roads": CFG["roads"] + (BTM.RoadSpec("ptr_const", "slot", "const", 1, ((),), residual=False),)})
+Tensor.manual_seed(0); bx = BTM.BreathingTransformer(cx); iox, _ = inputs(bx)
+iox.valid["ptr_const"] = Tensor.ones(B, K, 4).cast("bool")
+ox = bx.breath(iox, 0, tau=Tensor([2.0, 0.5]))
+lc = ox["logp"]["ptr_const"].numpy()
+check("const key stream: a pointer over the learned constants", lc.shape == (B, 1, K, 4) and np.allclose(np.exp(lc).sum(-1), 1, atol=1e-4))
+e_ = lambda v: -(np.exp(v) * v).sum(-1).mean(axis=(1, 2))
+ep = e_(ox["logp"]["pointer"].numpy())
+check("per-example tau: the tau 0.5 example reads sharper than the tau 2.0 one", ep[1] < ep[0], f"{ep[0]:.3f} vs {ep[1]:.3f}")
+o_nm = bx.breath(iox, 0, roads=("cross",))
+iox.marks = {"token": Tensor(np.ones((B, LT, 1), np.float32))}
+om = bx.breath(iox, 0, roads=("cross",))
+check("a road subset runs only those roads; marks change the read", set(om["logp"]) == {"cross"}
+      and np.abs(om["logp"]["cross"].numpy() - o_nm["logp"]["cross"].numpy()).max() > 1e-4)
 
 # 10. the organs
 t6 = O.T6Clock(span=6)

@@ -39,7 +39,8 @@ from tinygrad import Tensor, dtypes, nn
 
 from mycelium import rotor_clock as CK
 
-STREAMS = ("token", "slot")
+STREAMS = ("token", "slot")                    # query streams (each has a waist)
+KEY_STREAMS = STREAMS + ("const",)             # key streams: + the learned constants (no stamps, no waist)
 
 
 # ---- CONFIG ------------------------------------------------------------------------------------------------------------------------
@@ -119,6 +120,9 @@ class BTConfig:
     d_head: int = 64
     d_chart: int = 64                          # the macro chart space (read off the waist)
     d_cert: int = 3                            # the notebook's certificate features per slot
+    d_aux: int = 0                             # extra token features entering without the reader LN (0 = none)
+    d_mark: int = 0                            # per-breath mark features per stream (e.g. consumed marks; 0 = none)
+    n_const: int = 0                           # learned constant keys (the 'const' key stream)
     n_atoms: int = 0                           # the Tree atoms the notebook commits slots to (0 = no atom entry)
     n_breaths: int = 6
     blocks_per_breath: int = 1                 # blocks inside one breath (distinct weights); breaths reuse them
@@ -139,7 +143,7 @@ class BTConfig:
         names = [f.name for f in self.factors]
         assert len(set(names)) == len(names), f"duplicate factor names: {names}"
         for r in self.roads:
-            assert r.query in STREAMS and r.key in STREAMS, r
+            assert r.query in STREAMS and r.key in KEY_STREAMS, r
             assert len(r.match) == r.n_heads, f"road {r.name}: one match tuple per head"
             assert not r.n_charts or len(r.n_charts) == r.n_heads, f"road {r.name}: one chart count per head"
             for m in r.match:
@@ -220,6 +224,12 @@ class KeyLayout:
 
 
 # ---- THE PIECES ------------------------------------------------------------------------------------------------------------------------
+def _over_tau(x, tau):
+    """x / tau: tau a float, or a (B,) Tensor (per-example breath, as in masked-diffusion training) broadcast over x's trailing dims"""
+    if isinstance(tau, Tensor): return x / tau.reshape(-1, *([1] * (x.ndim - 1)))
+    return x * (1 / tau)
+
+
 def _zero_linear(i, o):
     l = nn.Linear(i, o); l.weight = Tensor.zeros(o, i).contiguous(); l.bias = Tensor.zeros(o).contiguous(); return l
 
@@ -263,7 +273,7 @@ class Road:
         kp = self.L.presence_planes(kpres).unsqueeze(1)                                            # (B, 1, Lk, P)
         qid = Tensor.cat(a.cos() * w[None, :, None], a.sin() * w[None, :, None], dim=-1)
         kid = Tensor.cat(ka.cos().unsqueeze(1) * kp, ka.sin().unsqueeze(1) * kp, dim=-1)           # Re(e^{iq} conj e^{ik}) = cos(q - k)
-        F = (q @ k.transpose(-2, -1) + qid @ kid.transpose(-2, -1)) * (1 / tau)
+        F = _over_tau(q @ k.transpose(-2, -1) + qid @ kid.transpose(-2, -1), tau)
         F = F.clip(-c.logit_clip, c.logit_clip)
         m = valid.unsqueeze(1)                                                                      # (B, 1, Lq, Lk)
         if not S.charted() or charts is None:
@@ -278,7 +288,7 @@ class Road:
         dist = []
         for h in range(H):
             Ch = charts[h]; n = Ch.shape[0]; assert n == S.n_charts[h], f"road {S.name} head {h}: {n} charts, spec {S.n_charts[h]}"
-            d = -((zq[:, h].unsqueeze(-2) - Ch) ** 2).sum(-1) * (1 / (math.sqrt(c.d_chart) * tau))   # (B, Lq, n)
+            d = _over_tau(-((zq[:, h].unsqueeze(-2) - Ch) ** 2).sum(-1) * (1 / math.sqrt(c.d_chart)), tau)   # (B, Lq, n)
             dist.append(d.pad((None, None, (0, Cm - n)), value=c.mask_neg) if n < Cm else d)
         lc = Tensor.stack(*dist, dim=1)                                                             # (B, H, Lq, Cm)
         oh = key_charts.one_hot(Cm).cast(dtypes.float)                                             # (B, H, Lk, Cm)
@@ -302,9 +312,10 @@ class Road:
 
 
 class Block:
-    """One block of a breath: every road once, in config order (residual roads update their query stream in place)."""
-    def __init__(self, c, layout):
-        self.roads = {r.name: Road(c, r, layout) for r in c.roads}
+    """One block of a breath: every road once, in config order (residual roads update their query stream in place). Pointer roads
+    (residual False) live in the LAST block only: they read the finished state (an earlier copy would never reach a loss)."""
+    def __init__(self, c, layout, last):
+        self.roads = {r.name: Road(c, r, layout) for r in c.roads if r.residual or last}
 
 
 # ---- THE BREATHING TRANSFORMER --------------------------------------------------------------------------------------------------------
@@ -317,6 +328,7 @@ class BreathIO:
     valid: dict                                # road name -> (B, Lq, Lk) bool (padding, consumed marks, the solver's breaker)
     charts: dict = field(default_factory=dict)       # road name -> per head (C_h, d_chart) Tensor (the Tree's centroids)
     key_charts: dict = field(default_factory=dict)   # road name -> (B, H, Lk) int
+    marks: dict = field(default_factory=dict)        # stream -> (B, L, d_mark) per-breath marks (added at the breath's start)
 
 
 class BreathingTransformer:
@@ -328,18 +340,29 @@ class BreathingTransformer:
     def __init__(self, c: BTConfig):
         self.c = c; self.layout = KeyLayout(c.factors, c.weyl_seed)
         self.tok_in = nn.Linear(c.d_in, c.d_model); self.tok_ln = nn.LayerNorm(c.d_in, eps=c.ln_eps)
+        if c.d_aux: self.aux_in = nn.Linear(c.d_aux, c.d_model)
+        if c.d_mark: self.mark = {s: nn.Linear(c.d_mark, c.d_model) for s in STREAMS}
+        if c.n_const: self.const = (Tensor.randn(c.n_const, c.d_model) * 0.02).contiguous()
         self.waist = {s: Waist(c) for s in STREAMS}
-        self.blocks = [Block(c, self.layout) for _ in range(c.blocks_per_breath)]   # shared by EVERY breath (weight-tied)
+        self.blocks = [Block(c, self.layout, i == c.blocks_per_breath - 1) for i in range(c.blocks_per_breath)]   # shared by EVERY breath
+        self.sil_scale = Tensor.zeros(1).contiguous()                               # the silhouette classifier's learned scale (log)
         self.mask_slot = Tensor.zeros(c.d_model).contiguous()                       # an uncommitted slot's entry
         self.cert = nn.Linear(c.d_cert, c.d_model)
         if c.n_atoms:
             self.reent = nn.Linear(c.d_waist, c.d_model)                             # committed: atom x radius, back up from the waist space
             self.belief = nn.Linear(c.d_waist, c.d_model, bias=False)                # uncommitted: what the BT believes (soft notebook)
+            self.cond_in = nn.Linear(c.d_waist, c.d_model)                           # condition: a decided coarse atom x confidence
 
     # -- entries (the organs' data -> streams) --
-    def enter_tokens(self, x):
-        """(B, Lt, d_in) reader states -> (B, Lt, D)"""
-        return self.tok_in(self.tok_ln(x))
+    def enter_tokens(self, x, aux=None):
+        """(B, Lt, d_in) reader states (+ (B, Lt, d_aux) features entering without the LN) -> (B, Lt, D)"""
+        h = self.tok_in(self.tok_ln(x))
+        return h + self.aux_in(aux) if aux is not None else h
+
+    def condition(self, h, atom, radius, atoms):
+        """A coarse decision written into a stream (the tier hierarchy inside one breath: decide the atom, then address under it):
+        h (B, L, D) + cond_in(radius x atoms[atom]). atom (B, L) int, radius (B, L), atoms (A, d_waist)."""
+        return h + self.cond_in(radius.unsqueeze(-1) * (atom.one_hot(atoms.shape[0]).cast(dtypes.float) @ atoms))
 
     def enter_slots(self, committed, cert, atom=None, radius=None, belief=None, atoms=None):
         """The notebook's write-back -> the slot stream. committed (B, K) bool; cert (B, K, d_cert); atom (B, K) int, radius (B, K),
@@ -356,23 +379,34 @@ class BreathingTransformer:
     def tau(self, b):
         return self.c.tau(b)
 
-    def breath(self, io: BreathIO, b: int):
-        """ONE BREATH (b = 0-based breath index; it sets only the temperature: the weights are the same for every breath)."""
-        tau = self.c.tau(b); h = dict(io.h); lps = {}
+    def breath(self, io: BreathIO, b, roads=None, tau=None):
+        """ONE BREATH. b = the 0-based breath index (int: sets the schedule's temperature and which roads run; the weights are the same
+        for every breath). roads = an explicit subset of road names (a port's two-phase breath, or the once-per-problem reader);
+        tau = an explicit temperature (a float or a (B,) Tensor: per-example breaths in masked-diffusion training)."""
+        tau = self.c.tau(b) if tau is None else tau; h = dict(io.h); lps = {}
+        for s, mk in io.marks.items(): h[s] = h[s] + self.mark[s](mk)
+        ang, pres = dict(io.angles), dict(io.presence)
+        if self.c.n_const:
+            B = next(iter(h.values())).shape[0]; nc, F = self.c.n_const, len(self.layout.factors)
+            h["const"] = self.const.unsqueeze(0).expand(B, nc, self.c.d_model)
+            ang.setdefault("const", Tensor.zeros(B, nc, self.layout.P)); pres.setdefault("const", Tensor.zeros(B, nc, F))
         for blk in self.blocks:
             for spec in self.c.roads:
-                if not spec.runs(b): continue
+                if spec.name not in blk.roads: continue
+                if (roads is None and not spec.runs(b)) or (roads is not None and spec.name not in roads): continue
                 s, k = spec.query, spec.key
                 z, u = self.waist[s](h[s])
-                hq, lp = blk.roads[spec.name](h[s], z, u, h[k], io.angles[s], io.angles[k], io.presence[k], io.valid[spec.name],
+                hq, lp = blk.roads[spec.name](h[s], z, u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name],
                                               tau, io.charts.get(spec.name), io.key_charts.get(spec.name))
                 h[s] = hq; lps[spec.name] = lp
+        h.pop("const", None)
         zs = {s: self.waist[s](h[s])[0] for s in STREAMS if s in h}
         return {"h": h, "z": zs, "logp": lps}
 
     def silhouette_logp(self, z, atoms, tau):
         """The silhouette classified against the Tree's atoms (GRAVITY form: softmax over -distance / tau). z (..., d_waist)."""
-        return (-((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / (math.sqrt(self.c.d_waist) * tau))).log_softmax(-1)
+        d = -((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp()
+        return _over_tau(d, tau).log_softmax(-1)
 
     def parameters(self):
         from tinygrad.nn.state import get_parameters

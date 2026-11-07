@@ -56916,3 +56916,26 @@ protocol, cond = gold types, rows = token operands with a valid unconsumed candi
 - Beside (unbarred): RR-SOFT on every split; the probe's accuracy on ORIG / CFNUM / CFNAME; the oracle's T2-QK for scale.
 - **Predictions:** RR-S PASS; RR-A FAIL (~0.60: the role is the comprehension problem itself); RR-1 FAIL (the probe reads the features
   the pointer already reads); RR-CF PASS.
+
+### 2026-11-07 12:57 — THE ROLE TIER'S ROAD: RR-S FAIL, RR-A FAIL, RR-1 FAIL, RR-CF PASS (3/4 predicted; 162/222) -- the role is not linearly in xq; the business tier needs its own trained reader
+
+`.cache/gsm_role_road_verdict.txt` (`scripts/gsm_role_road.py`, zero GPU, banked BT4RB8 s0 / s1):
+
+| | ORIG | CFNUM | CFNAME | TEST |
+|---|---|---|---|---|
+| BASE | 0.9956 / 0.9942 | 0.9747 / 0.9767 | 0.9662 / 0.9712 | 0.6840 / 0.6820 |
+| RR-HARD | 0.9334 / 0.9255 | 0.9116 / 0.9115 | 0.9095 / 0.9113 | 0.6683 / 0.6708 |
+| RR-SOFT | 0.9961 / 0.9948 | 0.9760 / 0.9777 | 0.9671 / 0.9730 | 0.6873 / 0.6853 |
+| probe role acc | 0.7470 / 0.7526 | 0.7424 / 0.7471 | 0.7329 / 0.7341 | 0.5985 / 0.6140 |
+| prior (majority) | 0.4220 | 0.4206 | 0.4175 | 0.4663 |
+| needed role = gold operand's (S) | 0.9908 | 0.9910 | 0.9896 | 0.9449 |
+
+- **RR-S FAIL ✗** (0.9449 on TEST, bar 0.95; predicted PASS): the slot side is nearly but not quite free -- on 5.5% of TEST rows the
+  gold operand's role (its FIRST use) differs from the step's (op, side) (a value used twice, an equal-valued duplicate).
+- **RR-A FAIL ✓** (0.6063; predicted ~0.60): the linear probe reads the role at 0.61 on TEST (text-context Tree 0.52, prior 0.47) and only
+  **0.73 on TRAIN** -- the role is not linearly present in xq even where the BT was trained.
+- **RR-1 FAIL ✓** (−0.0157 / −0.0112): a hard cut on predicted roles HURTS (ORIG −0.06: the probe's errors cut valid operands).
+  RR-SOFT (Bayes product) +0.003 (inside the noise). **RR-CF PASS ✓** (−0.014 to −0.024).
+- **Reading:** the oracle's +0.11 is real but not reachable by READING the role off the current BT. The business tier must be a
+  trained tier with its own road (the tiered-BT ruling: its own BT, its own contract), supervised by the certified roles. Next form:
+  the GSM8K tier ports on the official class (queued, word given 11-07), then a role tier trained as its own BT.
