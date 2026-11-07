@@ -56869,3 +56869,25 @@ compression on both self and cross attention ... each tier like .net 3 tier stac
 - **Clocks:** both T6 (breath) and T9 (token address) stamp the keys; each has a continuous face (gear rotation inside attention) and a
   discrete face (the odometer digits, `rotor_clock.t6_odometer`, for exact Tree keys).
 - Not pinned, not built: each form enters with its own pin and bars. First in line: the role tier's road (zero GPU).
+
+### 2026-11-07 12:34 — THE OFFICIAL BREATHING TRANSFORMER CLASS (built; spec test 27/27; no training, no claim)
+
+Bryce, 11-07: *"lets build an official Breathing Transformer class in python for Tinygrad. It must follow all the specs we outlined above,
+be fully composable ... use this class to implement the Breathing transformer for every tier going forward. It needs to be able to
+communicate the sqlite db and all the other organs."*
+
+- `mycelium/breathing_transformer.py`: `BTConfig` (every number a field: widths, waist, heads, breaths, blocks, tau schedule, gains,
+  mask/clip, factors, roads), `KeyLayout` (disjoint planes per composite-key factor; clocks = gear angles, ids = Weyl phases),
+  `Road` (one softmax per road; queries from the waist, keys/values from the full state; zero-init query turn; the two-tier
+  seal when the head has Tree charts), `BreathingTransformer` (enter_tokens, enter_slots from the notebook, breath(io, b),
+  silhouette_logp). One BT per tier; breaths weight-tied; heads read partitions (tier, road/head).
+- `mycelium/bt_organs.py`: T6Clock / T9Clock (gears + odometer), Notebook (write-back, breaker), PhaseBus (T256: bind, conjugate
+  unbind, cleanup), ChartTable / TreeTables (the SQLite door: generation-tagged centroids per partition; symbolic evidence,
+  provisional), Solver / TierPort protocols, Conductor (the alternation: every breath, every tier coarse-first, then the tick).
+- `scripts/test_breathing_transformer.py` (CPU): 27/27 PASS -- tau falls; disjoint planes; conjugate unbind; no activation
+  function, no rotary table; params independent of the breath count; distributions sum to 1; closed keys get 0; THE SEAL (micro
+  weights perturbed -> chart mass shift 1.5e-7); keys bypass the waist / queries pass it; wildcard factor invisible, matched
+  factor read; entropy falls breath 0 -> 5; every parameter gets a gradient; odometers; bus recovers 3/3; Tree round trip,
+  generation refusal, provisional evidence; Conductor order + ticks. Full size (512/64, 8 heads, 7 charts): 4.38M per tier BT.
+- Not ported yet: the GSM8K tier ports (TierPort + Solver adapters over the executor), the training step (TinyJit), BT4RB8 parity.
+  Each enters with its own pin.
