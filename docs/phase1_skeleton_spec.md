@@ -56891,3 +56891,28 @@ communicate the sqlite db and all the other organs."*
   generation refusal, provisional evidence; Conductor order + ticks. Full size (512/64, 8 heads, 7 charts): 4.38M per tier BT.
 - Not ported yet: the GSM8K tier ports (TierPort + Solver adapters over the executor), the training step (TinyJit), BT4RB8 parity.
   Each enters with its own pin.
+
+### 2026-11-07 12:52 — THE ROLE TIER'S ROAD pinned (Bryce's word for the queue, 11-07: "word given for the queue -- Salute!")
+
+**Theory line:** connecting local charts (the business tier's charts must be predictable and CF-stable before a pointer is sealed to
+them; the 11-07 tiered-BT ruling). Zero GPU, banked BT4RB8 s0 / s1, torch CPU; the TWO-TIER ORACLE's frame verbatim (per-pointer
+protocol, cond = gold types, rows = token operands with a valid unconsumed candidate, ORIG / CFNUM / CFNAME / TEST).
+- **Pre-read note (the structure of the role):** a numeral's role = the op (and side for - and /) of its FIRST use. In this frame the
+  slot's op is the gold type's, so the role the slot NEEDS is (gold op, side) -- the slot side is nearly free. The business tier's real
+  question is the NUMERAL side: "how will this number be used", read from the text. (The text-context Tree, G-TREE 10-31: TEST 0.521 vs
+  prior 0.466.)
+- **Probe:** multinomial logistic regression (standardized) of each numeral's xq (the BT reader's output) -> its gold role (7 classes:
+  *, +, /A, /B, -A, -B, none), fit on TRAIN numerals per seed, scored on every split.
+- **Arms** (pick = the BT's pointer argmax, ties to the lower position): BASE = all candidates (the oracle's BASE); RR-HARD = the
+  candidates whose PREDICTED role equals the needed role (all candidates if none); RR-SOFT = argmax of log softmax(pointer) + log
+  p_probe(needed role | numeral) (a Bayes product, no tuned weight).
+
+| Bar | Read | Pass |
+|---|---|---|
+| RR-S (the slot side is free) | share of rows whose gold operand's role = the needed role (gold op, side) | ≥ 0.95 |
+| RR-A (the numeral side) | probe role accuracy on TEST numerals, seed mean | ≥ 0.80 |
+| RR-1 (the tier pays, predicted) | RR-HARD − BASE on TEST | ≥ +0.020 both seeds |
+| RR-CF (CF-stable) | RR-HARD on CFNUM and CFNAME − RR-HARD on ORIG | ≥ −0.030 all four |
+- Beside (unbarred): RR-SOFT on every split; the probe's accuracy on ORIG / CFNUM / CFNAME; the oracle's T2-QK for scale.
+- **Predictions:** RR-S PASS; RR-A FAIL (~0.60: the role is the comprehension problem itself); RR-1 FAIL (the probe reads the features
+  the pointer already reads); RR-CF PASS.
