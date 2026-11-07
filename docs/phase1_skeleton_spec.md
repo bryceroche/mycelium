@@ -56796,3 +56796,24 @@ on 20,953 CFNUM / 4,855 CFNAME numerals paired to ORIG by gid; ISO on the oracle
   (p(role) given) and the address WITHIN the role chosen by (i) the banked q · kt, (ii) order alone (the first unconsumed same-role
   numeral), read on ORIG / CFNUM / CFNAME / TEST. It measures the headroom of the two-tier pointer before any role classifier is built;
   then the role tier's own road (a CF-stable role classifier from xq's level-0 direction, invariant by construction).
+
+### 2026-11-07 06:40 — Bryce: "word given for the two tier probe" — THE TWO-TIER ORACLE PINNED (zero GPU, banked BT4RB8 s0 / s1; before any read)
+
+**Theory line:** connecting local charts (chart = centroid + local coordinates) on Bryce's tiers (11-07): the business tier picks WHAT
+kind of operand, a lower tier picks WHICH. **Bryce, same message (design rules for the tier build, standing):** the tier count is an
+open question (3 is a metaphor; 6 or 12 tiers may be the truth: deep = many layers); inside the BT honor its principles (no RoPE, no MLP,
+U-Net compression + skip every breath); outside the BT, ALTERNATION between the tiers; the larger system's dynamics resemble diffusion,
+slowly sharpening the representation space.
+
+**The read (`scripts/gsm_two_tier_oracle.py`):** the READER PER-POINTER protocol (gold slots < k committed, cond = gold types, cycle
+floor(k NCYC / K)) on ORIG / CFNUM / CFNAME / TEST; per token-operand row with a valid candidate among the unconsumed numerals:
+- **BASE** = RESTR (argmax of the banked pointer over the unconsumed numerals; TEST must reproduce 0.5744 / ... the banked read);
+- **T2-QK** = the business tier given (the gold operand's ROLE, gsm_role_tree.roles: op + side of first use; every numeral's role known)
+  -> candidates cut to the same-role numerals -> argmax of the banked pointer among them;
+- **T2-ORD** = the same cut -> the first (lowest-position) same-role numeral (order alone; no weights).
+| Bar | Measure | Pass |
+|---|---|---|
+| TT-1 (headroom) | T2-QK − BASE on TEST | ≥ +0.050 on both seeds |
+| TT-CF (the tier is CF-stable) | T2-QK on CFNUM and on CFNAME − T2-QK on ORIG | ≥ −0.020 on both edits, both seeds |
+| TT-O (order suffices within a role) | T2-ORD on TEST | ≥ 0.80 |
+- **Predictions:** TT-1 PASS; TT-CF PASS; TT-O FAIL.
