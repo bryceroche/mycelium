@@ -1,0 +1,285 @@
+"""gsm_btc.py -- THE GSM8K TIER ON THE OFFICIAL BREATHING TRANSFORMER (ledger 2026-11-07; Bryce's word for the queue).
+
+The BT is `mycelium/breathing_transformer.BreathingTransformer`; this script is its GSM8K PORT (data -> streams/stamps/masks, outputs ->
+the bench's pointer layout) and its TRAINER (tinygrad, TinyJit per question-length bucket). gsm_breath_reader stays the source of truth
+for data, notebook, executor, gold and scoring: the trained BT is scored by BR.score through a facade (one scorer for every arm).
+
+ONE BREATH of this tier = two calls of the same BT (the tier hierarchy inside a breath: decide the type, then address under it):
+  A: slot self-attention + slot -> token cross-attention (the notebook's write-back re-enters every breath; consumed marks as marks)
+     -> the slot silhouette z -> the step type (z against the Welford atoms, the Tree's codebook; temperature = the breath's)
+  B: the pointer roads under the decided type (gold in training, the snapped prediction at inference): condition(h, type atom x p(type)),
+     one full-width head per (operand a/b) x (kind token / earlier slot / constant); the type's operand kinds weigh the blocks.
+The token stream is read ONCE per problem (token self-attention = the reader, breath 0's road). Composite keys: tokens carry T9 (offset
+on the six gears, position on the slow gears) + token_id (a word hash; names = the problem-local entity id, so CFNAME leaves it
+unchanged); slots carry slot_id (a clock over the slot index), the T6 stamp (the breath) and the tree level. Name tokens enter as their
+fresh per-problem entity phases (the reader's ID chassis), never their surface states.
+Modes (BTC_MODE): smoke (BTC_STEPS steps, s/step) | train (BT_STEPS, scored every 1000 on ORIG/TEST[:600], FINAL on every split,
+.cache/gsmb_btc_{TAG}.json; BT_SAVE=1 -> .safetensors + atoms .npy). Env: BT_SEED, BT_TAG, BT_BATCH, BT_LR; BTC_D / BTC_NH / BTC_DB /
+BTC_BLOCKS (defaults 512 / 8 / 64 / 2).
+"""
+import json, math, os, sys, time, zlib
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+os.environ.setdefault("BT_ROLE", "1")
+import gsm_breath_reader as BR          # FIRST (the 11-04 import rule)
+import numpy as np
+from tinygrad import Tensor, TinyJit, dtypes
+from tinygrad.nn.optim import AdamW
+from tinygrad.nn.state import safe_save
+
+from mycelium import breathing_transformer as BTM
+from mycelium import bt_organs as O
+
+K, NC, NT, STOP, NCYC, PB = BR.K, BR.NC, BR.NT, BR.STOP, BR.NCYC, BR.PB
+KINDS = BR.KINDS
+_KM = np.zeros((NT, 2, 3), np.float32)
+for _j, (_, _a, _b) in enumerate(BR.TYPES):
+    _KM[_j, 0, KINDS.index(_a)] = 1; _KM[_j, 1, KINDS.index(_b)] = 1
+_KM[STOP] = 1
+D, NH, DB, NBLK = (int(os.environ.get(k, v)) for k, v in (("BTC_D", "512"), ("BTC_NH", "8"), ("BTC_DB", "64"), ("BTC_BLOCKS", "2")))
+PTR = [f"p{r}{kd}" for r in "ab" for kd in KINDS]                   # pa_t pa_s pa_c pb_t pb_s pb_c
+BUCKET = 32
+
+
+def config(d_in, d_aux):
+    f = BTM.default_factors()
+    roads = (BTM.RoadSpec("token_self", "token", "token", NH, (("t9", "token_id"),) * NH, breaths=(0,)),
+             BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH),
+             BTM.RoadSpec("cross", "slot", "token", NH, (("t9",),) * NH)) + tuple(
+        BTM.RoadSpec(n, "slot", {"t": "token", "s": "slot", "c": "const"}[n[2]], 1,
+                     ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D) for n in PTR)
+    return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF, n_atoms=NT,
+                        n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC)
+
+
+# ---- the port: one BR batch -> host arrays at a bucketed question length -----------------------------------------------------------
+def word_id(w, isn, nid):
+    return 1_000_000_007 + int(nid) if isn else zlib.crc32(str(w).lower().encode())
+
+
+def port_batch(t, E, its, Lb):
+    """BR.batch's torch dict -> numpy host arrays for the BT at question length Lb (>= Lq)"""
+    g = {k: (v.numpy() if hasattr(v, "numpy") else v) for k, v in t.items()}
+    B, L = g["pad"].shape; Lq = L - K; assert Lb >= Lq
+    th = np.take_along_axis(g["theta"], np.clip(g["nid"], 0, None)[..., None].repeat(PB, -1), 1)      # (B, L, PB) entity phases
+    isn = g["isn"][:, :Lq]
+    x = np.zeros((B, Lb, g["x"].shape[-1]), np.float32); x[:, :Lq] = np.where(isn[..., None], 0.0, g["x"][:, :Lq])   # names: no surface
+    aux = np.concatenate([np.cos(th[:, :Lq]) * isn[..., None], np.sin(th[:, :Lq]) * isn[..., None], isn[..., None], g["isnum"][:, :Lq, None],
+                          g["g"][:, :Lq], g["role"][:, :Lq]], -1).astype(np.float32)
+    A = np.zeros((B, Lb, aux.shape[-1]), np.float32); A[:, :Lq] = aux
+    pad = np.ones((B, Lb), bool); pad[:, :Lq] = g["pad"][:, :Lq]
+    isnum = np.zeros((B, Lb), bool); isnum[:, :Lq] = g["isnum"][:, :Lq]
+    sid = np.zeros((B, Lb), np.int64); sid[:, :Lq] = g["sid"][:, :Lq]
+    tid = np.zeros((B, Lb), np.int64)
+    for b, it in enumerate(its):
+        for i, w in enumerate(it["toks"]): tid[b, i] = word_id(w, it["isn"][i], g["nid"][b, i])
+    tf = {**O.T9Clock().fields(sid), "token_id": tid}
+    tf["off"] = np.where(pad, 0, tf["off"]); tf["pos"] = np.where(pad, 0, tf["pos"])
+    tgt = {}
+    for r, V in (("a", "va"), ("b", "vb")):
+        v = g[V]; tk = np.zeros((B, K, Lb), bool); tk[..., :Lq] = v[..., :Lq]
+        tgt[r] = (tk, v[..., L:L + K], v[..., L + K:L + K + NC])
+    return dict(x=x, aux=A, pad=pad, isnum=isnum, tf=tf, tgt=tgt, Lq=Lq, L=L, B=B)
+
+
+def host_io(bt, P, nb, tick):
+    """per breath: notebook arrays (typ, r, cf, lev, cons at the batch's L) -> slot angles/presence, entry arrays, marks"""
+    typ, r, cf, lev, cons = nb; B = typ.shape[0]; Lq = P["Lq"]; Lb = P["x"].shape[1]
+    sf = {"slot": np.broadcast_to(np.arange(K), (B, K)).copy(), "tick": np.broadcast_to(np.asarray(tick)[:, None], (B, K)).copy(), "level": lev}
+    sa, sp = bt.layout.angles(sf, (B, K))
+    mt = np.zeros((B, Lb, 1), np.float32); mt[:, :Lq, 0] = cons[:, :Lq]
+    ms = cons[:, Lq:Lq + K, None].astype(np.float32)
+    return dict(sa=sa, sp=sp, mt=mt, ms=ms, com=typ >= 0, atom=np.clip(typ, 0, None), rad=r.astype(np.float32), cert=cf.astype(np.float32))
+
+
+def valid_masks(P, B):
+    Lb = P["x"].shape[1]; tok = ~P["pad"]
+    return dict(token_self=np.broadcast_to(tok[:, None, :], (B, Lb, Lb)).copy(), slot_self=np.ones((B, K, K), bool),
+                cross=np.broadcast_to(tok[:, None, :], (B, K, Lb)).copy(),
+                pt=np.broadcast_to((tok & P["isnum"])[:, None, :], (B, K, Lb)).copy(),
+                ps=np.broadcast_to(np.tril(np.ones((K, K), bool), -1)[None], (B, K, K)).copy(), pc=np.ones((B, K, NC), bool))
+
+
+# ---- the network forward (pure tinygrad; shared by the trainer's JIT and the scorer) ------------------------------------------------
+def forward(bt, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau, cond=None):
+    """-> (type logp (B, K, NT), z (B, K, DB), {road: logp (B, K, Lk)}, cond used, p(cond))"""
+    ht = bt.enter_tokens(x, aux)
+    io = BTM.BreathIO(h={"token": ht}, angles={"token": ta}, presence={"token": tp}, valid={"token_self": vts})
+    ht = bt.breath(io, 0, roads=("token_self",))["h"]["token"]                                    # THE READER (once per problem)
+    hs = bt.enter_slots(com, cert, atom=atom, radius=rad, atoms=atoms)
+    io = BTM.BreathIO(h={"token": ht, "slot": hs}, angles={"token": ta, "slot": sa}, presence={"token": tp, "slot": sp},
+                      valid={"slot_self": vss, "cross": vcr}, marks={"token": mt, "slot": ms})
+    oa = bt.breath(io, None, roads=("slot_self", "cross"), tau=tau)                               # call A
+    lt = bt.silhouette_logp(oa["z"]["slot"], atoms, tau)
+    c = lt.argmax(-1) if cond is None else cond
+    pc_ = (lt.exp() * c.one_hot(NT).cast(dtypes.float)).sum(-1)                                  # the radius: p(the decided type)
+    hs2 = bt.condition(oa["h"]["slot"], c, pc_, atoms)
+    vmap = {"pat": vpt, "pbt": vpt, "pas": vps, "pbs": vps, "pac": vpc, "pbc": vpc}
+    io = BTM.BreathIO(h={"token": oa["h"]["token"], "slot": hs2}, angles={"token": ta, "slot": sa}, presence={"token": tp, "slot": sp},
+                      valid=vmap)
+    ob = bt.breath(io, None, roads=tuple(PTR), tau=tau)                                           # call B
+    return lt, oa["z"]["slot"], {n: ob["logp"][n][:, 0] for n in PTR}, c, pc_
+
+
+def joint(lp, kw, open_):
+    """per operand: the three kind blocks (token / earlier slot / constant), each shifted by log(its share of the type's open kinds);
+    a kind the type closes, or a block with no open key (open_[j] (B, K) bool, None = always open), gets -1e4.
+    lp: {name: (B, K, Lk)}, kw (B, K, 2, 3) the kind masks -> {'a': [blocks], 'b': [blocks]}"""
+    out = {}
+    for r, ri in (("a", 0), ("b", 1)):
+        w = kw[:, :, ri]; n = w.sum(-1).maximum(1); blocks = []
+        for j, kd in enumerate(KINDS):
+            ok = w[..., j] > 0
+            if open_[j] is not None: ok = ok & open_[j]
+            blocks.append(ok.unsqueeze(-1).where(lp[f"p{r}{kd}"] + (w[..., j] / n).maximum(1e-30).log().unsqueeze(-1), -1e4))
+        out[r] = blocks
+    return out
+
+
+# ---- training ---------------------------------------------------------------------------------------------------------------------------
+class Trainer:
+    def __init__(self, bt, lr):
+        self.bt = bt; self.params = bt.parameters()
+        for p in self.params: p.requires_grad = True
+        self.opt = AdamW(self.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); self.jits = {}
+
+    def _step(self, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau, gt, mk, am, kw,
+              tat, tas, tac, tbt, tbs, tbc):
+        with Tensor.train():
+            self.opt.zero_grad()
+            lt, z, lp, _, _ = forward(self.bt, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc,
+                                      tau, cond=gt)
+            ce = -(lt * gt.one_hot(NT).cast(dtypes.float)).sum(-1)
+            lo = (ce * mk).sum() / mk.sum()
+            aw = am / am.sum().maximum(1)
+            J = joint(lp, kw, [None, vps.any(-1), None])
+            for r, (vt_, vs_, vc_) in (("a", (tat, tas, tac)), ("b", (tbt, tbs, tbc))):
+                full = Tensor.cat(*J[r], dim=-1); val = Tensor.cat(vt_, vs_, vc_, dim=-1)
+                term = full.logsumexp(-1) - val.where(full, -1e4).logsumexp(-1)
+                lo = lo + (term * aw).sum()
+            lo.backward()
+            gp = [p for p in self.params if p.grad is not None]
+            gn = Tensor.stack(*[(p.grad ** 2).sum() for p in gp]).sum().sqrt()
+            coef = (1.0 / (gn + 1e-6)).minimum(1.0) * lo.isfinite().cast(dtypes.float)
+            for p in gp: p.grad = p.grad * coef
+            zz = z.detach().reshape(-1, z.shape[-1]).contiguous()
+            Tensor.realize(lo, zz, *[p.grad for p in gp])                                       # the silhouettes BEFORE the update
+            self.opt.step()
+            return lo.realize(), zz
+
+    def step(self, its, states, tree, rng, atoms):
+        t, E = BR.batch(its, states, tree, rng); L = t["pad"].shape[1]
+        for b, it in enumerate(its): E[b]["vals"] = it["vals"]
+        progs, gt = BR.gold(E)
+        m = np.array([e["m"] for e in E]); rr = rng.random(len(E))[:, None]
+        masked = rng.random((len(E), K)) < rr
+        masked[np.arange(len(E)), rng.integers(0, np.minimum(m + 1, K))] = True
+        cyc = np.clip(np.floor(NCYC * (1 - rr[:, 0])), 0, NCYC - 1).astype(np.int64)
+        Lb = max(64, int(math.ceil((L - K) / BUCKET) * BUCKET))
+        P = port_batch(t, E, its, Lb); B = P["B"]
+        nb = BR.notebook(E, L, progs, ~masked, gt, np.ones((B, K), np.float32))
+        H_ = host_io(self.bt, P, nb, cyc); V = valid_masks(P, B)
+        ta, tp = self.bt.layout.angles(P["tf"], (B, Lb))
+        tau = np.array([self.bt.c.tau(int(c)) for c in cyc], np.float32)
+        am = (t["am"].numpy() & masked).astype(np.float32)
+        kw = _KM[gt]
+        args = [atoms, P["x"], P["aux"], ta, tp, H_["sa"], H_["sp"], H_["mt"], H_["ms"], H_["com"], H_["atom"].astype(np.int32), H_["rad"],
+                H_["cert"], V["token_self"], V["slot_self"], V["cross"], V["pt"], V["ps"], V["pc"], tau, gt.astype(np.int32),
+                masked.astype(np.float32), am, kw, *P["tgt"]["a"], *P["tgt"]["b"]]
+        args = [a if isinstance(a, Tensor) else Tensor(np.ascontiguousarray(a)) for a in args]
+        if Lb not in self.jits: self.jits[Lb] = TinyJit(self._step)
+        lo, zz = self.jits[Lb](*args)
+        return float(lo.numpy()), zz.numpy().reshape(B, K, -1), gt, masked
+
+
+class Atoms:
+    """The step atoms: the Tree's codebook for the silhouette (capped Welford means of gold-typed silhouettes, as BR's C / Cn)."""
+    def __init__(self, n, d, cap, seed=0):
+        self.C = (np.random.default_rng(seed).standard_normal((n, d)) * 0.1).astype(np.float32); self.n = np.zeros(n, np.float32); self.cap = cap
+
+    def update(self, z, typ, mask):
+        zz, tt = z[mask], typ[mask]
+        cnt = np.bincount(tt, minlength=len(self.n)).astype(np.float32); sm = np.zeros_like(self.C); np.add.at(sm, tt, zz)
+        nn_ = self.n + cnt; u = cnt > 0
+        self.C[u] += (sm[u] - cnt[u, None] * self.C[u]) / nn_[u, None]; self.n = np.minimum(nn_, self.cap)
+
+    def tensor(self):
+        return Tensor(self.C).realize()
+
+
+# ---- the scorer facade (BR.score drives it: one scorer for every arm) ---------------------------------------------------------------
+class Facade:
+    """BR.score's net: read(t) is called once per batch of 128, in order, so it advances through the items (the port needs their words)"""
+    def __init__(self, bt, atoms, its):
+        self.bt, self.atoms, self.its, self.s0, self.part = bt, atoms, its, 0, None
+
+    def eval(self): return self
+
+    def read(self, t):
+        B = t["pad"].shape[0]; self.part = self.its[self.s0:self.s0 + B]; self.s0 += B
+        return t                                                                                  # the reader runs inside breath
+
+    def breath(self, t, xq, nb, cond, cyc, sp=None):
+        import torch
+        L = t["pad"].shape[1]; Lb = max(64, int(math.ceil((L - K) / BUCKET) * BUCKET))
+        P = port_batch(t, None, self.part, Lb); B = P["B"]
+        nbn = tuple(a.numpy() for a in nb[:5]); c0 = int(cyc[0]); H_ = host_io(self.bt, P, nbn, np.full(B, c0)); V = valid_masks(P, B)
+        ta, tp = self.bt.layout.angles(P["tf"], (B, Lb))
+        T = lambda a: Tensor(np.ascontiguousarray(a))
+        lt, z, lp, c, _ = forward(self.bt, self.atoms, T(P["x"]), T(P["aux"]), T(ta), T(tp), T(H_["sa"]), T(H_["sp"]), T(H_["mt"]), T(H_["ms"]),
+                                  T(H_["com"]), T(H_["atom"].astype(np.int32)), T(H_["rad"]), T(H_["cert"]), T(V["token_self"]), T(V["slot_self"]),
+                                  T(V["cross"]), T(V["pt"]), T(V["ps"]), T(V["pc"]), self.bt.c.tau(c0),
+                                  None if cond is None else Tensor(cond.numpy().astype(np.int32)))
+        J = joint(lp, Tensor(_KM[c.numpy()]), [None, T(V["ps"]).any(-1), None])
+        Lq = P["Lq"]; padblk = Tensor.full((B, K, L - Lq), -1e4)
+        pa, pb = (Tensor.cat(J[r][0][..., :Lq], padblk, J[r][1], J[r][2], dim=-1) for r in "ab")
+        lg = lt.numpy()
+        return (torch.as_tensor(lg), torch.as_tensor(pa.numpy()), torch.as_tensor(pb.numpy()), torch.as_tensor(z.numpy()),
+                torch.as_tensor(np.exp(lg)))
+
+
+def score(bt, atoms, its, states, tree):
+    """BR.score (its schedule loop, executor, gold and metric definitions) on the facade"""
+    return BR.score(Facade(bt, atoms.tensor(), its), its, states, tree, seed=0)
+
+
+if __name__ == "__main__":
+    MODE = os.environ.get("BTC_MODE", "smoke")
+    SEED, TAG = BR.SEED, os.environ.get("BT_TAG", f"BTC_s{BR.SEED}")
+    Dt, states = BR.TR.load(); tree = BR.TR.load_tree(); train = Dt["TRAIN"]
+    BR.RF = np.load(BR.GD.V1.C(BR.rolef_name()), mmap_mode="r")
+    rng = np.random.default_rng(SEED); Tensor.manual_seed(SEED)
+    t0_, E0 = BR.batch(train[:2], states, tree, np.random.default_rng(0)); P0 = port_batch(t0_, E0, train[:2], 64)
+    bt = BTM.BreathingTransformer(config(P0["x"].shape[-1], P0["aux"].shape[-1]))
+    npar = sum(p.numel() for p in bt.parameters()); atoms = Atoms(NT, DB, BR.NCAP, SEED)
+    tr = Trainer(bt, BR.LR)
+    print(f"[btc] {TAG} D {D} heads {NH} waist {DB} blocks {NBLK} x {NCYC} breaths | planes {bt.layout.P} | params {npar} "
+          f"| d_in {P0['x'].shape[-1]} d_aux {P0['aux'].shape[-1]} | {Tensor.zeros(1).device}", flush=True)
+    steps = int(os.environ.get("BTC_STEPS", "40")) if MODE == "smoke" else BR.STEPS
+    t0 = time.time(); curve = []; los = []
+    for step in range(1, steps + 1):
+        its = [train[int(i)] for i in rng.integers(0, len(train), BR.BATCH)]
+        lo, zz, gt, mk = tr.step(its, states, tree, rng, atoms.tensor())
+        atoms.update(zz, gt, mk); los.append(lo)
+        if step % 10 == 0 and MODE == "smoke":
+            print(f"[btc] smoke step {step} loss {np.mean(los[-10:]):.4f} | {(time.time() - t0) / step:.3f}s/step (buckets {sorted(tr.jits)})", flush=True)
+        if step == 20: t20 = time.time()
+        if MODE == "train" and (step % 1000 == 0 or step == steps):
+            r = {k: score(bt, atoms, Dt[k][:600], states, tree) for k in ("ORIG", "TEST")}
+            curve.append(dict(step=step, loss=float(np.mean(los[-100:])), **{f"{k}_{m}": float(v[m].mean()) for k, v in r.items() for m in ("ans", "step_all")}))
+            print(f"[btc] {TAG} step {step} loss {np.mean(los[-100:]):.4f} " + " ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} "
+                  f"type {v['type_ok'].mean():.3f}" for k, v in r.items()) + f" ({time.time() - t0:.0f}s)", flush=True)
+    if MODE == "smoke":
+        if steps > 20: print(f"[btc] steady s/step (21..{steps}): {(time.time() - t20) / (steps - 20):.3f}", flush=True)
+        r = score(bt, atoms, Dt["TEST"][:128], states, tree)
+        print(f"[btc] smoke score TEST[:128] " + " ".join(f"{m} {r[m].mean():.3f}" for m in ("ans", "step_all", "step_ptr", "type_ok")), flush=True)
+    else:
+        if os.environ.get("BT_SAVE") == "1":
+            safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
+        R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
+        out = dict(tag=TAG, arm="BTC", seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+                   **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
+                   **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
+        json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
+        print(f"[btc] {TAG} FINAL " + " | ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} op {v['step_op'].mean():.3f} "
+              f"ptr {v['step_ptr'].mean():.3f} type {v['type_ok'].mean():.3f}" for k, v in R.items()), flush=True)

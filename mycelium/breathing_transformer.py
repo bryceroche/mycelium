@@ -91,6 +91,7 @@ class RoadSpec:
     n_charts: tuple = ()                       # per head (empty = no charts on this road)
     residual: bool = True                      # False = a POINTER road (returns log-probs, writes nothing)
     breaths: tuple = None                      # the breaths this road runs on (None = every breath); the weights are the same
+    d_head: int = 0                            # this road's head width (0 = BTConfig.d_head; e.g. one full-width pointer head)
 
     def runs(self, b):
         return self.breaths is None or b in self.breaths
@@ -123,6 +124,7 @@ class BTConfig:
     d_aux: int = 0                             # extra token features entering without the reader LN (0 = none)
     d_mark: int = 0                            # per-breath mark features per stream (e.g. consumed marks; 0 = none)
     n_const: int = 0                           # learned constant keys (the 'const' key stream)
+    soft_belief: bool = False                  # enter_slots reads a soft type belief (the soft notebook) for uncommitted slots
     n_atoms: int = 0                           # the Tree atoms the notebook commits slots to (0 = no atom entry)
     n_breaths: int = 6
     blocks_per_breath: int = 1                 # blocks inside one breath (distinct weights); breaths reuse them
@@ -209,18 +211,21 @@ class KeyLayout:
             pres[..., i] = 1.0
         return np.mod(A, 2 * math.pi).astype(np.float32), pres
 
-    def plane_weights(self, match, gain):
-        """(P,) Tensor: gain_f / planes_f on the matched factors' planes, 0 on the wildcards. gain: (F,) Tensor."""
-        sel = np.zeros((len(self.factors), self.P), np.float32)
-        for i, f in enumerate(self.factors):
-            if f.name in match:
-                a, b = self.slices[f.name]; sel[i, a:b] = 1.0 / f.planes
-        return gain @ Tensor(sel)
+    def selector(self, matches):
+        """(H, F, P) numpy: 1 / planes_f on factor f's planes where head h matches f (wildcards 0). Built once per road and realized
+        at construction: a constant made inside a TinyJit body is captured as a buffer the replay must not outlive."""
+        sel = np.zeros((len(matches), len(self.factors), self.P), np.float32)
+        for h, match in enumerate(matches):
+            for i, f in enumerate(self.factors):
+                if f.name in match:
+                    a, b = self.slices[f.name]; sel[h, i, a:b] = 1.0 / f.planes
+        return sel
 
     def presence_planes(self, pres):
-        """(B, L, F) presence -> (B, L, P)"""
-        own = self.owner()
-        return pres @ Tensor(np.eye(len(self.factors), dtype=np.float32)[own].T.copy())
+        """(B, L, F) presence -> (B, L, P) (the owner map is realized once, at the layout's first use)"""
+        if not hasattr(self, "_own_t"):
+            self._own_t = Tensor(np.eye(len(self.factors), dtype=np.float32)[self.owner()].T.copy()).realize()
+        return pres @ self._own_t
 
 
 # ---- THE PIECES ------------------------------------------------------------------------------------------------------------------------
@@ -246,13 +251,14 @@ class Waist:
 class Road:
     """One road: its own heads, softmax, charts and (unless a pointer) its own output projection."""
     def __init__(self, c, spec, layout):
-        H, Dh = spec.n_heads, c.d_head
-        self.c, self.spec, self.L = c, spec, layout
+        H, Dh = spec.n_heads, spec.d_head or c.d_head
+        self.c, self.spec, self.L, self.Dh = c, spec, layout, Dh
         self.lnk = nn.LayerNorm(c.d_model, eps=c.ln_eps)
         self.q = nn.Linear(c.d_model, H * Dh)                       # from the waist's u
         self.k = nn.Linear(c.d_model, H * Dh)                       # from the FULL key state (keys never compress)
         self.turn = _zero_linear(c.d_model, H * layout.P)           # the query's learned turn per plane (zero-init: match my own stamp)
         self.gain = Tensor.full((H, len(layout.factors)), c.id_gain_init).contiguous()
+        self.sel = Tensor(layout.selector(spec.match)).realize()      # (H, F, P) constant, realized once
         if spec.residual:
             self.v = nn.Linear(c.d_model, H * Dh); self.o = nn.Linear(H * Dh, c.d_model)
         if spec.charted():
@@ -263,13 +269,13 @@ class Road:
         z (B, Lq, d_waist), u (B, Lq, D) the query's waist; hk (B, Lk, D) the key state; qa (B, Lq, P) / ka (B, Lk, P) the stamps;
         kpres (B, Lk, F) key factor presence; valid (B, Lq, Lk) bool; charts: per head (C_h, d_chart) Tensors (the Tree's centroids),
         key_charts: (B, H, Lk) int (the Tree's chart of every key, per head partition)."""
-        c, S, H, Dh, P = self.c, self.spec, self.spec.n_heads, self.c.d_head, self.L.P
+        c, S, H, Dh, P = self.c, self.spec, self.spec.n_heads, self.Dh, self.L.P
         B, Lq, Lk = u.shape[0], u.shape[1], hk.shape[1]
         q = self.q(u).reshape(B, Lq, H, Dh).transpose(1, 2) * (1 / math.sqrt(Dh))
         k = self.k(self.lnk(hk)).reshape(B, Lk, H, Dh).transpose(1, 2)
         a = qa.unsqueeze(2) + self.turn(u).reshape(B, Lq, H, P)                                   # the query rotates; the key never does
         a = a.transpose(1, 2)                                                                       # (B, H, Lq, P)
-        w = Tensor.stack(*[self.L.plane_weights(S.match[h], self.gain[h]) for h in range(H)])     # (H, P): wildcards weigh 0
+        w = (self.gain.unsqueeze(-1) * self.sel.detach()).sum(1)                                   # (H, P): wildcards weigh 0
         kp = self.L.presence_planes(kpres).unsqueeze(1)                                            # (B, 1, Lk, P)
         qid = Tensor.cat(a.cos() * w[None, :, None], a.sin() * w[None, :, None], dim=-1)
         kid = Tensor.cat(ka.cos().unsqueeze(1) * kp, ka.sin().unsqueeze(1) * kp, dim=-1)           # Re(e^{iq} conj e^{ik}) = cos(q - k)
@@ -304,7 +310,7 @@ class Road:
     def __call__(self, hq, z, u, hk, qa, ka, kpres, valid, tau, charts=None, key_charts=None):
         lp = self.logp(z, u, hk, qa, ka, kpres, valid, tau, charts, key_charts)
         if not self.spec.residual: return hq, lp
-        B, Lk, H, Dh = hk.shape[0], hk.shape[1], self.spec.n_heads, self.c.d_head
+        B, Lk, H, Dh = hk.shape[0], hk.shape[1], self.spec.n_heads, self.Dh
         v = self.v(self.lnk(hk)).reshape(B, Lk, H, Dh).transpose(1, 2)
         any_ = valid.any(-1, keepdim=True).unsqueeze(1)                                             # a query with no open key reads 0
         o = (any_.where(lp.exp(), 0.0) @ v).transpose(1, 2).reshape(hq.shape[0], hq.shape[1], H * Dh)
@@ -350,7 +356,7 @@ class BreathingTransformer:
         self.cert = nn.Linear(c.d_cert, c.d_model)
         if c.n_atoms:
             self.reent = nn.Linear(c.d_waist, c.d_model)                             # committed: atom x radius, back up from the waist space
-            self.belief = nn.Linear(c.d_waist, c.d_model, bias=False)                # uncommitted: what the BT believes (soft notebook)
+            if c.soft_belief: self.belief = nn.Linear(c.d_waist, c.d_model, bias=False)   # uncommitted: what the BT believes
             self.cond_in = nn.Linear(c.d_waist, c.d_model)                           # condition: a decided coarse atom x confidence
 
     # -- entries (the organs' data -> streams) --
@@ -370,7 +376,9 @@ class BreathingTransformer:
         B, K = committed.shape
         h = self.mask_slot.reshape(1, 1, -1).expand(B, K, self.c.d_model)
         if self.c.n_atoms and atoms is not None:
-            if belief is not None: h = h + self.belief(belief @ atoms)
+            if belief is not None:
+                assert self.c.soft_belief, "belief given but BTConfig.soft_belief is False"
+                h = h + self.belief(belief @ atoms)
             if atom is not None:
                 re = self.reent(radius.unsqueeze(-1) * (atom.one_hot(atoms.shape[0]).cast(dtypes.float) @ atoms))
                 h = committed.unsqueeze(-1).where(re, h)
@@ -389,7 +397,7 @@ class BreathingTransformer:
         if self.c.n_const:
             B = next(iter(h.values())).shape[0]; nc, F = self.c.n_const, len(self.layout.factors)
             h["const"] = self.const.unsqueeze(0).expand(B, nc, self.c.d_model)
-            ang.setdefault("const", Tensor.zeros(B, nc, self.layout.P)); pres.setdefault("const", Tensor.zeros(B, nc, F))
+            ang.setdefault("const", Tensor.zeros(B, nc, self.layout.P).contiguous()); pres.setdefault("const", Tensor.zeros(B, nc, F).contiguous())
         for blk in self.blocks:
             for spec in self.c.roads:
                 if spec.name not in blk.roads: continue
@@ -408,10 +416,11 @@ class BreathingTransformer:
         d = -((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp()
         return _over_tau(d, tau).log_softmax(-1)
 
+    CONSTANTS = ("sel",)                       # realized constant buffers (never trained, never saved)
+
     def parameters(self):
-        from tinygrad.nn.state import get_parameters
-        return get_parameters(self)
+        return list(self.state_dict().values())
 
     def state_dict(self):
         from tinygrad.nn.state import get_state_dict
-        return {k: v for k, v in get_state_dict(self).items() if not k.startswith("layout")}
+        return {k: v for k, v in get_state_dict(self).items() if not k.startswith("layout") and k.split(".")[-1] not in self.CONSTANTS}

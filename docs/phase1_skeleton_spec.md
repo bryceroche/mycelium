@@ -56939,3 +56939,27 @@ protocol, cond = gold types, rows = token operands with a valid unconsumed candi
 - **Reading:** the oracle's +0.11 is real but not reachable by READING the role off the current BT. The business tier must be a
   trained tier with its own road (the tiered-BT ruling: its own BT, its own contract), supervised by the certified roles. Next form:
   the GSM8K tier ports on the official class (queued, word given 11-07), then a role tier trained as its own BT.
+
+### 2026-11-07 13:05 — BTC pinned: THE GSM8K TIER ON THE OFFICIAL BREATHING TRANSFORMER (Bryce's word for the queue, 11-07; budget ≤ 20M)
+
+**Theory line:** the Breathing Transformer as the system's compute engine (the tiered-BT ruling: "use this class to implement the
+Breathing transformer for every tier going forward"). `scripts/gsm_btc.py` = the GSM8K port + tinygrad trainer over
+`mycelium/breathing_transformer.py`; scored by BR.score through a facade (one scorer for every arm).
+- **The form:** D 512, 8 heads, waist 64, 2 blocks per breath, 6 breaths, **11,953,313 params** (BT4RB8 6,567,345). Token
+  self-attention once per problem (the reader); per breath call A (slot self + cross: the notebook re-enters, consumed marks as
+  marks) -> the silhouette -> the type against the Welford atoms; call B (six full-width pointer roads: operand a/b x token / earlier
+  slot / constant, conditioned on the decided type x p(type); the type's operand kinds weigh the blocks). Composite keys on disjoint
+  planes: tokens T9 + token_id (names = the entity id); slots slot_id + T6 + level. tau 2.0 -> 0.5 over the breaths (per-example in
+  training). Same data (RB8 states + role feats), same masked-diffusion recipe, same rng-drawn masks/cycles, 18k steps, two seeds.
+- **Not carried over from BT4RB8 (disclosed before the read):** ZOOM (the op-level mask when unsure), the T256 type-role bus phases,
+  the learned consumed-mark bias pc x cnt (consumed marks enter as marks instead). Smoke 13:00: 40 steps, loss 5.62 -> 4.97, scorer
+  runs end to end, ~0.8 s/step steady.
+
+| Bar | Read | Pass |
+|---|---|---|
+| BTC-N (the class carries the tier) | TEST step_all BTC − BT4RB8 | ≥ −0.020 both seeds |
+| BTC-G (a gain) | TEST step_all BTC − BT4RB8 | ≥ +0.020 both seeds |
+| BTC-CF | CFNUM and CFNAME step_all BTC − BT4RB8 | ≥ −0.030 all four |
+- BT4RB8 references (banked): TEST step_all 0.1634 / 0.1664; CFNUM 0.8553 / 0.8867; CFNAME 0.8086 / 0.8464.
+- **Predictions:** BTC-N PASS; BTC-G FAIL (size does not buy TEST transfer: R4/B3); BTC-CF PASS.
+- Chain: `.cache/run_btc.sh` (s0 then s1, then `scripts/gsm_btc_verdict.py`). A FAIL closes this FORM (the port's choices), never the line.

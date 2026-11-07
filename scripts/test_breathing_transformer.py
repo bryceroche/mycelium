@@ -12,7 +12,7 @@ from mycelium import bt_organs as O
 from mycelium.tree_db import TreeDB
 
 B, LT, K, C = 2, 7, 3, 3
-CFG = dict(tier="business", d_in=16, d_model=32, d_waist=8, d_head=8, d_chart=8, d_cert=3, n_atoms=5, n_breaths=6,
+CFG = dict(tier="business", d_in=16, d_model=32, d_waist=8, d_head=8, d_chart=8, d_cert=3, n_atoms=5, n_breaths=6, soft_belief=True,
            roads=BTM.default_roads(n_heads=2, n_charts=C))
 OK = []
 
