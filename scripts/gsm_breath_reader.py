@@ -57,6 +57,21 @@ assert not PHPTR or not (SEAL or SOFT), "PHPTR: not with SEAL / SOFT"
 ZQ = os.environ.get("BT_ZQ") == "1"                  # (ledger 11-06 ZQ) THE ZOOMING QUERY: log p(the token's Tree chart | q) on the pointer
 NCH = 65                                              # (ZQ) 64 ST64 charts + none
 CH = None                                             # (ZQ) the chart memmap, loaded on first use
+CS = os.environ.get("BT_CS") == "1"                  # (ledger 11-06 CS) THE CHART-SEALED POINTER (rides on ZQ's charts + keys)
+assert not CS or (ZQ and not PHPTR), "CS: needs BT_ZQ=1, not with PHPTR"
+
+
+def chart_seal(F, q, zck, ch, m):
+    """(CS) F (B, K, Lq) natural token logits, m (B, K, Lq) open, ch (B, Lq) charts -> the sealed token logits (natural units)"""
+    import torch
+    F_ = torch.where(m, F, torch.full_like(F, -1e4))
+    oh = torch.nn.functional.one_hot(ch, NCH).float()                                          # (B, Lq, C)
+    inc = m[..., None] & (oh[:, None] > 0.5)                                                    # (B, K, Lq, C)
+    fm = torch.where(inc, F_[..., None], torch.full_like(inc, -1e4, dtype=F.dtype)).amax(2)    # (B, K, C) per-chart max
+    S = torch.where(inc, F_[..., None] - fm[:, :, None], torch.full_like(inc, -1e4, dtype=F.dtype)).exp().sum(2)
+    lsec = fm + S.clamp(min=1e-30).log()                                                        # lse within each chart
+    lchr = torch.where(S > 0.5, torch.einsum("bkd,cd->bkc", q, zck) / math.sqrt(D), torch.full_like(S, -1e4)).log_softmax(-1)
+    return F_.logsumexp(-1, keepdim=True) + torch.einsum("bkc,blc->bkl", lchr - lsec, oh) + F_
 T6OFF = os.environ.get("BT_T6OFF") == "1"            # (ledger 10-31, U1) no learned offset: the offset turns its own T6 planes
 STEPS, BATCH, LR = int(os.environ.get("BT_STEPS", "6000")), int(os.environ.get("BT_BATCH", "64")), float(os.environ.get("BT_LR", "3e-4"))
 D, NH, DB = int(os.environ.get("BT_D", 192)), int(os.environ.get("BT_NH", 4)), int(os.environ.get("BT_DB", 32))   # (ledger 10-31: 512 / 8 / 64)
@@ -382,7 +397,11 @@ def make_net():
                     if PHPTR:   # the relations (sib: role a's soft choice, the continuous mirror)
                         ctxs = [cq, cp] + ([torch.einsum("bkl,blpc->bkpc", outs[0].softmax(-1)[..., :Lq], ez)] if role == 1 else [])
                         lt = lt + sum(s.pg[m, role] * rel(cx, m, role) for m, cx in enumerate(ctxs)) * math.sqrt(D)
-                    if ZQ:   # (ledger 11-06 ZQ) the coarse level: the query searches the Tree's charts; + log p(the token's chart | q)
+                    if CS:   # (ledger 11-06 CS) the seal: chart by the zck road only, address within the chart by q . kt
+                        m_ = t["isnum"][:, None, :Lq] & km[:, :, role, 0:1]
+                        lt = (chart_seal(torch.einsum("bkd,bld->bkl", q, kt) / math.sqrt(D), q, s.zck, t["ch"][:, :Lq], m_)
+                              + s.pc * cnt[:, None, :Lq]) * math.sqrt(D)
+                    elif ZQ:   # (ledger 11-06 ZQ) the coarse level: the query searches the Tree's charts; + log p(the token's chart | q)
                         lch = (torch.einsum("bkd,cd->bkc", q, s.zck) / math.sqrt(D)).log_softmax(-1) + math.log(NCH)   # centred: uniform = 0
                         lt = lt + lch.gather(-1, t["ch"][:, None, :Lq].expand(-1, K, -1)) * math.sqrt(D)
                     lt = lt.masked_fill(~t["isnum"][:, None, :Lq] | ~km[:, :, role, 0:1], -1e4)

@@ -56701,3 +56701,9 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
   on the host side (lock contention, then memory), not on a measurement. Next form for the speed line, if wanted: BEAM on one jitted step
   with a bounded search (`BEAM_UPCAST_MAX` / fewer TG_STEPS, `CACHELEVEL` on), memory watched; not re-fired without the word.
 - The GPU is free; the CS chain no longer waits on anything but the word.
+
+### 2026-11-06 19:52 — Bryce: "word given -- Salute!" — THE CHART-SEALED POINTER launched (unit lfcs)
+
+- `.cache/run_lfcs.sh` applied chart_seal to the live scripts (committed with this entry; BT_CS off by default), CS_s0 started 19:52
+  (params 6,600,625 = ZQ's: the seal adds no parameters). Then CS_s1, the per-pointer read + the key-chart probe (`_CS`), the CS verdict
+  (~01:00).

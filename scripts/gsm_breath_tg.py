@@ -50,6 +50,19 @@ _ISSTEP = (np.arange(NT) != STOP).astype(np.float32)
 SEAL = BR.SEAL                                                                               # (ledger 11-05) the sealed op head
 PHPTR, PR = BR.PHPTR, BR.PR                                                                  # (ledger 11-06) phase-bound pointers
 ZQ, NCH = BR.ZQ, BR.NCH                                                                      # (ledger 11-06) the zooming query
+CS = BR.CS                                                                                   # (ledger 11-06) the chart-sealed pointer
+
+
+def chart_seal(F, q, zck, ch, m):
+    """(CS) as BR.chart_seal (natural units)"""
+    F_ = m.where(F, -1e4)
+    oh = ch.one_hot(NCH).cast(dtypes.float)                                                    # (B, Lq, C)
+    inc = m.unsqueeze(-1) & (oh.unsqueeze(1) > 0.5)                                            # (B, K, Lq, C)
+    fm = inc.where(F_.unsqueeze(-1), -1e4).max(2)                                              # (B, K, C)
+    S = inc.where(F_.unsqueeze(-1) - fm.unsqueeze(2), -1e4).exp().sum(2)
+    lsec = fm + S.maximum(1e-30).log()
+    lchr = (S > 0.5).where(q @ zck.T * (1 / math.sqrt(D)), -1e4).log_softmax(-1)
+    return F_.logsumexp(-1, keepdim=True) + (lchr - lsec) @ oh.transpose(-1, -2) + F_
 _SOFM = np.zeros((BR.NS, NT), np.float32); _SOFM[BR.SOF, np.arange(NT)] = 1                # type -> struct (one-hot gathers)
 _OPM = np.zeros((len(BR.GD.OPS), NT), np.float32); _OPM[BR.OPI, np.arange(NT)] = 1; _OPM[:, STOP] = 0
 _CANM = np.zeros((BR.NS, NT), np.float32); _CANM[np.arange(BR.NS), BR.CANON] = 1             # struct -> its canonical type
@@ -257,7 +270,11 @@ def ptrs(P, o, c, zoom=False, free=False):
         if PHPTR:
             ctxs = [cq, cp] + ([outs[0].softmax(-1)[..., :Lq] @ ezf] if role == 1 else [])
             lt = lt + sum(P["pg"][m, role] * rel(cx, m, role) for m, cx in enumerate(ctxs)) * math.sqrt(D)
-        if ZQ:   # (ledger 11-06 ZQ) the coarse level (torch ptrs, mirrored; the gather as a one-hot matmul)
+        if CS:   # (ledger 11-06 CS) the seal (torch ptrs, mirrored)
+            m_ = t["isnum"][:, None, :Lq] & km[:, :, role, 0:1]
+            lt = (chart_seal(q @ kt.transpose(-1, -2) * (1 / math.sqrt(D)), q, P["zck"], t["ch"][:, :Lq], m_)
+                  + P["pc"] * cnt[:, None, :Lq]) * math.sqrt(D)
+        elif ZQ:   # (ledger 11-06 ZQ) the coarse level (torch ptrs, mirrored; the gather as a one-hot matmul)
             lch = (q @ P["zck"].T * (1 / math.sqrt(D))).log_softmax(-1) + math.log(NCH)   # centred: uniform = 0
             lt = lt + (lch @ t["ch"][:, :Lq].one_hot(NCH).cast(dtypes.float).transpose(-1, -2)) * math.sqrt(D)
         lt = (t["isnum"][:, None, :Lq].logical_not() | km[:, :, role, 0:1].logical_not()).where(-1e4, lt)
