@@ -56818,7 +56818,7 @@ floor(k NCYC / K)) on ORIG / CFNUM / CFNAME / TEST; per token-operand row with a
 | TT-O (order suffices within a role) | T2-ORD on TEST | ≥ 0.80 |
 - **Predictions:** TT-1 PASS; TT-CF PASS; TT-O FAIL.
 
-### 2026-11-07 06:41 — THE TWO-TIER ORACLE: TT-1 PASS, TT-CF PASS, TT-O FAIL (3/3 predicted; 159/218) — the business tier is worth +0.11 on TEST and survives the counterfactuals
+### 2026-11-07 06:39 — THE TWO-TIER ORACLE: TT-1 PASS, TT-CF PASS, TT-O FAIL (3/3 predicted; 159/218) — the business tier is worth +0.11 on TEST and survives the counterfactuals
 
 `.cache/gsm_two_tier_oracle_verdict.txt` (`scripts/gsm_two_tier_oracle.py`, zero GPU, banked BT4RB8 s0 / s1; the per-pointer protocol;
 rows = token operands with a valid candidate among the unconsumed numerals):
