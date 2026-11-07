@@ -56769,7 +56769,7 @@ label (7 classes; the ceiling: STAB 1.0 by construction, its ISO the best a pure
   fitting invariance on the CF fixture (it is the measurement; my 00:10 form (a) "CF pairs as positives" is STRUCK for that reason).
 - **Predictions:** (A) reproduces; (B) STAB below 0.90 on CFNUM (the tok key); (C) STAB below 0.90; **T2 FAIL**.
 
-### 2026-11-07 06:25 — THE TIER CENSUS: T2 FAIL (4/4 predicted; 156/215) — and the ceiling row says a business chart cannot address by itself
+### 2026-11-07 06:23 — THE TIER CENSUS: T2 FAIL (4/4 predicted; 156/215) — and the ceiling row says a business chart cannot address by itself
 
 `.cache/gsm_tier_census_verdict.txt` (`scripts/gsm_tier_census.py`, zero GPU; Tree = k-means 8 x 2 levels on TRAIN numerals, seed 0; STAB
 on 20,953 CFNUM / 4,855 CFNAME numerals paired to ORIG by gid; ISO on the oracle's token-operand rows with a non-valid competitor):
