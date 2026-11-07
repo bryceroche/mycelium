@@ -56797,7 +56797,7 @@ on 20,953 CFNUM / 4,855 CFNAME numerals paired to ORIG by gid; ISO on the oracle
   numeral), read on ORIG / CFNUM / CFNAME / TEST. It measures the headroom of the two-tier pointer before any role classifier is built;
   then the role tier's own road (a CF-stable role classifier from xq's level-0 direction, invariant by construction).
 
-### 2026-11-07 06:40 — Bryce: "word given for the two tier probe" — THE TWO-TIER ORACLE PINNED (zero GPU, banked BT4RB8 s0 / s1; before any read)
+### 2026-11-07 06:35 — Bryce: "word given for the two tier probe" — THE TWO-TIER ORACLE PINNED (zero GPU, banked BT4RB8 s0 / s1; before any read)
 
 **Theory line:** connecting local charts (chart = centroid + local coordinates) on Bryce's tiers (11-07): the business tier picks WHAT
 kind of operand, a lower tier picks WHICH. **Bryce, same message (design rules for the tier build, standing):** the tier count is an
@@ -56807,7 +56807,7 @@ slowly sharpening the representation space.
 
 **The read (`scripts/gsm_two_tier_oracle.py`):** the READER PER-POINTER protocol (gold slots < k committed, cond = gold types, cycle
 floor(k NCYC / K)) on ORIG / CFNUM / CFNAME / TEST; per token-operand row with a valid candidate among the unconsumed numerals:
-- **BASE** = RESTR (argmax of the banked pointer over the unconsumed numerals; TEST must reproduce 0.5744 / ... the banked read);
+- **BASE** = RESTR (argmax of the banked pointer over the unconsumed numerals; TEST must reproduce the banked per-pointer read, 0.5829 / 0.5812);
 - **T2-QK** = the business tier given (the gold operand's ROLE, gsm_role_tree.roles: op + side of first use; every numeral's role known)
   -> candidates cut to the same-role numerals -> argmax of the banked pointer among them;
 - **T2-ORD** = the same cut -> the first (lowest-position) same-role numeral (order alone; no weights).
