@@ -56707,3 +56707,34 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
 - `.cache/run_lfcs.sh` applied chart_seal to the live scripts (committed with this entry; BT_CS off by default), CS_s0 started 19:52
   (params 6,600,625 = ZQ's: the seal adds no parameters). Then CS_s1, the per-pointer read + the key-chart probe (`_CS`), the CS verdict
   (~01:00).
+
+### 2026-11-07 00:10 — THE CHART-SEALED POINTER: CS-R / CS-1 / CS-2 / CS-C all FAIL (3/4 predicted: CS-C PASS was wrong; 152/211) + the reason: the Tree charts are half surface
+
+`.cache/gsm_cs_verdict.txt` (unit lfcs, tinygrad GPU, 18k, vs the banked BT4RB8; reads torch CPU; landed 00:07):
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| CS-R: per-pointer RESTR TEST (mean ≥ +0.020, both > 0) | −0.0871 | −0.0856 | **FAIL ✓** |
+| CS-1: TEST step ptr | −0.0774 | −0.0691 | **FAIL ✓** |
+| CS-2: TEST step all | −0.0623 | −0.0646 | **FAIL ✓** |
+| CS-C: TEST chart-level hit64 (BT4RB8 0.6990 / 0.6965) | −0.1015 | −0.0980 | **FAIL ✗** (predicted PASS) |
+
+- Beside: per-pointer TRAIN RESTR 0.8316 / 0.8348 (vs 0.8420; FREE 0.979 — the fit is intact); TEST RESTR 0.4958 / 0.4955; wrong picks in a
+  valid chart 0.038 / 0.041 (below BT4RB8's 0.047 / 0.046); **the counterfactual fixture collapsed: CFNAME step 0.5592 / 0.5795 (vs 0.8086 /
+  0.8464), CFNUM 0.6133 / 0.6423 (vs 0.8553 / 0.8867)**; ORIG 0.9089 / 0.9198; TEST ans 0.029 / 0.034 (vs 0.052 / 0.051).
+- **The seal worked as built and exposed the chart itself.** With q · kt barred from crossing charts, the pointer is exactly as good as its
+  chart choice, and the chart choice broke on the counterfactuals: a renamed entity or a changed number must not move the gold operand, yet
+  the sealed pointer lost 0.25 on both.
+- **The read that names it (`scripts/gsm_chart_cf_stability.py`, zero GPU; CF items paired to ORIG by gid, same program and numeral slots):**
+  the gold numeral keeps its ST64 chart **0.504 (CFNUM, 20,953 numerals) / 0.493 (CFNAME, 4,855)**; its level-0 node 0.842 / 0.852. Half of
+  the 64 charts' identity is surface (the number, the names in context), not role. A sealed road that must pick the chart memorizes
+  "this problem's operand lives in chart c" and is wrong the moment the surface moves; the unsealed q · kt (BT4RB8) never committed to it,
+  which is why ZQ's and PP's additive roads cost little and CS cost much.
+- **Correction to the record:** the POINTER-CHART ORACLE's "charts address operands and generalize better" (+0.093 on the gap) was read on
+  TRAIN / TEST only, never on the counterfactual splits. **Lesson (for the book): an oracle for a form that commits to a discrete address
+  is read on the CF fixture too** — the fixture is where surface masquerades as structure.
+- **Closes the form** (a pointer sealed to the k-means charts of reader numeral states), not the line. The binding theorem said it first:
+  concepts are bindings, not classifiable from surface — a chart of raw states is a surface classification. **Named next forms (not
+  pinned):** (a) **CF-stable charts**: a Tree whose charts are fit to be invariant across the CF pairs (ORIG ↔ CFNUM / CFNAME numerals as
+  positives; the fixture's TRAIN side only), with the stability read as its gate (≥ 0.90 at ST64) before any pointer touches it; (b) the
+  level-0 seal (8 charts, 0.84–0.85 stable) as a cheaper probe of the same question, oracle first, CF splits included.
