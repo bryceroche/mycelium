@@ -56648,3 +56648,34 @@ jit_cache attribute; disclosed).
   `Failed to acquire lock file am_0000:03:00.0.lock`); stopped by PID at 16:50, the chain's fallback disclosed it, the banked profile is
   intact. Rerun as unit lfbeam with `PARALLEL=0` (in-process compiles; `.cache/run_beam2.sh`), clean at launch. Tinygrad quirk for the book:
   **BEAM on AM needs PARALLEL=0.**
+
+### 2026-11-06 17:05 — Bryce: "I love your ideas for the chart sealed pointer" — THE CHART-SEALED POINTER PINNED (before any build; the run waits for the word)
+
+**Theory line:** "connecting local charts which are centroids in the Tree database" + "abstract reasoning = zooming out on the Tree DB" (a chart
+= an atom's centroid + its local coordinates; within a chart the breath moves locally, between charts the bridge chooses). **Law served:** the
+RESIDUAL-SEAL law (PP and ZQ, two additive roads beside a chart-carrying q · kt, were both voted down: the ZQ census, 16:52).
+
+**The form (BT_CS=1, on top of BT_ZQ=1's charts and keys; BT4RB8's flags; 18k; seeds 0 / 1; tinygrad GPU):** the token block of each pointer
+becomes a hierarchical softmax with an exact seal. With F = q · kt / √D over the open numerals (the kind mask as now):
+token logit = lse_T(F) + log p_r(chart | q) + F_t − lse_{chart(t)}(F), then + pc · cnt as now (consumption evidence crosses charts).
+lse_T keeps the token block's total mass (the token / slot / const competition is untouched); p_r = softmax(q · zck / √D) restricted to the
+charts present among the open numerals; F − lse_chart = log p(token | chart, q). **q · kt cannot move mass between charts at all** (the seal is
+exact, not a centroid subtraction that leaves second-order chart information); only the zck road chooses the chart. Pinned in place of the
+centroid-subtraction wording at 16:52: that left the chart probe-able in k_local; the hierarchy seals it exactly.
+
+| Bar | Measure (vs banked BT4RB8 s0 / s1, same engine / states / steps) | Pass |
+|---|---|---|
+| CS-R | per-pointer RESTR TEST (gsm_reader_ptr_read.py) | mean ≥ +0.020, both > 0 |
+| CS-1 | TEST step ptr | mean ≥ +0.010, both > 0 |
+| CS-2 | TEST step all | mean ≥ +0.010, both > 0 |
+| CS-C | chart-level hit on TEST: the RESTR pick's ST64 chart is some valid candidate's chart (the key-chart probe's new `hit64`) | mean ≥ +0.020, both > 0 |
+
+- **Gates before the run:** (1) BT_CS unset = the live code, bit-identical arrays; (2) THE SEAL: per (slot, chart), the token block's mass in a
+  chart = exp(lse_T) · p_r(chart) to 1e-4, and scaling kt's weights x3 leaves every chart's mass unchanged (q · kt cannot cross); (3) tinygrad =
+  torch 40-step smoke; (4) the chain's dry run on a copy root. The census frame (beside): per pick, the log p_r(chart) margin of the gold
+  chart vs the others present.
+- **Predictions:** CS-C PASS (the road must now carry the chart choice, and the chart is coarser than the address); CS-R FAIL; CS-1 FAIL;
+  CS-2 FAIL. (My last two transfer predictions, PP-R and ZQ-R, were wrong in the hopeful direction; these lean the other way except the
+  chart bar.)
+- Beside, banked with the verdict: hit64 for BT4RB8 (the key-chart probe re-run on its weights, zero GPU, adds the hit64 key; the other keys
+  must reproduce exactly).
