@@ -56608,3 +56608,43 @@ jit_cache attribute; disclosed).
   My PP-R prediction was wrong.
 - The applied phase_ptr + zoom_query patches are committed with this entry (the live files now carry both flags; both off by default).
 - lfzq: the census ran both seeds; ZQ_s0 started 12:41 (params 6,600,625 = BT4RB8 + 65 x 512 chart keys).
+
+### 2026-11-06 16:52 — THE ZOOMING QUERY: ZQ-R / ZQ-1 / ZQ-2 / ZQ-E all FAIL (2/4 predicted: ZQ-R and ZQ-E PASS were wrong; 149/207) + the census: this road was drowned too
+
+`.cache/gsm_zq_verdict.txt` (unit lfzq, tinygrad GPU, 18k, vs the banked BT4RB8; reads torch CPU; verdict landed 16:49):
+
+| Bar | s0 | s1 | Verdict |
+|---|---|---|---|
+| ZQ-R: per-pointer RESTR TEST − BT4RB8 (mean ≥ +0.020, both > 0) | −0.0036 | +0.0019 | **FAIL ✗** (predicted PASS) |
+| ZQ-1: TEST step ptr (mean ≥ +0.010, both > 0) | −0.0156 | −0.0229 | **FAIL ✓** |
+| ZQ-2: TEST step all | −0.0083 | −0.0173 | **FAIL ✓** |
+| ZQ-E: wrong picks in a valid ST64 chart (≥ 0.15 both) | 0.0444 | 0.0513 | **FAIL ✗** (predicted PASS; BT4RB8 0.0474 / 0.0455; base rate 0.0443 / 0.0413) |
+
+- Beside: per-pointer TRAIN RESTR 0.8423 / 0.8426 vs 0.8420 / 0.8420 (unmoved); KP-1 on ZQ CARRIED (r 0.978); wrong picks n 1284 / 1266 vs
+  1267 / 1275; ORIG step 0.9598 / 0.9502, CFNAME 0.8358 / 0.8415, CFNUM 0.8809 / 0.8838 (vs 0.9514 / 0.9660, 0.8086 / 0.8464, 0.8553 / 0.8867):
+  the fit / counterfactual side a hair up on s0, TEST down on both — the PP pattern again.
+- **The census (`scripts/gsm_zq_census.py`, zero GPU, the per-pointer protocol on TRAIN[:256] / TEST[:256]; exact ablation: the centred
+  chart term is 0 at zck = 0; numerals the kind mask leaves open):**
+
+| | s0 TRAIN | s0 TEST | s1 TRAIN | s1 TEST |
+|---|---|---|---|---|
+| std of the base logit (q · kt + pc · cnt) | 30.1 | 34.3 | 29.0 | 32.5 |
+| std of the ZQ term | 0.23 | 0.32 | 0.24 | 0.34 |
+| margin, valid − other open candidates: base | 45.2 | 27.2 | 45.7 | 27.3 |
+| margin: ZQ | 0.08 | 0.06 | 0.09 | 0.05 |
+
+- **Reading:** my pin said ZQ "does not share PP's flaw: its chart logits come from the same q and scale with it". **Wrong.** The road could
+  reach ~log 65 x √D ≈ 94 nats but training left it near uniform (≤ 1% of the base's spread, 0.05–0.09 nats of margin). The cause is not a
+  bound but the HEADROOM COROLLARY: q · kt (full rank; KP-1: the chart is already in the key) solves TRAIN by itself (RESTR 0.842 with or
+  without the road), so the loss gives the coarse road no work, and it is voted down from birth like a gain. Two additive pointer roads beside
+  q · kt (PP bounded, ZQ unbounded) died the same way: **the next pointer form must SEAL the base's chart path** (the RESIDUAL-SEAL law), not
+  add beside it. Closes the form (an additive chart prior beside a chart-carrying q · kt); the line (connecting local charts; zoom on the Tree)
+  stays open.
+- **Named next form (not pinned; needs the word): the CHART-SEALED POINTER** = CORE_THEORIES' "a chart = an atom's centroid + its local
+  coordinates" made literal: fine keys from each numeral's LOCAL coordinates (state − its chart's centroid, so q · kt cannot see which chart),
+  the chart chosen only by the zck road: logit = log p(chart | q) + q · k_local. The census's frame is its gate (ZQ margin must carry the
+  choice). Also open: the slot-state probe (is the gold chart decodable from hu?) — after ZQ-E's FAIL it asks whether the query CAN know.
+- **The BEAM profile (lfzq's last step) died:** BEAM's parallel compile workers each tried to open the GPU and failed the AM lock (1650
+  `Failed to acquire lock file am_0000:03:00.0.lock`); stopped by PID at 16:50, the chain's fallback disclosed it, the banked profile is
+  intact. Rerun as unit lfbeam with `PARALLEL=0` (in-process compiles; `.cache/run_beam2.sh`), clean at launch. Tinygrad quirk for the book:
+  **BEAM on AM needs PARALLEL=0.**
