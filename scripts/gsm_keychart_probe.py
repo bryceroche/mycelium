@@ -99,14 +99,15 @@ def probe(Ftr, Fte, ytr, yte):
 
 def kinds(picks):
     """KP-E: wrong picks on rows with a valid candidate -> share in a valid candidate's chart (ST64, ST512) + the random-wrong base rate"""
-    n = w64 = w512 = 0; base = []
+    n = w64 = w512 = 0; base = []; hit = []
     for g, valid, cand, p in picks:
         V = [i for i in cand if i in valid]
+        if V: hit.append(chart["TEST"][g, p][:2] in {chart["TEST"][g, i][:2] for i in V})   # (ledger 11-06 CS-C) chart-level hit, every row
         if not V or p in valid: continue
         n += 1; ch = chart["TEST"]; vc64 = {ch[g, i][:2] for i in V}; vc512 = {ch[g, i] for i in V}
         w64 += ch[g, p][:2] in vc64; w512 += ch[g, p] in vc512
         wr = [i for i in cand if i not in valid]; base.append(np.mean([ch[g, i][:2] in vc64 for i in wr]))
-    return dict(n_wrong=n, addr64=w64 / n, addr512=w512 / n, base64=float(np.mean(base)))
+    return dict(n_wrong=n, addr64=w64 / n, addr512=w512 / n, base64=float(np.mean(base)), hit64=float(np.mean(hit)))
 
 
 o = {}

@@ -56649,7 +56649,7 @@ jit_cache attribute; disclosed).
   intact. Rerun as unit lfbeam with `PARALLEL=0` (in-process compiles; `.cache/run_beam2.sh`), clean at launch. Tinygrad quirk for the book:
   **BEAM on AM needs PARALLEL=0.**
 
-### 2026-11-06 17:05 — Bryce: "I love your ideas for the chart sealed pointer" — THE CHART-SEALED POINTER PINNED (before any build; the run waits for the word)
+### 2026-11-06 17:07 — Bryce: "I love your ideas for the chart sealed pointer" — THE CHART-SEALED POINTER PINNED (before any build; the run waits for the word)
 
 **Theory line:** "connecting local charts which are centroids in the Tree database" + "abstract reasoning = zooming out on the Tree DB" (a chart
 = an atom's centroid + its local coordinates; within a chart the breath moves locally, between charts the bridge chooses). **Law served:** the
@@ -56679,3 +56679,16 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
   chart bar.)
 - Beside, banked with the verdict: hit64 for BT4RB8 (the key-chart probe re-run on its weights, zero GPU, adds the hit64 key; the other keys
   must reproduce exactly).
+
+### 2026-11-06 17:34 — THE CHART-SEALED POINTER built + 4 gates PASS; chain `.cache/run_lfcs.sh` staged behind lfbeam (waits for the word)
+
+- `scripts/patches/chart_seal.py` (after zoom_query; both engines; `chart_seal(F, q, zck, ch, m)`: per-chart max + lse, the restricted
+  log_softmax over present charts, −1e4 sentinels, never −inf). `scripts/gsm_cs_verdict.py` (CS-R/1/2/C). The key-chart probe gains `hit64`
+  (every row with a valid candidate: the pick's ST64 chart is some valid candidate's).
+- **Gates:** (1) BT_CS unset, patched copy vs live: pa / pb identical (TEST[:64], fixed init). (2) THE SEAL (pc = 0, zck x200 for a
+  non-uniform search; 529 rows, mean 3.61 charts present): scaling kt x3 moves the chart shares ≤ 1.8e-7, the token shares within charts
+  up to 0.216 — q · kt cannot cross charts, the address still lives. (3) 40-step smoke: tinygrad = torch to 4 decimals (4.2990 / 3.8842 /
+  3.9628 / 3.8154). (4) the dry run of `.cache/run_lfcs.sh` on a copy root (patch, two 2-step runs, both reads, the verdict): exit 0;
+  artifacts deleted.
+- **The CS-C baseline banked:** the key-chart probe re-run on BT4RB8 reproduces every banked key exactly; hit64 0.6990 / 0.6965.
+- lfbeam (the BEAM=2 rerun, PARALLEL=0, launched 16:50) is still searching; the CS chain waits for it (the gpu lock + an is-active wait).
