@@ -56768,3 +56768,31 @@ label (7 classes; the ceiling: STAB 1.0 by construction, its ISO the best a pure
   representation is a business tier; the next form builds one by construction (states of a names/numbers-abstracted view), never by
   fitting invariance on the CF fixture (it is the measurement; my 00:10 form (a) "CF pairs as positives" is STRUCK for that reason).
 - **Predictions:** (A) reproduces; (B) STAB below 0.90 on CFNUM (the tok key); (C) STAB below 0.90; **T2 FAIL**.
+
+### 2026-11-07 06:25 — THE TIER CENSUS: T2 FAIL (4/4 predicted; 156/215) — and the ceiling row says a business chart cannot address by itself
+
+`.cache/gsm_tier_census_verdict.txt` (`scripts/gsm_tier_census.py`, zero GPU; Tree = k-means 8 x 2 levels on TRAIN numerals, seed 0; STAB
+on 20,953 CFNUM / 4,855 CFNAME numerals paired to ORIG by gid; ISO on the oracle's token-operand rows with a non-valid competitor):
+
+| Candidate | STAB8 CFNUM / CFNAME | STAB64 CFNUM / CFNAME | ISO ORIG / CFNUM / CFNAME / TEST |
+|---|---|---|---|
+| A raw RB8 states (the CS charts) | 0.842 / 0.852 | 0.504 / 0.493 (reproduces ✓) | 0.902 / 0.910 / 0.920 / 0.912 |
+| B role feats (14-d) | 0.677 / 0.687 | 0.416 / 0.421 | 0.862 / 0.864 / 0.863 / 0.872 |
+| C BT4RB8 s0 xq | **0.914 / 0.908** | 0.736 / 0.731 | 0.843 / 0.850 / 0.844 / 0.846 |
+| D gold role label (7 classes; ceiling) | 1.000 / 1.000 | 1.000 / 1.000 | **0.365 / 0.366 / 0.376 / 0.403** |
+
+- **T2 FAIL ✓** (no A–C is ≥ 0.90 at ST64 on both edits); predictions (A) reproduces ✓, (B) < 0.90 on CFNUM ✓, (C) < 0.90 ✓.
+- **Reading 1 — the two columns trade off:** high ISO comes with low STAB. Raw charts isolate the operand 0.91 of the time BECAUSE they
+  are surface-unique (each numeral's chart is nearly its own surface), and that is exactly what moves under a CF edit. ISO alone rewards
+  surface; it was the wrong usefulness meter for the business tier, and the POINTER-CHART ORACLE's +0.093 was this effect.
+- **Reading 2 — the ceiling row (the finding):** a PERFECT business chart (the gold role: op + side, or distractor) isolates the operand
+  only 0.37–0.40 of the time: most competitors share the gold's role (the same op used at another step, two '+' operands). **The business
+  tier cannot address alone; by contract it must not.** Bryce's tiers predict the fix: the business chart picks WHAT kind of operand
+  (role), and a lower tier picks WHICH one among same-role numerals — by order and relation (the T9 clock's address, the step's links),
+  never by surface. That is "a chart = centroid + local coordinates" with the local coordinates on the order / relation tier.
+- **Reading 3:** the BT's own key input xq is the most business-like existing representation: its level-0 (8 charts) clears 0.90 on both
+  edits (0.914 / 0.908); its 64 charts do not (0.73).
+- **Named next form (not pinned; needs the word): THE TWO-TIER ORACLE** (zero GPU): the pointer with the gold role as the business chart
+  (p(role) given) and the address WITHIN the role chosen by (i) the banked q · kt, (ii) order alone (the first unconsumed same-role
+  numeral), read on ORIG / CFNUM / CFNAME / TEST. It measures the headroom of the two-tier pointer before any role classifier is built;
+  then the role tier's own road (a CF-stable role classifier from xq's level-0 direction, invariant by construction).
