@@ -56817,3 +56817,30 @@ floor(k NCYC / K)) on ORIG / CFNUM / CFNAME / TEST; per token-operand row with a
 | TT-CF (the tier is CF-stable) | T2-QK on CFNUM and on CFNAME − T2-QK on ORIG | ≥ −0.020 on both edits, both seeds |
 | TT-O (order suffices within a role) | T2-ORD on TEST | ≥ 0.80 |
 - **Predictions:** TT-1 PASS; TT-CF PASS; TT-O FAIL.
+
+### 2026-11-07 06:41 — THE TWO-TIER ORACLE: TT-1 PASS, TT-CF PASS, TT-O FAIL (3/3 predicted; 159/218) — the business tier is worth +0.11 on TEST and survives the counterfactuals
+
+`.cache/gsm_two_tier_oracle_verdict.txt` (`scripts/gsm_two_tier_oracle.py`, zero GPU, banked BT4RB8 s0 / s1; the per-pointer protocol;
+rows = token operands with a valid candidate among the unconsumed numerals):
+
+| | ORIG | CFNUM | CFNAME | TEST |
+|---|---|---|---|---|
+| BASE (RESTR) | 0.9956 / 0.9942 | 0.9747 / 0.9767 | 0.9662 / 0.9712 | 0.6840 / 0.6820 |
+| T2-QK (gold role given; the pointer within the role) | 0.9976 / 0.9969 | 0.9862 / 0.9875 | 0.9839 / 0.9844 | **0.7980 / 0.7950** |
+| T2-ORD (gold role given; the first same-role numeral) | 0.7486 | 0.7493 | 0.7587 | 0.7496 |
+| rows / mean same-role candidates | 9606 / 1.84 | 18720 / 1.83 | 4410 / 1.79 | 4010 / 2.10 |
+
+- **Reproduction disclosed:** the pin named 0.5829 / 0.5812 (the banked per-pointer read, all 4,706 TEST rows); this read keeps the 4,010
+  rows with a valid unconsumed candidate (the role cut needs one). Rescaled, BASE reproduces exactly (0.6840 x 4010 / 4706 = 0.5829;
+  0.6820 -> 0.5812). In the all-rows frame TT-1 is +0.097 / +0.096 (still ≥ +0.050).
+- **TT-1 PASS ✓** (+0.1140 / +0.1130): given the business tier, the banked pointer's TEST misses fall from 0.32 to 0.20 — about a third of
+  the pointer's TEST wall is the ROLE decision. **TT-CF PASS ✓** (−0.009 to −0.014): within-role addressing holds on the counterfactuals
+  (BASE itself drops −0.02 to −0.03 there). **TT-O FAIL ✓** (0.7496): order alone is below the pointer within the role (0.80); the lower
+  tier needs relations, not position alone.
+- **Reading:** the two-tier decomposition is real and CF-stable: business tier (WHAT role) + a within-role tier (WHICH numeral). The
+  remaining 0.20 is the within-role tier's (2.1 same-role candidates on average on TEST).
+- **Named next forms (not pinned; need the word):** (1) the ROLE TIER'S ROAD — how well can the role be predicted, CF-stably, from what
+  the BT already has (a zero-GPU probe: the slot's own query → the gold operand's role, and each numeral's xq → its role, read on the CF
+  splits; the bar is the accuracy at which the +0.11 survives); (2) then the two-tier pointer inside the BT (the CS hierarchy with ROLE
+  charts in place of the k-means charts), honoring Bryce's build rules (no RoPE / MLP, U-Net + skip per breath, alternation between
+  tiers outside the BT, diffusion-like sharpening).
