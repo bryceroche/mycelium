@@ -56680,7 +56680,7 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
 - Beside, banked with the verdict: hit64 for BT4RB8 (the key-chart probe re-run on its weights, zero GPU, adds the hit64 key; the other keys
   must reproduce exactly).
 
-### 2026-11-06 17:34 — THE CHART-SEALED POINTER built + 4 gates PASS; chain `.cache/run_lfcs.sh` staged behind lfbeam (waits for the word)
+### 2026-11-06 17:33 — THE CHART-SEALED POINTER built + 4 gates PASS; chain `.cache/run_lfcs.sh` staged behind lfbeam (waits for the word)
 
 - `scripts/patches/chart_seal.py` (after zoom_query; both engines; `chart_seal(F, q, zck, ch, m)`: per-chart max + lse, the restricted
   log_softmax over present charts, −1e4 sentinels, never −inf). `scripts/gsm_cs_verdict.py` (CS-R/1/2/C). The key-chart probe gains `hit64`
