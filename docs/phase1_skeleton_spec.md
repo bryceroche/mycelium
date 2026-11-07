@@ -56739,7 +56739,7 @@ centroid-subtraction wording at 16:52: that left the chart probe-able in k_local
   positives; the fixture's TRAIN side only), with the stability read as its gate (≥ 0.90 at ST64) before any pointer touches it; (b) the
   level-0 seal (8 charts, 0.84–0.85 stable) as a cheaper probe of the same question, oracle first, CF splits included.
 
-### 2026-11-07 00:31 — Bryce: "lets build layers of charts ... the .net 3 tier architecture ... each layer of the architecture needs its own set of charts" — THE TIER CENSUS PINNED (zero GPU; before any read)
+### 2026-11-07 06:21 — Bryce: "lets build layers of charts ... the .net 3 tier architecture ... each layer of the architecture needs its own set of charts" — THE TIER CENSUS PINNED (zero GPU; before any read)
 
 **Theory line:** connecting local charts (CORE_THEORIES) + the binding theorem (concepts are bindings, not surface) + hill "tests +
 contracts". **The architecture (Bryce's tiers in Mycelium's terms):** a tier is defined by its INVARIANCE CONTRACT — which counterfactual
