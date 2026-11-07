@@ -56844,3 +56844,28 @@ rows = token operands with a valid candidate among the unconsumed numerals):
   splits; the bar is the accuracy at which the +0.11 survives); (2) then the two-tier pointer inside the BT (the CS hierarchy with ROLE
   charts in place of the k-means charts), honoring Bryce's build rules (no RoPE / MLP, U-Net + skip per breath, alternation between
   tiers outside the BT, diffusion-like sharpening).
+
+### 2026-11-07 12:12 — THE TIERED BT ARCHITECTURE (Bryce's design ruling; the spec the tier build follows)
+
+Bryce, 11-07, after the two-tier oracle (verbatim excerpts): *"By layer I mean tier like .net 3 tier stack ... lets partition Tree DB
+tables by tier and MHA head. lets honor the rule that breaths dont specialize but attention heads do specialize. lets not overload our
+complex planes so use disjoint planes ... Lower temp as breath cycles progress. dont fuse #2 and #3 into one softmax ... i think we want
+compression on both self and cross attention ... each tier like .net 3 tier stack has a dedicated set of breathing transformers."*
+
+- **Outside the BT (the organs):** notebook, T256 bus, T6 + T9 clocks, CSP solver. **The BT is the core compute engine.**
+- **Tiers:** each tier (invariance contract: business/role, data/value, surface; Tree DB = storage) has its OWN set of BTs (own weights).
+  Breaths within a BT are weight-tied (never specialize); HEADS specialize, each with a dedicated partition of its tier's Tree table
+  (partition key = (tier, head)). The tier count stays open (3 may be 6 or 12) and is decided by measured contracts.
+- **Every BT carries:** macro charts from the Tree (tier 1 of a 2-tier softmax) + micro composite keys (tier 2); the U-Net (512 → 64 → 512)
+  with the skip, keys bypassing the waist; no RoPE, no MLP.
+- **Composite keys:** (token_id, slot_id, T6 stamp, T9 stamp, Tree_table_ID, Tree_level_ID, Beam_search_ID), each factor on its OWN
+  disjoint complex planes (wildcard queries = blank a factor's planes); unbind by the conjugate. Surface factors (token_id, clock
+  stamps) never enter a macro chart.
+- **Three separate roads per breath, each its own softmax, tier and contract:** token self-attention, slot self-attention (relations:
+  "which step feeds this one"), slot → token cross-attention (2-tier). The waist compresses on BOTH self- and cross-attention:
+  queries pass the 64-d waist, keys never do (asymmetric: in token self-attention the same tokens are compressed as queries and
+  full as keys).
+- **Dynamics:** temperature lowers as breath cycles progress; alternation between tier BTs outside the BT; diffusion-like slow sharpening.
+- **Clocks:** both T6 (breath) and T9 (token address) stamp the keys; each has a continuous face (gear rotation inside attention) and a
+  discrete face (the odometer digits, `rotor_clock.t6_odometer`, for exact Tree keys).
+- Not pinned, not built: each form enters with its own pin and bars. First in line: the role tier's road (zero GPU).
