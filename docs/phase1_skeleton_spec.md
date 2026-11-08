@@ -57064,3 +57064,21 @@ Welford stats) and T rises to their distance. Scale-free, no pooled radius. Re-s
   and the final loss 0.48-0.86 vs 0.04-0.05. The two-tier softmax is SEALED: a query that picks the wrong chart cannot recover the
   key inside another chart, and the keys' charts come from a projection still training (they move under the query). Not a bar; the
   first thing to read on a real tier (query chart accuracy: does the query's top chart hold the gold key?).
+
+### 2026-11-07 21:04 -- BTC2 pinned: THE GSM8K TIER ON THE FIXED CLASS (Bryce's word: "word given for your recommendations")
+Theory line: the Breathing Transformer as the compute engine (the tiered-BT ruling) + the bridge's confidence dial (radius = confidence;
+"a CONFIDENCE DIAL deciding when to quantize") + the T6 clock as the commit's stamp (the odometer is the discrete mirror).
+- **The form = BTC's (same port, data, recipe, masks, 18k steps, two seeds) + three fixes:** the U-Net ID skip (the 16:15 class defect);
+  **#4 the self-conditioned radius** (`BTC_SELFCOND=1`): a committed slot enters at the model's OWN detached confidence, read by a first
+  no-grad pass with the committed slots' atoms hidden (radius 0), by the scorer's formula p(type) x max p(a) x max p(b) (STOP: p(type));
+  **#5 the commit stamp** (`BTC_STAMP=1`): a committed slot's T6 stamp = its commit breath (training: a random commit order per problem
+  on the scorer's schedule, never later than the current breath's predecessor; the scorer's facade tracks the real commits). No Tree
+  partitions (charts are BTC3, after their cost is read on a real tier). 12,037,281 params (the skip). Smoke 21:00: 40 steps, loss
+  5.63 -> 4.93, 0.99 s/step (BTC 0.8: pass 1), symmetry read at step 40 1.00 distinct types/problem (z spread 5.7e-4; the defect 3.8e-6).
+- **The gate (folded into s0, read at its step-1000 eval; `symmetry` in gsm_btc.py, breath 0 + empty notebook, ORIG[:64]):** distinct
+  predicted types per problem > 1.05 -> the chain runs on; <= 1.05 -> stop (the skip did not break the symmetry; no 18k on a broken form).
+- **Bars = BTC's, unchanged** (`BTC_VTAG=BTC2 scripts/gsm_btc_verdict.py`): BTC-N TEST step_all BTC2 - BT4RB8 >= -0.020 both seeds;
+  BTC-G >= +0.020 both; BTC-CF CFNUM/CFNAME >= -0.030 all four (BT4RB8 0.1634 / 0.1664 TEST).
+- **Predictions:** gate PASS; BTC-N PASS; BTC-G FAIL; BTC-CF PASS. A FAIL closes this form, never the line.
+- Chain `.cache/run_btc2.sh` from a frozen worktree (`/home/bryce/mycelium-runs/btc2`, detached at the pin's commit; cwd = the repo for
+  `.cache`), so class work on the branch never reaches a running seed.

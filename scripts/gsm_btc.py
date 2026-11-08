@@ -13,6 +13,12 @@ The token stream is read ONCE per problem (token self-attention = the reader, br
 on the six gears, position on the slow gears) + token_id (a word hash; names = the problem-local entity id, so CFNAME leaves it
 unchanged); slots carry slot_id (a clock over the slot index), the T6 stamp (the breath) and the tree level. Name tokens enter as their
 fresh per-problem entity phases (the reader's ID chassis), never their surface states.
+BTC2 (ledger 11-07, the audit's #4 + #5; both default ON, =0 restores the BTC form):
+  BTC_SELFCOND=1  the radius a committed slot enters with = the model's OWN detached confidence (a first no-grad pass with the committed
+                  slots' atoms hidden at radius 0; the scorer's formula p(type) x max p(a) x max p(b), p(type) alone for STOP), so the
+                  confidence dial trains on the radii the scorer feeds it (BTC trained at radius 1 only).
+  BTC_STAMP=1     a committed slot's T6 stamp = the breath it was committed in (the Notebook.tick contract); open slots carry the current
+                  breath. Training draws a commit order per problem and stamps it on the scorer's schedule; the scorer's facade tracks it.
 Modes (BTC_MODE): smoke (BTC_STEPS steps, s/step) | train (BT_STEPS, scored every 1000 on ORIG/TEST[:600], FINAL on every split,
 .cache/gsmb_btc_{TAG}.json; BT_SAVE=1 -> .safetensors + atoms .npy). Env: BT_SEED, BT_TAG, BT_BATCH, BT_LR; BTC_D / BTC_NH / BTC_DB /
 BTC_BLOCKS (defaults 512 / 8 / 64 / 2).
@@ -39,6 +45,8 @@ _KM[STOP] = 1
 D, NH, DB, NBLK = (int(os.environ.get(k, v)) for k, v in (("BTC_D", "512"), ("BTC_NH", "8"), ("BTC_DB", "64"), ("BTC_BLOCKS", "2")))
 PTR = [f"p{r}{kd}" for r in "ab" for kd in KINDS]                   # pa_t pa_s pa_c pb_t pb_s pb_c
 BUCKET = 32
+SELFCOND, STAMP = os.environ.get("BTC_SELFCOND", "1") == "1", os.environ.get("BTC_STAMP", "1") == "1"
+_SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) > j) for j in range(K)])   # the scorer: rank j commits at
 
 
 def config(d_in, d_aux):
@@ -85,7 +93,8 @@ def port_batch(t, E, its, Lb):
 def host_io(bt, P, nb, tick):
     """per breath: notebook arrays (typ, r, cf, lev, cons at the batch's L) -> slot angles/presence, entry arrays, marks"""
     typ, r, cf, lev, cons = nb; B = typ.shape[0]; Lq = P["Lq"]; Lb = P["x"].shape[1]
-    sf = {"slot": np.broadcast_to(np.arange(K), (B, K)).copy(), "tick": np.broadcast_to(np.asarray(tick)[:, None], (B, K)).copy(), "level": lev}
+    tick = np.asarray(tick).reshape(B, -1)                                                     # (B,) the breath, or (B, K) per-slot stamps
+    sf = {"slot": np.broadcast_to(np.arange(K), (B, K)).copy(), "tick": np.broadcast_to(tick, (B, K)).copy(), "level": lev}
     sa, sp = bt.layout.angles(sf, (B, K))
     mt = np.zeros((B, Lb, 1), np.float32); mt[:, :Lq, 0] = cons[:, :Lq]
     ms = cons[:, Lq:Lq + K, None].astype(np.float32)
@@ -121,6 +130,24 @@ def forward(bt, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts
     return lt, oa["z"]["slot"], {n: ob["logp"][n][:, 0] for n in PTR}, c, pc_
 
 
+def confidence(bt, atoms, lt, lp, c, pc_, vps):
+    """the scorer's radius of each proposal: p(type) x max p(a) x max p(b) (STOP: p(type)); kinds from the DECIDED type (B, K)"""
+    kw = (c.one_hot(NT).cast(dtypes.float) @ Tensor(_KM.reshape(NT, 6))).reshape(*c.shape, 2, 3)
+    J = joint(lp, kw, [None, vps.any(-1), None])
+    ca, cb = (Tensor.cat(*J[r], dim=-1).softmax(-1).max(-1) for r in "ab")
+    return (c == STOP).where(pc_, pc_ * ca * cb)
+
+
+def commit_stamps(rng, committed, cyc):
+    """(B, K) T6 stamps: a committed slot = the breath it was committed in (a random commit order on the scorer's schedule, never after
+    the current breath's predecessor), an open slot = the current breath"""
+    B = committed.shape[0]; tick = np.broadcast_to(cyc[:, None], (B, K)).copy()
+    for b in range(B):
+        ks = np.flatnonzero(committed[b]); ks = ks[rng.permutation(len(ks))]
+        tick[b, ks] = np.minimum(_SCHED[:len(ks)], max(int(cyc[b]) - 1, 0))
+    return tick
+
+
 def joint(lp, kw, open_):
     """per operand: the three kind blocks (token / earlier slot / constant), each shifted by log(its share of the type's open kinds);
     a kind the type closes, or a block with no open key (open_[j] (B, K) bool, None = always open), gets -1e4.
@@ -141,7 +168,13 @@ class Trainer:
     def __init__(self, bt, lr):
         self.bt = bt; self.params = bt.parameters()
         for p in self.params: p.requires_grad = True
-        self.opt = AdamW(self.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); self.jits = {}
+        self.opt = AdamW(self.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); self.jits = {}; self.cjits = {}
+        self.srng = np.random.default_rng(10_007 + BR.SEED)          # the commit-order draws (own stream: the masks stay BTC's)
+
+    def _conf(self, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau):
+        """pass 1 (no grad): the model's own confidence per slot, as the scorer computes it"""
+        lt, _, lp, c, pc_ = forward(self.bt, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau)
+        return confidence(self.bt, atoms, lt, lp, c, pc_, vps).realize()
 
     def _step(self, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau, gt, mk, am, kw,
               tat, tas, tac, tbt, tbs, tbc):
@@ -177,10 +210,16 @@ class Trainer:
         cyc = np.clip(np.floor(NCYC * (1 - rr[:, 0])), 0, NCYC - 1).astype(np.int64)
         Lb = max(64, int(math.ceil((L - K) / BUCKET) * BUCKET))
         P = port_batch(t, E, its, Lb); B = P["B"]
-        nb = BR.notebook(E, L, progs, ~masked, gt, np.ones((B, K), np.float32))
-        H_ = host_io(self.bt, P, nb, cyc); V = valid_masks(P, B)
+        nb = BR.notebook(E, L, progs, ~masked, gt, np.zeros((B, K), np.float32) if SELFCOND else np.ones((B, K), np.float32))
+        H_ = host_io(self.bt, P, nb, commit_stamps(self.srng, ~masked, cyc) if STAMP else cyc); V = valid_masks(P, B)
         ta, tp = self.bt.layout.angles(P["tf"], (B, Lb))
         tau = np.array([self.bt.c.tau(int(c)) for c in cyc], np.float32)
+        if SELFCOND:                                                                             # pass 1: atoms hidden (radius 0)
+            a1 = [atoms, P["x"], P["aux"], ta, tp, H_["sa"], H_["sp"], H_["mt"], H_["ms"], H_["com"], H_["atom"].astype(np.int32), H_["rad"],
+                  H_["cert"], V["token_self"], V["slot_self"], V["cross"], V["pt"], V["ps"], V["pc"], tau]
+            a1 = [a if isinstance(a, Tensor) else Tensor(np.ascontiguousarray(a)) for a in a1]
+            if Lb not in self.cjits: self.cjits[Lb] = TinyJit(self._conf)
+            H_["rad"] = np.where(~masked, self.cjits[Lb](*a1).numpy(), 0).astype(np.float32)
         am = (t["am"].numpy() & masked).astype(np.float32)
         kw = _KM[gt]
         args = [atoms, P["x"], P["aux"], ta, tp, H_["sa"], H_["sp"], H_["mt"], H_["ms"], H_["com"], H_["atom"].astype(np.int32), H_["rad"],
@@ -211,19 +250,22 @@ class Atoms:
 class Facade:
     """BR.score's net: read(t) is called once per batch of 128, in order, so it advances through the items (the port needs their words)"""
     def __init__(self, bt, atoms, its):
-        self.bt, self.atoms, self.its, self.s0, self.part = bt, atoms, its, 0, None
+        self.bt, self.atoms, self.its, self.s0, self.part, self.cb = bt, atoms, its, 0, None, None
 
     def eval(self): return self
 
     def read(self, t):
-        B = t["pad"].shape[0]; self.part = self.its[self.s0:self.s0 + B]; self.s0 += B
+        B = t["pad"].shape[0]; self.part = self.its[self.s0:self.s0 + B]; self.s0 += B; self.cb = np.full((B, K), -1)
         return t                                                                                  # the reader runs inside breath
 
     def breath(self, t, xq, nb, cond, cyc, sp=None):
         import torch
         L = t["pad"].shape[1]; Lb = max(64, int(math.ceil((L - K) / BUCKET) * BUCKET))
         P = port_batch(t, None, self.part, Lb); B = P["B"]
-        nbn = tuple(a.numpy() for a in nb[:5]); c0 = int(cyc[0]); H_ = host_io(self.bt, P, nbn, np.full(B, c0)); V = valid_masks(P, B)
+        nbn = tuple(a.numpy() for a in nb[:5]); c0 = int(cyc[0])
+        self.cb[(nbn[0] >= 0) & (self.cb < 0)] = c0 - 1                                         # BR.score commits at the end of a breath
+        tick = np.where(self.cb >= 0, self.cb, c0) if STAMP else np.full(B, c0)
+        H_ = host_io(self.bt, P, nbn, tick); V = valid_masks(P, B)
         ta, tp = self.bt.layout.angles(P["tf"], (B, Lb))
         T = lambda a: Tensor(np.ascontiguousarray(a))
         lt, z, lp, c, _ = forward(self.bt, self.atoms, T(P["x"]), T(P["aux"]), T(ta), T(tp), T(H_["sa"]), T(H_["sp"]), T(H_["mt"]), T(H_["ms"]),
@@ -236,6 +278,23 @@ class Facade:
         lg = lt.numpy()
         return (torch.as_tensor(lg), torch.as_tensor(pa.numpy()), torch.as_tensor(pb.numpy()), torch.as_tensor(z.numpy()),
                 torch.as_tensor(np.exp(lg)))
+
+
+def symmetry(bt, atoms, its, states, tree):
+    """THE SYMMETRY READ (the 11-07 autopsy): breath 0, empty notebook -> distinct predicted types per problem among its gold slots
+    (the no-skip defect read 1.00; gold ~4.1), and the max spread of the open slots' silhouettes"""
+    t, E = BR.batch(its, states, tree, np.random.default_rng(0)); L = t["pad"].shape[1]; B = len(its)
+    for b, it in enumerate(its): E[b]["vals"] = it["vals"]
+    progs, gt = BR.gold(E); m = np.array([e["m"] for e in E])
+    Lb = max(64, int(math.ceil((L - K) / BUCKET) * BUCKET)); P = port_batch(t, E, its, Lb); V = valid_masks(P, B)
+    nb = BR.notebook(E, L, progs, np.zeros((B, K), bool), gt, np.ones((B, K), np.float32)); H_ = host_io(bt, P, nb, np.zeros(B, np.int64))
+    ta, tp = bt.layout.angles(P["tf"], (B, Lb)); T = lambda a: Tensor(np.ascontiguousarray(a))
+    lt, z, _, _, _ = forward(bt, atoms.tensor(), T(P["x"]), T(P["aux"]), T(ta), T(tp), T(H_["sa"]), T(H_["sp"]), T(H_["mt"]), T(H_["ms"]),
+                             T(H_["com"]), T(H_["atom"].astype(np.int32)), T(H_["rad"]), T(H_["cert"]), T(V["token_self"]), T(V["slot_self"]),
+                             T(V["cross"]), T(V["pt"]), T(V["ps"]), T(V["pc"]), bt.c.tau(0))
+    ty, zz = lt.numpy().argmax(-1), z.numpy()
+    return dict(pred=float(np.mean([len(set(ty[b, :m[b]])) for b in range(B)])), gold=float(np.mean([len(set(gt[b, :m[b]])) for b in range(B)])),
+                spread=float(max(np.ptp(zz[b, :m[b]], 0).max() for b in range(B))))
 
 
 def score(bt, atoms, its, states, tree):
@@ -266,18 +325,21 @@ if __name__ == "__main__":
         if step == 20: t20 = time.time()
         if MODE == "train" and (step % 1000 == 0 or step == steps):
             r = {k: score(bt, atoms, Dt[k][:600], states, tree) for k in ("ORIG", "TEST")}
-            curve.append(dict(step=step, loss=float(np.mean(los[-100:])), **{f"{k}_{m}": float(v[m].mean()) for k, v in r.items() for m in ("ans", "step_all")}))
+            sy = symmetry(bt, atoms, Dt["ORIG"][:64], states, tree)
+            curve.append(dict(step=step, loss=float(np.mean(los[-100:])), sym=sy, **{f"{k}_{m}": float(v[m].mean()) for k, v in r.items() for m in ("ans", "step_all")}))
             print(f"[btc] {TAG} step {step} loss {np.mean(los[-100:]):.4f} " + " ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} "
-                  f"type {v['type_ok'].mean():.3f}" for k, v in r.items()) + f" ({time.time() - t0:.0f}s)", flush=True)
+                  f"type {v['type_ok'].mean():.3f}" for k, v in r.items()) + f" | distinct types/problem {sy['pred']:.2f} (gold {sy['gold']:.2f}) "
+                  f"z spread {sy['spread']:.3g} ({time.time() - t0:.0f}s)", flush=True)
     if MODE == "smoke":
         if steps > 20: print(f"[btc] steady s/step (21..{steps}): {(time.time() - t20) / (steps - 20):.3f}", flush=True)
-        r = score(bt, atoms, Dt["TEST"][:128], states, tree)
+        r = score(bt, atoms, Dt["TEST"][:128], states, tree); sy = symmetry(bt, atoms, Dt["ORIG"][:64], states, tree)
+        print(f"[btc] smoke symmetry ORIG[:64]: distinct types/problem {sy['pred']:.2f} (gold {sy['gold']:.2f}) z spread {sy['spread']:.3g}", flush=True)
         print(f"[btc] smoke score TEST[:128] " + " ".join(f"{m} {r[m].mean():.3f}" for m in ("ans", "step_all", "step_ptr", "type_ok")), flush=True)
     else:
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
