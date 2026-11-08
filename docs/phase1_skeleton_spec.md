@@ -57281,3 +57281,19 @@ if these beat it.*
   fitting speed. The 18k decline (peak 0.152-0.157 -> 0.13) is a separate, later effect and stays unattributed. Not a claim; a frame for BTW.
 - **Consequence for BTW:** no BTL arm passed, so the chain skips FUNW mechanically (as pinned). LAST started 11:21.
 - Closes: the dropout / weight-decay / token-id / selfcond forms as the cause of the 5k gap. The line (regularize the reader) stays open.
+
+### 2026-11-08 12:51 -- CJ PINNED: THE COMBINATION-SPLIT PROBE (Bryce: "word given for the combination split probe")
+*Serves: "the SQL cross join is the nemesis" -- does a reader carry TEST on combinations it has seen in TRAIN? Zero training; banked weights.*
+- **Census (zero-model, TRAIN gold programs vs TEST's 3978 steps):** unseen step type 0 | type bigram 25 | structure (op + operand kinds +
+  slot offsets) 26 | **problem skeleton (the gold type sequence) 2362 (0.594)**. At every step grain TEST is covered; the novel combination
+  is the whole skeleton. (Bigram / structure n < 200: VOID as grains.) CFNUM / CFNAME / ORIG: 0 unseen at every grain (the CF fixture
+  tests fillers, never combinations).
+- **Instrument:** `scripts/gsm_cj_probe.py` (CJ_ARM = BT4RB8_s0/s1 torch .pt | BTC2_s0/s1 tinygrad .safetensors + atoms) re-scores TEST
+  with the arm's own scorer and splits steps by skeleton seen/unseen; `scripts/gsm_cj_verdict.py` reads the frame.
+- **Bars:** VALID = re-scored TEST step_all within 0.003 of the banked FINAL (else VOID for that arm). CJ = skeleton seen - unseen
+  step_all, stratified by program length m (strata with n < 20 on either side dropped). **CJ-MEM** CJ >= +0.050 both seeds (the arm
+  leans on seen skeletons: a template cross join) | **CJ-FREE** CJ <= +0.020 both seeds (no skeleton cross join; the TEST wall is the
+  text <-> structure binding) | else UNCLEAR. **CJ-DIFF** BTC2 - BT4RB8 named only if >= 0.020 in size, same sign, both seeds.
+- **PREDICTIONS:** BT4RB8 CJ-MEM; BTC2 CJ-MEM; CJ-DIFF none named.
+- **Engine note:** BT4RB8 re-scores on torch CPU now (banked tinygrad FINAL; the VALID gate catches engine drift); BTC2 on tinygrad CPU
+  now, or the GPU after BTW if CPU drifts past the gate.
