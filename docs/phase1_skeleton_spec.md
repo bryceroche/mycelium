@@ -57051,7 +57051,7 @@ FIX (textbook BIRCH, Zhang et al. 1996): the threshold T starts at 0 and only gr
 within T, else spawns a chart; when the partition is full, the two closest charts MERGE (CF additivity = an exact Chan merge of their
 Welford stats) and T rises to their distance. Scale-free, no pooled radius. Re-smoke under the same pinned bars (SMb).
 
-### 2026-11-07 19:43 -- ORGANS RE-SMOKE SMb (textbook BIRCH; seed 0, 600 steps, 125 s): 5/5 PASS -- the organs are wired
+### 2026-11-07 19:42 -- ORGANS RE-SMOKE SMb (textbook BIRCH; seed 0, 600 steps, 125 s): 5/5 PASS -- the organs are wired
   SM-J  PASS  loss first/last 50: business 2.076 -> 0.482, data 2.120 -> 0.860, surface 2.104 -> 0.670
   SM-T  PASS  18 partitions, every one at its 16-chart capacity (grown from the root at step 0), no two equal
   SM-C  PASS  the uncertified Conductor pass changed no partition
