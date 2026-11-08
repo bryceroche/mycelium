@@ -111,6 +111,9 @@ bq = next((b_, q_, c_) for b_, q_, c_ in pr if ((kc[b_, 0] == c_) & open_[b_]).a
 kk = int(np.flatnonzero((kc[bq[0], 0] == bq[2]) & open_[bq[0]])[0]); gk[bq[0], bq[1], kk] = True
 io.beam_keep = {"cross": Tensor(gk)}; mk_ = chart_mass(btb.breath(io, 0), kc); io.beam_keep = {}
 check("chart beam: gold-in-beam keeps a pruned key's chart reachable (training)", mk_[bq[0], 0, bq[1], bq[2]] > 1e-6, f"mass {mk_[bq[0], 0, bq[1], bq[2]]:.3e}")
+lm, km = ob["macro"]["cross"]; lm, km = lm.numpy(), km.numpy()
+check("out['macro']: log p(chart | q) per charted road sums to 1 over charts; each key's chart = the read's key charts",
+      np.allclose(np.exp(lm).sum(-1), 1, atol=1e-4) and (km == kc).all() and set(ob["macro"]) == {r.name for r in btb.c.roads if r.charts}, f"{lm.shape}")
 Tensor.manual_seed(0); btf = BTM.BreathingTransformer(BTM.BTConfig(**{**c.__dict__, "chart_beam": C})); btf.load(bt.state_dict())
 of = btf.breath(io, 0, roads=("cross",)); lpf = of["logp"]["cross"].numpy()
 lps = bt.breath(io, 0, roads=("cross",))["logp"]["cross"].numpy(); same = []

@@ -8,7 +8,7 @@ diffusion breath (a random breath b, tau(b) per example, slots committed with pr
 their T6 stamp and their target's type as the certificate); the business tier's committed types ride the T256 bus (salt 0) into
 every tier's slot entry. After each step the tier's certified token chart points fold into its own partitions (Welford + BIRCH).
 Eval: one Conductor pass, 6 breaths x 3 tiers, solver = commit the most confident pointers (no Tree writes: uncertified).
-Env: SM_STEPS (600), SM_B (32), SM_SEED (0), SM_BEAM (the chart beam W, default 2; 0 = the sealed read of SMa-SMc), SM_DB (tree db path; default a fresh file under .cache). -> .cache/bt_organs_smoke.json
+Env: SM_OUT (output stem), SM_MACRO (the macro loss weight, default 1), SM_STEPS (600), SM_B (32), SM_SEED (0), SM_BEAM (the chart beam W, default 2; 0 = the sealed read of SMa-SMc), SM_DB (tree db path; default a fresh file under .cache). -> .cache/bt_organs_smoke.json
 """
 import json, math, os, sys, time
 
@@ -23,6 +23,8 @@ from mycelium.tree_db import TreeDB
 
 STEPS, B, SEED = int(os.environ.get("SM_STEPS", "600")), int(os.environ.get("SM_B", "32")), int(os.environ.get("SM_SEED", "0"))
 BEAM = int(os.environ.get("SM_BEAM", "2"))
+MACRO = float(os.environ.get("SM_MACRO", "1"))
+OUT = os.environ.get("SM_OUT", "bt_organs_smoke")       # output stem under .cache (parallel arms)          # the macro's own loss weight: -log p(chart(gold) | q) on the pointer road (0 = SMd)
 DBP = os.environ.get("SM_DB", f".cache/bt_organs_smoke_s{SEED}.db")
 TIERS, NH, K, L, SENT, NTY, DIN, NCYC, PBUS = ("business", "data", "surface"), 6, 6, 32, 8, 6, 64, 6, 256
 GEN = f"smoke-s{SEED}"
@@ -91,6 +93,9 @@ class Tier:
             o = forward(self.bt, x, ta, tp, sa, sp, vt, vc, vs, charts, ok, com, cert, bus, tau, keep=g.one_hot(L) > 0)
             lp = o["logp"]["pointer"][:, 0]                                          # (B, K, L)
             lo = -(lp * g.one_hot(L).cast(dtypes.float)).sum(-1).mean()
+            if MACRO:                                                                # the macro's own term (direct supervision)
+                lc, kc = o["macro"]["pointer"]; kg = (kc[:, 0].unsqueeze(1).cast(dtypes.float) * g.one_hot(L).cast(dtypes.float)).sum(-1)
+                lo = lo - MACRO * (lc[:, 0] * kg.cast(dtypes.int32).one_hot(lc.shape[-1]).cast(dtypes.float)).sum(-1).mean()
             lo.backward()
             gp = [p for p in self.params if p.grad is not None]
             gn = Tensor.stack(*[(p.grad ** 2).sum() for p in gp]).sum().sqrt()
@@ -162,8 +167,8 @@ def main():
         kc = tb.nearest(pts[:, 0][np.arange(64)[:, None], g].reshape(-1, pts.shape[-1])).reshape(64, K)
         d = -((cq[:, :, None] - cent[None, None]) ** 2).sum(-1) / math.sqrt(cent.shape[-1]); d[..., ~tb.live] = -np.inf
         pc = np.exp(d - d.max(-1, keepdims=True)); pc /= pc.sum(-1, keepdims=True)
-        top2 = np.argsort(-d, -1)[..., :2]
-        hit[t] = dict(hit=float((d.argmax(-1) == kc).mean()), top2=float((top2 == kc[..., None]).any(-1).mean()),
+        rk = np.argsort(-d, -1)
+        hit[t] = dict(hit=float((d.argmax(-1) == kc).mean()), **{f"top{w}": float((rk[..., :w] == kc[..., None]).any(-1).mean()) for w in (2, 3, 4)},
                       mass=float(np.take_along_axis(pc, kc[..., None], -1).mean()))
     res["purity"], res["head_ari"], res["chart_hit"] = pur, ari, hit
 
@@ -187,7 +192,7 @@ def main():
     try: tt2.load_generation(parts[0], "smoke-other"); refused = False
     except ValueError: refused = True
     res["SM-R"] = dict(roundtrip=bool(rt), foreign_refused=refused)
-    json.dump(res, open(".cache/bt_organs_smoke.json", "w"), indent=1)
+    json.dump(res, open(f".cache/{OUT}.json", "w"), indent=1)
     verdict(res)
 
 
@@ -254,7 +259,7 @@ def verdict(res):
     lv_ = res["SM-T"]["live"]; Lj.append(f"  beside: live charts per partition {sorted(lv_.values())} (capacity 16)")
     pu = res["purity"]; Lj.append("  beside: purity per tier (mean over heads) " + " ".join(
         f"{t} {np.mean([v for k_, v in pu.items() if k_.startswith(t)]):.3f}" for t in TIERS) + f" (chance ~{1 / NTY:.3f} + chart count)")
-    print("\n".join(Lj)); open(".cache/bt_organs_smoke_verdict.txt", "w").write("\n".join(Lj) + "\n")
+    print("\n".join(Lj)); open(f".cache/{OUT}_verdict.txt", "w").write("\n".join(Lj) + "\n")
 
 
 if __name__ == "__main__":

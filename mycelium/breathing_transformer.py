@@ -323,6 +323,7 @@ class Road:
         Sm = inc.where(F_.unsqueeze(-1) - fm.unsqueeze(3), c.mask_neg).exp().sum(3)                # (B, H, Lq, Cm)
         lsec = fm + Sm.maximum(1e-30).log()                                                        # lse within each chart
         lchr = (Sm > 0.5).where(lc, c.mask_neg).log_softmax(-1)                                    # only charts with an open key
+        ch["lchr"] = lchr                                                                           # handed back: out['macro']
         if c.chart_beam:                                                                            # THE CHART BEAM
             rank = (lchr.unsqueeze(-1) < lchr.unsqueeze(-2)).cast(dtypes.float).sum(-1)            # charts strictly ahead of each chart
             beam = (rank < c.chart_beam) & (Sm > 0.5)
@@ -371,7 +372,9 @@ class BreathingTransformer:
         h_t = bt.enter_tokens(x)                        # the reader states -> the token stream
         h_s = bt.enter_slots(notebook arrays, atoms)    # the notebook's write-back -> the slot stream (every breath)
         out = bt.breath(io, b)                          # one breath at the schedule's temperature
-    out: {'h': streams, 'z': per stream silhouette (B, L, d_waist), 'logp': road -> (B, H, Lq, Lk)}."""
+    out: {'h': streams, 'z': per stream silhouette (B, L, d_waist), 'logp': road -> (B, H, Lq, Lk), 'macro': charted road ->
+    (log p(chart | q) (B, H, Lq, C), each key's chart (B, H, Lk) int) -- the macro's own distribution, for its own loss term (a new
+    attention pathway needs direct supervision: SMd, gold-in-beam alone let the micro carry training and left the macro untrained)}."""
     def __init__(self, c: BTConfig):
         self.c = c; self.layout = KeyLayout(c.factors, c.weyl_seed)
         self.tok_in = nn.Linear(c.d_in, c.d_model); self.tok_ln = nn.LayerNorm(c.d_in, eps=c.ln_eps)
@@ -436,7 +439,7 @@ class BreathingTransformer:
         if kc is None:                                                               # the key's silhouette, snapped (no gradient)
             zk = self.waist[spec.key](hk, self.ids(ak, pk))[0].detach()
             dk = ((self.chart_coords(zk)[:, :H].unsqueeze(-2) - cent.unsqueeze(1)) ** 2).sum(-1)
-            kc = ok.unsqueeze(1).where(dk, float("inf")).argmin(-1)                 # (B, H, Lk): the nearest live chart
+            kc = ok.unsqueeze(1).where(dk, float("inf")).argmin(-1).detach()        # (B, H, Lk): the nearest live chart (the snap: no grad)
         return dict(cq=self.chart_coords(zq)[:, :H], cent=cent, ok=ok, kc=kc, keep=io.beam_keep.get(spec.name))
 
     def tau(self, b):
@@ -446,7 +449,7 @@ class BreathingTransformer:
         """ONE BREATH. b = the 0-based breath index (int: sets the schedule's temperature and which roads run; the weights are the same
         for every breath). roads = an explicit subset of road names (a port's two-phase breath, or the once-per-problem reader);
         tau = an explicit temperature (a float or a (B,) Tensor: per-example breaths in masked-diffusion training)."""
-        tau = self.c.tau(b) if tau is None else tau; h = dict(io.h); lps = {}
+        tau = self.c.tau(b) if tau is None else tau; h = dict(io.h); lps = {}; mac = {}
         for s, mk in io.marks.items(): h[s] = h[s] + self.mark[s](mk)
         ang, pres = dict(io.angles), dict(io.presence)
         if self.c.n_const:
@@ -462,9 +465,10 @@ class BreathingTransformer:
                 ch = self._charts(io, spec, z, h[k], ang[k], pres[k]) if spec.charted() else None
                 hq, lp = blk.roads[spec.name](h[s], u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name], tau, ch)
                 h[s] = hq; lps[spec.name] = lp
+                if ch is not None and "lchr" in ch: mac[spec.name] = (ch["lchr"], ch["kc"])     # (the two-tier read ran)
         h.pop("const", None)
         zs = {s: self.waist[s](h[s], self.ids(ang[s], pres[s]))[0] for s in STREAMS if s in h}
-        out = {"h": h, "z": zs, "logp": lps}
+        out = {"h": h, "z": zs, "logp": lps, "macro": mac}
         if self.c.n_partitions:                                                      # what the Tree's Welford/BIRCH fold reads
             out["chart_pts"] = {s: self.chart_coords(zs[s]).detach() for s in {r.key for r in self.c.roads if r.charted()} if s in zs}
         return out

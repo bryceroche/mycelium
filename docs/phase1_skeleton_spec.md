@@ -57133,3 +57133,18 @@ DEV=CPU: the GPU is BTC2's).** Theory line: the Live Oak ("BIRCH decides when to
 unchanged, incl. **SM-P >= 0.90 eval pointer accuracy on all three tiers** (eval: no gold, pure top-2). Beside: chart hit top-1 / top-2
 coverage / mass, live charts, purity, ARI. **Predictions:** SM-P PASS (top-2 covers the type's word charts when a type splits in two;
 a type split three ways can still miss -- the risk); the rest PASS.
+
+### 2026-11-07 22:01 -- SMd READ (5/6: SM-P FAIL -- gold-in-beam is a BYPASS) + the macro's own term + SMe pinned (two arms, W = 2 / 3)
+- **SMd (W = 2, gold-in-beam, no macro term):** SM-J/T/C/A/R PASS; **SM-P FAIL 0.490 / 0.568 / 0.604** (worse than SMc). Training loss
+  fell to 0.157 / 0.147 / 0.166 (SMc 0.44-0.50) while the eval chart hit collapsed: top-1 0.02 / 0.13 / 0.08, top-2 0.05 / 0.14 / 0.16.
+  Purity 0.999 / 0.993 / 0.995 (16 clean charts per partition: the types split by word), ARI 0.72 / 0.77 / 0.80.
+- **Reading (THE MANDATORY-ROAD LAW, again):** gold-in-beam always admits the gold key, so the micro carried training alone and the
+  macro was never made to rank -- a bypass. At eval the untrained macro prunes the gold out. Fix (the attention-bootstrap principle:
+  a new pathway needs direct supervision): the class hands back the macro's distribution, `out['macro'][road]` = (log p(chart | q),
+  each key's chart), and the port adds -log p(chart(gold) | q). Also: the internal key-chart snap is now `.detach()`ed where it is
+  made (an int tensor kept alive in out['macro'] made tinygrad's backward find a non-float target; the snap carries no gradient by
+  spec). Spec 59/59 (new: out['macro'] sums to 1 over charts, its key charts = the read's).
+- **SMe pinned: SMd + the macro term (SM_MACRO=1) on the pointer road, two arms run in parallel on CPU: SMe2 (W = 2, Bryce's top-2)
+  and SMe3 (W = 3).** Bars per arm = SMc's six, unchanged (SM-P >= 0.90 on all three tiers). Beside: chart hit top-1..4 coverage.
+  **Predictions:** SMe3 SM-P PASS; SMe2 borderline (the macro's target is the gold token's WORD chart, the query resolves its TYPE:
+  16 charts / 6 types ~ 2.7 per type, so top-2 can miss the third) -- the top-k read names the width the tree needs.
