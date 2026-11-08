@@ -55,6 +55,7 @@ SELFCOND, STAMP = os.environ.get("BTC_SELFCOND", "1") == "1", os.environ.get("BT
 WD, DROP = float(os.environ.get("BTC_WD", "0.01")), float(os.environ.get("BTC_DROP", "0"))   # regularization (BTC2 = 0.01 / 0)
 WAIST = _env("BTC_WAIST", "every")      # BTConfig.waist_at: every | last | end (ledger 11-08)
 TIE, TURN, MQA, PTRSHARE = _env("BTC_TIE", "0") == "1", _env("BTC_TURN", "learned"), _env("BTC_MQA", "0") == "1", _env("BTC_PTRSHARE", "0") == "1"
+SLOTSELF = os.environ.get("BTC_SLOTSELF", "1") == "1"   # 0 = no slot-self road: slots see other slots only via the slot pointers (ledger 11-08 NOSS)
 TOKID = os.environ.get("BTC_TOKID", "1") == "1"   # token_self matches on token_id (a word-hash key); 0 = t9 only (ledger 11-08)
 _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) > j) for j in range(K)])   # the scorer: rank j commits at
 
@@ -62,7 +63,7 @@ _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) >
 def config(d_in, d_aux):
     f = BTM.default_factors()
     roads = (BTM.RoadSpec("token_self", "token", "token", NH, ((("t9", "token_id") if TOKID else ("t9",)),) * NH, breaths=(0,)),
-             BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH),
+             *((BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH),) if SLOTSELF else ()),
              BTM.RoadSpec("cross", "slot", "token", NH, (("t9",),) * NH)) + tuple(
         BTM.RoadSpec(n, "slot", {"t": "token", "s": "slot", "c": "const"}[n[2]], 1,
                      ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D,
@@ -353,7 +354,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))

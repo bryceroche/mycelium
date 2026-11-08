@@ -57297,3 +57297,33 @@ if these beat it.*
 - **PREDICTIONS:** BT4RB8 CJ-MEM; BTC2 CJ-MEM; CJ-DIFF none named.
 - **Engine note:** BT4RB8 re-scores on torch CPU now (banked tinygrad FINAL; the VALID gate catches engine drift); BTC2 on tinygrad CPU
   now, or the GPU after BTW if CPU drifts past the gate.
+
+### 2026-11-08 13:31 -- CJ READ: BOTH READERS LEAN ON SEEN SKELETONS (CJ-MEM, predicted); BT4RB8's lead over BTC2 sits mostly on seen skeletons
+*Read off `.cache/gsm_cj_verdict.txt` (13:31). VALID: all four re-scores reproduce the banked TEST step_all to |d| 0.0000 (torch CPU for
+BT4RB8, tinygrad CPU for BTC2).*
+| arm | TEST step | seen skeleton (n 1616) | unseen = TEST-U (n 2362) | CJ (m-stratified) |
+|---|---|---|---|---|
+| BT4RB8_s0 | 0.1634 | 0.2481 | 0.1054 | +0.1249 |
+| BT4RB8_s1 | 0.1664 | 0.2494 | 0.1097 | +0.0901 |
+| BTC2_s0 | 0.1295 | 0.1869 | 0.0902 | +0.0646 |
+| BTC2_s1 | 0.1312 | 0.1906 | 0.0906 | +0.0699 |
+- **CJ-MEM both arms (predicted).** **CJ-DIFF NAMED** (BTC2 - BT4RB8: s0 -0.0603, s1 -0.0202; predicted none): BTC2 leans LESS on seen
+  skeletons. Per-m tables in the artifact: the gap holds within every program length (m=5 is the thin one for BTC2).
+- **Decomposition (arithmetic on the table, s0):** of BT4RB8's TEST lead over BTC2 (+0.034), seen-skeleton steps carry 0.061 x 1616/3978 =
+  +0.025 and unseen +0.015 x 2362/3978 = +0.010. ~70% of the old code's lead is template use. On TEST-U alone BT4RB8 still leads by
+  +0.015 / +0.019 (both seeds, below THE NUMBER's 0.020).
+- **Consequence (a frame, not a claim):** TEST step mixes a cross-join-free read with a template read; 59% of TEST steps are unseen
+  skeletons. **TEST-U (unseen-skeleton step_all) is named the cross-join-free metric** and is quoted beside TEST step from here on.
+  CJ's seed spread is real (BT4RB8 0.125 vs 0.090): CJ differences need >= 0.040 or a twin.
+
+### 2026-11-08 13:31 -- NOSS PINNED: is the slot-self road the template road? (Bryce: "word given for your choice")
+*Serves: "the SQL cross join is the nemesis" + the DTO wire (Bryce 11-08: "T6 and T9 clocks stamp the DTO and tokens. The DTO is phase
+bound to the T256 bus and the notebook carries committed DTOs between breath cycles"). The slot-self road lets each slot read every other
+slot's committed atom: where "slot 2 is Z because slots 0, 1 were X, Y" (a skeleton template) can be learned. Cut it and slots see other
+slots only through the slot pointers (by address). Alternative: the CJ gap is text similarity (seen-skeleton problems read like TRAIN).*
+- **Arm:** NOSS = BTC2 + `BTC_SLOTSELF=0` (no slot_self road; 9,597,345 params vs 12,037,281), 18,000 steps, seed 0, BT_SAVE=1, frozen
+  worktree `mycelium-runs/noss`; chain `.cache/run_noss.sh` waits for BTW, then the CJ probe on its weights, then
+  `scripts/gsm_noss_verdict.py`. Comparator BTC2_s0 (same steps, seed, scorer).
+- **Bars:** **NOSS-ROAD** CJ(NOSS_s0) <= CJ(BTC2_s0) +0.0646 - 0.040 = +0.0246 -> the slot-self road is a template road (a twin before
+  any claim). **NOSS-UNSEEN** TEST-U - 0.0902 >= +0.020 -> a lead. Beside: TEST step (0.1295), seen, ORIG, CF splits, params.
+- **PREDICTIONS:** NOSS-ROAD FAIL (CJ +0.05..0.07: the gap is mostly text similarity); NOSS-UNSEEN FAIL (+-0.010).
