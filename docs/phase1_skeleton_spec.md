@@ -57186,3 +57186,29 @@ a type split three ways can still miss -- the risk); the rest PASS.
   The CF gaps exceed the ORIG gap (-0.08..-0.14 vs -0.07): BTC2 is less invariant to name / number edits, not only less fit.
   Not yet attributed: the BTC port differs from BT4RB8 in more than one organ (three roads, waist on queries, T6+T9 stamps, ID skip,
   self-conditioned radius). A FAIL closes this form (BTC2), never the line.
+
+### 2026-11-08 06:29 -- THE AUDIT + BTL PINNED (Bryce: "word given for your choice -- 1) delegate code audit of BTC and the wiring to external organs to sonnet agents 2) conduct a shorter training run for both the old code and new BTC on same seed 3) regularization to combat overfitting")
+*Serves: "The Breathing Transformer" (MHA without the MLP; overfit the Tree, REGULARIZE THE READER) + the patience charter (the BTC2 FAIL
+closes a form; this ladder names which organ costs what).*
+- **The audit (three Sonnet agents, read-only):** (a) class + port: NO hard correctness bug; padding/bucketing invariant (Lb 224 vs 288
+  log-probs identical), masks, weight tying, gradients, facade stamps, confidence = the scorer's, loss = the reference's. One real minor
+  bug: the grad NaN guard multiplied by isfinite (NaN x 0 = NaN) -> now where-gated (bit-identical on finite steps; BTC2 never diverged).
+  (b) organ wiring: notebook indices, cert (flags only, no raw values), T6 stamps (c0-1 = the commit breath, no off-by-one), atoms
+  (pre-update Welford, train = eval) all correct; the Tree tables / chart beam are NOT in the BTC2 GSM path (BTC2 numbers say nothing
+  about SMe). Suspect: SELFCOND pass 1 leaves a committed slot's own cert + consumed marks visible -> inflated training radii vs the
+  scorer's (PLAUSIBLE). Its "token_id leaks numerals under CFNUM" claim is WRONG (numerals arrive as `<num>`; checked). (c) the
+  difference map: losses, masking, optimizer, batch, scorer IDENTICAL; ~10 architecture differences; BTC2's +5.5M params = split
+  self/cross roads (~2.1M) + six full-width pointer heads (~2.0M) + learned turns (~1.1M). Design gaps named: no sentence planes in t9
+  (RULED 11-03, a later rung), reader queries through the 64-d waist at tau 2.0, tau divides every road, no ZOOM, no joint softmax.
+- **Zero-cost read first (the banked curves):** BT4RB8 TEST step is FLAT from ~3k (0.15-0.17, no decline over 18k); BTC2 peaks 0.152 /
+  0.157 at 4-5k then declines to 0.13 -- a lower ceiling AND a decline. The old code's short run is BANKED: BT4RB8_5k_s0 (tinygrad, same
+  seed, full scoring; TEST 0.1604, ORIG 0.7034, CFNUM 0.6166, CFNAME 0.5778) -- reused, not rerun (the same flags, seed, engine).
+- **BTL (five arms, 5,000 steps, seed 0, tinygrad GPU, frozen worktree `mycelium-runs/btl`; chain `.cache/run_btl.sh`):**
+  E0 = BTC2 at 5k | DROP = BTC_DROP=0.1 (BTConfig.dropout: every residual road's write + the token entry, training only; spec 60/60) |
+  WD = BTC_WD=0.1 (AdamW, from 0.01) | TID = BTC_TOKID=0 (token_self matches t9 only: the word-hash key off; it is not in the theory's
+  composite key) | SC = BTC_SELFCOND=0 (radius 1, the reference's; isolates the pass-1 suspect). Single delta each from E0.
+- **Bars (`scripts/gsm_btl_verdict.py`):** **SCR-x (a lead):** TEST step_all(x) - E0 >= +0.020 -> a seed twin next (a screen, never a
+  claim alone: THE NUMBER law). Beside, named: GAP-x vs BT4RB8_5k_s0 (>= -0.010 = closed), CF splits, ORIG, curve peak - final.
+- **PREDICTIONS:** E0 TEST ~0.14 (GAP ~ -0.02); SCR-DROP FAIL (+0.005..0.015; the decline flattens), SCR-WD FAIL, SCR-TID FAIL (low
+  capacity channel), SCR-SC FAIL. I.e. regularization alone does not close the gap; the gap lives in the architecture rows (waist on the
+  reader queries, tau on every road, pointer form) -- the next rungs, pinned after this read.

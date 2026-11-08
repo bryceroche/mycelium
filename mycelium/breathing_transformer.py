@@ -155,6 +155,7 @@ class BTConfig:
     mask_neg: float = -1e4                     # a masked logit (exp underflows to 0 in fp32)
     logit_clip: float = 1e4
     ln_eps: float = 1e-5
+    dropout: float = 0.0                       # regularization: each residual road's write + the token entry, TRAINING only (0 = off)
     weyl_seed: int = 0                         # offsets the primes behind the id phases (a different, still fixed, code)
 
     def __post_init__(self):
@@ -342,7 +343,7 @@ class Road:
         v = self.v(self.lnk(hk)).reshape(B, Lk, H, Dh).transpose(1, 2)
         any_ = valid.any(-1, keepdim=True).unsqueeze(1)                                             # a query with no open key reads 0
         o = (any_.where(lp.exp(), 0.0) @ v).transpose(1, 2).reshape(hq.shape[0], hq.shape[1], H * Dh)
-        return hq + self.o(o), lp
+        return hq + self.o(o).dropout(self.c.dropout), lp
 
 
 class Block:
@@ -398,7 +399,8 @@ class BreathingTransformer:
     def enter_tokens(self, x, aux=None):
         """(B, Lt, d_in) reader states (+ (B, Lt, d_aux) features entering without the LN) -> (B, Lt, D)"""
         h = self.tok_in(self.tok_ln(x))
-        return h + self.aux_in(aux) if aux is not None else h
+        h = h + self.aux_in(aux) if aux is not None else h
+        return h.dropout(self.c.dropout)
 
     def condition(self, h, atom, radius, atoms):
         """A coarse decision written into a stream (the tier hierarchy inside one breath: decide the atom, then address under it):

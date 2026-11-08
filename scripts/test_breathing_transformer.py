@@ -356,4 +356,12 @@ h_a = bb.enter_slots(**nbb.tensors(), atoms=Tensor(np.ones((5, 8), np.float32)))
 h_b = bb.enter_slots(**nbb.tensors(), atoms=Tensor(np.ones((5, 8), np.float32)), bus=Tensor(f_)).numpy()
 check("the BT reads the bus: slot entries change with the bus read (2P features)", f_.shape == (B, K, 512) and np.abs(h_a - h_b).max() > 1e-3)
 
+# 14. dropout (the regularization knob): training only; off = the no-dropout model exactly
+Tensor.manual_seed(0); b0 = BTM.BreathingTransformer(BTM.BTConfig(**CFG)); Tensor.manual_seed(0); b5 = BTM.BreathingTransformer(BTM.BTConfig(**{**CFG, "dropout": 0.5}))
+xd = Tensor(np.random.default_rng(3).standard_normal((B, LT, 16)).astype(np.float32))
+e0, e5 = b0.enter_tokens(xd).numpy(), b5.enter_tokens(xd).numpy()
+with Tensor.train(): e5t = b5.enter_tokens(xd).numpy()
+check("dropout: eval = the no-dropout model exactly; training zeroes about p of the entry", np.array_equal(e0, e5) and 0.35 < (e5t == 0).mean() < 0.65,
+      f"zeroed {(e5t == 0).mean():.2f}")
+
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

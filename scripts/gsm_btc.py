@@ -21,7 +21,9 @@ BTC2 (ledger 11-07, the audit's #4 + #5; both default ON, =0 restores the BTC fo
                   breath. Training draws a commit order per problem and stamps it on the scorer's schedule; the scorer's facade tracks it.
 Modes (BTC_MODE): smoke (BTC_STEPS steps, s/step) | train (BT_STEPS, scored every 1000 on ORIG/TEST[:600], FINAL on every split,
 .cache/gsmb_btc_{TAG}.json; BT_SAVE=1 -> .safetensors + atoms .npy). Env: BT_SEED, BT_TAG, BT_BATCH, BT_LR; BTC_D / BTC_NH / BTC_DB /
-BTC_BLOCKS (defaults 512 / 8 / 64 / 2).
+BTC_BLOCKS (defaults 512 / 8 / 64 / 2);
+BTC_WD (AdamW weight decay, 0.01) / BTC_DROP (BTConfig.dropout, 0): the regularization knobs; BTC_TOKID=0 drops the word-hash key
+from token_self (ledger 11-08).
 """
 import json, math, os, sys, time, zlib
 
@@ -46,18 +48,21 @@ D, NH, DB, NBLK = (int(os.environ.get(k, v)) for k, v in (("BTC_D", "512"), ("BT
 PTR = [f"p{r}{kd}" for r in "ab" for kd in KINDS]                   # pa_t pa_s pa_c pb_t pb_s pb_c
 BUCKET = 32
 SELFCOND, STAMP = os.environ.get("BTC_SELFCOND", "1") == "1", os.environ.get("BTC_STAMP", "1") == "1"
+WD, DROP = float(os.environ.get("BTC_WD", "0.01")), float(os.environ.get("BTC_DROP", "0"))   # regularization (BTC2 = 0.01 / 0)
+TOKID = os.environ.get("BTC_TOKID", "1") == "1"   # token_self matches on token_id (a word-hash key); 0 = t9 only (ledger 11-08)
 _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) > j) for j in range(K)])   # the scorer: rank j commits at
 
 
 def config(d_in, d_aux):
     f = BTM.default_factors()
-    roads = (BTM.RoadSpec("token_self", "token", "token", NH, (("t9", "token_id"),) * NH, breaths=(0,)),
+    roads = (BTM.RoadSpec("token_self", "token", "token", NH, ((("t9", "token_id") if TOKID else ("t9",)),) * NH, breaths=(0,)),
              BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH),
              BTM.RoadSpec("cross", "slot", "token", NH, (("t9",),) * NH)) + tuple(
         BTM.RoadSpec(n, "slot", {"t": "token", "s": "slot", "c": "const"}[n[2]], 1,
                      ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D) for n in PTR)
     return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF, n_atoms=NT,
-                        n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC)
+                        n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC,
+                        dropout=DROP)
 
 
 # ---- the port: one BR batch -> host arrays at a bucketed question length -----------------------------------------------------------
@@ -168,7 +173,7 @@ class Trainer:
     def __init__(self, bt, lr):
         self.bt = bt; self.params = bt.parameters()
         for p in self.params: p.requires_grad = True
-        self.opt = AdamW(self.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=0.01); self.jits = {}; self.cjits = {}
+        self.opt = AdamW(self.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=WD); self.jits = {}; self.cjits = {}
         self.srng = np.random.default_rng(10_007 + BR.SEED)          # the commit-order draws (own stream: the masks stay BTC's)
 
     def _conf(self, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau):
@@ -193,8 +198,8 @@ class Trainer:
             lo.backward()
             gp = [p for p in self.params if p.grad is not None]
             gn = Tensor.stack(*[(p.grad ** 2).sum() for p in gp]).sum().sqrt()
-            coef = (1.0 / (gn + 1e-6)).minimum(1.0) * lo.isfinite().cast(dtypes.float)
-            for p in gp: p.grad = p.grad * coef
+            coef = (1.0 / (gn + 1e-6)).minimum(1.0); fin = lo.isfinite() & gn.isfinite()
+            for p in gp: p.grad = fin.where(p.grad * coef, 0.0)                                     # where-gated (NaN * 0 stays NaN)
             zz = z.detach().reshape(-1, z.shape[-1]).contiguous()
             Tensor.realize(lo, zz, *[p.grad for p in gp])                                       # the silhouettes BEFORE the update
             self.opt.step()
@@ -339,7 +344,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
