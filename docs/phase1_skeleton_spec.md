@@ -57327,3 +57327,25 @@ slots only through the slot pointers (by address). Alternative: the CJ gap is te
 - **Bars:** **NOSS-ROAD** CJ(NOSS_s0) <= CJ(BTC2_s0) +0.0646 - 0.040 = +0.0246 -> the slot-self road is a template road (a twin before
   any claim). **NOSS-UNSEEN** TEST-U - 0.0902 >= +0.020 -> a lead. Beside: TEST step (0.1295), seen, ORIG, CF splits, params.
 - **PREDICTIONS:** NOSS-ROAD FAIL (CJ +0.05..0.07: the gap is mostly text similarity); NOSS-UNSEEN FAIL (+-0.010).
+
+### 2026-11-08 14:30 -- BTW READ: LAST / END / FUN all FAIL; waist placement is not the 5k lever (FUN predicted PASS: wrong)
+*Read off `.cache/btw_verdict.log` (chain done 14:27). BTL winner '' -> FUNW skipped, as pinned.*
+| arm (5k, s0) | ORIG step | CFNUM | CFNAME | TEST step | TEST type | curve peak-final | params |
+|---|---|---|---|---|---|---|---|
+| BT4RB8_5k | 0.7034 | 0.6166 | 0.5778 | 0.1604 | 0.3027 | -- | 6.57M |
+| E0 (BTC2) | 0.4858 | 0.4317 | 0.3959 | 0.1380 | 0.3022 | +0.011 | 12.04M |
+| LAST | 0.4623 | 0.4077 | 0.3699 | 0.1322 | 0.2931 | +0.004 | 12.04M |
+| END | 0.4625 | 0.3947 | 0.3588 | 0.1378 | 0.3032 | +0.000 | 12.04M |
+| FUN | 0.4638 | 0.3991 | 0.3726 | 0.1305 | 0.3130 | +0.018 | 4.54M |
+- **SCR-LAST -0.0058 FAIL (predicted FAIL) | SCR-END -0.0003 FAIL (predicted borderline +0.010..0.020: wrong) | SCR-FUN -0.0075 FAIL
+  (predicted PASS +0.020..0.030: wrong).**
+- **The read:** every placement fits ORIG at 0.46-0.49 against BT4RB8's 0.70. Where the queries squeeze does not set the fitting speed;
+  the 5k gap lives in something all BTC forms share. FUN removed the learned turns, the split pointer heads and two thirds of the
+  parameters and landed in the same place -- so those are not it either. Beside (no claim): FUN = E0 within noise at 38% of the
+  parameters, with the highest TEST type (0.313) and the largest late decline (+0.018).
+- **Not read:** TEST-U / CJ for the 5k arms (no weights saved; BT_SAVE was off). From here, screening arms save weights so CJ reads.
+- **Closes:** waist placement (last / end) and the funnel's lever set as the cause of the 5k gap. The funnel line stays open (Bryce's bet:
+  one squeeze per tier per breath, last layer); its claim needs the fitting-speed cause found first.
+- **Next form (named, not pinned): the FIT-SPEED census** -- what BT4RB8 has that every BTC form lacks (candidates: BR's single joint
+  slot road vs the split slot-self + cross roads; the selfcond/stamp training contract; the port's bucketed lengths). NOSS (running,
+  14:28 relaunch after a worktree .cache-link fix) cuts one of these.
