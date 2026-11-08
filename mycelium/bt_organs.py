@@ -10,8 +10,8 @@ The BT (`mycelium/breathing_transformer.py`) is the compute engine; everything t
   - ChartTable / TreeTables: the Tree DB's chart tables, partitioned by (tier, head): head h of a tier's BT reads partition
     (tier, 'h{h}') on every charted road (3 tiers x 6 heads = 18 partitions, each its own centroids). A partition is maintained by
     WELFORD stats (n, mean, M2 per chart; batches merged by Chan's formula; n capped so the charts follow a still-training
-    projection) and BIRCH math (the clustering features N, LS, SS; a point farther than the threshold from every live chart
-    SPAWNS a new chart while capacity lasts). Only CERTIFIED points feed it (custody: a correct chain). Centroids are MODEL-space,
+    projection) and BIRCH math (the clustering features N, LS, SS; the threshold T grows from 0 by rebuild: a point beyond T
+    spawns a chart, a full partition merges its two closest charts first). Only CERTIFIED points feed it (custody: a correct chain). Centroids are MODEL-space,
     so they live only in the store's generation-tagged chart tables (never mixed across generations); the symbolic write-back
     (which chart a certified key took) goes through the custody tiers as evidence ('provisional' until the answer key promotes
     it). The breath never queries SQLite: a run loads its tables into memory and hands them to the BT as data.
@@ -169,16 +169,17 @@ def _primes(n, skip=0):
 
 # ---- THE TREE'S CHART TABLES ------------------------------------------------------------------------------------------------------------
 class ChartTable:
-    """One partition's charts: WELFORD stats per chart (n, mean, M2 per dim) + BIRCH growth. A chart is LIVE once spawned (n > 0).
-    update(x) (certified points only): (1) BIRCH, one pass over the OUTLIERS (points beyond the threshold T from every live chart;
-    T^2 = spawn_k^2 x the pooled mean squared radius, trusted after min_n points): in order, an outlier within T of a chart born in
-    this pass joins it (its running mean moves), else it spawns a new chart while capacity and max_spawn last; the very first point
-    spawns the root; (2) every point joins its nearest live chart; (3) each chart merges its batch by Chan's formula, then n is
-    capped at `cap` (M2 scaled with it: the variance is kept, the memory is bounded -- the charts follow a moving projection).
+    """One partition's charts: WELFORD stats per chart (n, mean, M2 per dim) + BIRCH growth (Zhang et al. 1996). A chart is LIVE
+    once spawned (n > 0). BIRCH's threshold T starts at 0 and only grows by REBUILD. update(x) (certified points only):
+    (1) one in-order pass over the OUTLIERS (points farther than T from every live chart): an outlier still beyond T spawns a chart
+    holding just itself (n = 1); when the partition is full, the two CLOSEST charts merge first (CF additivity: an exact Chan merge
+    of their Welford stats) and T^2 rises to their squared distance -- so the tree grows from a single root to its capacity and then
+    coarsens only where charts crowd, scale-free (no pooled radius: a root that absorbed every cluster can still split off charts);
+    (2) every other point joins its nearest live chart, each chart merging its batch by Chan's formula; (3) n is capped at `cap` (M2
+    scaled with it: the variance is kept, the memory bounded -- the charts follow a still-training projection).
     The BIRCH clustering features are derived: N = n, LS = n mean, SS = sum M2 + n |mean|^2."""
-    def __init__(self, capacity, dim, cap=None, spawn_k=3.0, max_spawn=2, min_n=None):
-        self.C, self.d, self.cap, self.spawn_k, self.max_spawn = capacity, dim, cap, spawn_k, max_spawn
-        self.min_n = 2 * dim if min_n is None else min_n                          # pooled radius trusted only after this many points
+    def __init__(self, capacity, dim, cap=None):
+        self.C, self.d, self.cap = capacity, dim, cap; self.T2 = 0.0
         self.n = np.zeros(capacity); self.mean = np.zeros((capacity, dim)); self.M2 = np.zeros((capacity, dim))
 
     @property
@@ -198,10 +199,6 @@ class ChartTable:
         """(C, d) per-dim variance (0 for a chart with < 2 points)"""
         return np.where(self.n[:, None] > 1, self.M2 / np.maximum(self.n[:, None], 1), 0.0)
 
-    def threshold2(self):
-        tot = self.n.sum()
-        return None if tot < self.min_n else self.spawn_k ** 2 * self.M2.sum() / tot
-
     def centroids(self):
         return self.mean.astype(np.float32)
 
@@ -213,32 +210,41 @@ class ChartTable:
         x = np.asarray(x, np.float64)
         return np.full(len(x), -1) if not self.live.any() else self._d2(x).argmin(-1)
 
+    def _merge(self, a, nb, mb, m2b):
+        """Chan: chart a absorbs (nb, mean mb, M2 m2b)"""
+        na = self.n[a]; nn_ = na + nb; dl = mb - self.mean[a]
+        self.mean[a] = self.mean[a] + dl * nb / nn_; self.M2[a] = self.M2[a] + m2b + dl ** 2 * na * nb / nn_; self.n[a] = nn_
+
+    def _rebuild(self):
+        """BIRCH's rebuild step: merge the two closest live charts; T^2 rises to their squared distance"""
+        lv = np.flatnonzero(self.live); m = self.mean[lv]
+        d2 = ((m[:, None] - m[None]) ** 2).sum(-1); np.fill_diagonal(d2, np.inf)
+        i, j = np.unravel_index(d2.argmin(), d2.shape); a, b = lv[i], lv[j]
+        self.T2 = max(self.T2, float(d2[i, j]))
+        self._merge(a, self.n[b], self.mean[b].copy(), self.M2[b].copy())
+        self.n[b] = 0; self.mean[b] = 0; self.M2[b] = 0
+
     def update(self, x):
         """x (n, d) certified points -> (their charts (n,), charts spawned)"""
         x = np.asarray(x, np.float64); spawned = 0
         if not len(x): return np.zeros(0, int), 0
-        if not self.live.any():
-            self.mean[0] = x[0]; self.n[0] = 1e-9; spawned = 1                      # spawned: live, holds no mass yet
-        T2 = self.threshold2()
-        if T2 is not None:
-            out = np.flatnonzero(self._d2(x).min(-1) > T2); born, cnt = [], []
-            for j in out:                                                            # the BIRCH pass, outliers only, in order
-                if born:
-                    dd = ((self.mean[born] - x[j]) ** 2).sum(-1); i = int(dd.argmin())
-                    if dd[i] <= T2:
-                        cnt[i] += 1; self.mean[born[i]] += (x[j] - self.mean[born[i]]) / cnt[i]; continue
-                if spawned >= self.max_spawn or self.live.all(): break
-                c = int(np.flatnonzero(~self.live)[0]); self.mean[c] = x[j]; self.n[c] = 1e-9
-                born.append(c); cnt.append(1); spawned += 1
-        idx = self._d2(x).argmin(-1)
-        for c in np.unique(idx):                                                     # Chan: merge the batch into each chart
-            xs = x[idx == c]; nb = len(xs); mb = xs.mean(0); m2b = ((xs - mb) ** 2).sum(0)
-            na = self.n[c] if self.n[c] >= 1 else 0.0; dl = mb - self.mean[c]; nn_ = na + nb
-            self.mean[c] = self.mean[c] + dl * nb / nn_ if na else mb
-            self.M2[c] = self.M2[c] + m2b + dl ** 2 * na * nb / nn_ if na else m2b
-            self.n[c] = nn_
+        idx = np.full(len(x), -1)
+        cand = np.arange(len(x)) if not self.live.any() else np.flatnonzero(self._d2(x).min(-1) > self.T2)
+        for j in cand:                                                               # the BIRCH pass, outliers only, in order
+            if self.live.any() and self._d2(x[j:j + 1]).min() <= self.T2: continue
+            while self.live.all() and self.C > 1:
+                self._rebuild()
+                if self._d2(x[j:j + 1]).min() <= self.T2: break
+            if self.live.all() or self._d2(x[j:j + 1]).min() <= self.T2: continue      # (capacity 1: it joins the root)
+            c = int(np.flatnonzero(~self.live)[0]); self.mean[c] = x[j]; self.M2[c] = 0; self.n[c] = 1.0
+            idx[j] = c; spawned += 1
+        rest = idx < 0
+        if rest.any():
+            near = self._d2(x[rest]).argmin(-1); idx[rest] = near
+            for c in np.unique(near):                                                # Chan: merge the batch into each chart
+                xs = x[rest][near == c]; mb = xs.mean(0); self._merge(c, len(xs), mb, ((xs - mb) ** 2).sum(0))
         if self.cap:
-            over = self.n > self.cap; f = np.where(over, self.cap / np.maximum(self.n, 1e-12), 1.0)
+            f = np.where(self.n > self.cap, self.cap / np.maximum(self.n, 1e-12), 1.0)
             self.n = self.n * f; self.M2 = self.M2 * f[:, None]
         return idx, spawned
 
@@ -248,6 +254,9 @@ class ChartTable:
     def set_state(self, n, mean, M2):
         assert mean.shape == (self.C, self.d), (mean.shape, self.C, self.d)
         self.n, self.mean, self.M2 = np.asarray(n, np.float64).copy(), np.asarray(mean, np.float64).copy(), np.asarray(M2, np.float64).copy()
+        lv = np.flatnonzero(self.live); self.T2 = 0.0                                # T is not stored: a full table resumes at its
+        if len(lv) == self.C and len(lv) > 1:                                        # closest pair (the next rebuild's distance)
+            m = self.mean[lv]; d2 = ((m[:, None] - m[None]) ** 2).sum(-1); np.fill_diagonal(d2, np.inf); self.T2 = float(d2.min())
 
 
 class TreeTables:

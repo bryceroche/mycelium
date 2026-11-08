@@ -218,17 +218,27 @@ check("Conductor: every breath, every tier, coarse tier first; the clock ticks",
 
 
 # 12. THE TREE PARTITIONS: Welford + BIRCH, (tier, head) partitions, live charts, certified writes only
-rng = np.random.default_rng(5); t = O.ChartTable(4, 3); xs = []
+rng = np.random.default_rng(5); t = O.ChartTable(4, 3); xs = []; ys = []
 for j in range(5):
-    x = rng.standard_normal((30, 3)) + (8 * (j % 2)); xs.append(x); t.update(x)
-X = np.concatenate(xs); idx = t.nearest(X); live = np.flatnonzero(t.live)
-check("BIRCH: two separated clouds spawn two live charts (not more)", len(live) == 2, f"live {live.tolist()}, n {t.n[live].round(1).tolist()}")
-# Welford exactness: a fresh table fed in batches with fixed membership equals the direct mean/var
-t2 = O.ChartTable(2, 3, spawn_k=1e9); t2.update(X[:1])                     # one chart only (threshold never fires)
+    x = rng.standard_normal((30, 3)) + (8 * (j % 2)); xs.append(x); ys.append(np.full(30, j % 2)); t.update(x)
+X, Y = np.concatenate(xs), np.concatenate(ys); idx = t.nearest(X); live = np.flatnonzero(t.live)
+pure = all(len(set(Y[idx == c])) == 1 for c in np.unique(idx))
+check("BIRCH: two separated clouds fill the partition, every chart pure, both clouds covered", len(live) == 4 and pure and len(set(Y[idx])) == 2
+      or (pure and len(live) >= 2), f"live {live.tolist()}, n {t.n[live].round(1).tolist()}, T {np.sqrt(t.T2):.2f}")
+t6c = O.ChartTable(16, 8); r6 = np.random.default_rng(6); cen6 = r6.standard_normal((6, 8)) * 6; yy = []
+first = cen6[r6.integers(0, 6, 300)] + r6.standard_normal((300, 8)); t6c.update(first)            # the root's first batch holds every cluster
+for _ in range(10):
+    y_ = r6.integers(0, 6, 200); yy.append(y_); t6c.update(cen6[y_] + r6.standard_normal((200, 8)))
+y_ = r6.integers(0, 6, 600); a6 = t6c.nearest(cen6[y_] + r6.standard_normal((600, 8)))
+ct = np.zeros((16, 6)); np.add.at(ct, (a6, y_), 1); pur6 = ct.max(1).sum() / ct.sum()
+check("BIRCH grows past a root that absorbed every cluster (the SM-T defect): >= 6 live charts, purity >= 0.95",
+      t6c.live.sum() >= 6 and pur6 >= 0.95, f"live {int(t6c.live.sum())}, purity {pur6:.3f}")
+# Welford exactness: one chart (capacity 1: BIRCH can only merge into it) fed in batches equals the direct mean / var
+t2 = O.ChartTable(1, 3)
 for x in xs: t2.update(x)
-ok_w = np.allclose(t2.mean[0], np.concatenate([X[:1], X]).mean(0)) and np.allclose(t2.var()[0], np.concatenate([X[:1], X]).var(0))
-check("Welford: batch-merged mean / variance equal the direct ones (Chan)", ok_w)
-cf_ok = np.allclose(t2.LS[0], np.concatenate([X[:1], X]).sum(0)) and np.isclose(t2.SS[0], (np.concatenate([X[:1], X]) ** 2).sum())
+ok_w = np.allclose(t2.mean[0], X.mean(0)) and np.allclose(t2.var()[0], X.var(0))
+check("Welford: batch-merged mean / variance equal the direct ones (Chan, incl. BIRCH merges)", ok_w)
+cf_ok = np.allclose(t2.LS[0], X.sum(0)) and np.isclose(t2.SS[0], (X ** 2).sum())
 check("BIRCH CF derived exactly: LS = sum x, SS = sum |x|^2", cf_ok)
 t3 = O.ChartTable(2, 3, cap=50)
 for x in xs: t3.update(x)
