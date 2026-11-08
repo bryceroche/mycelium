@@ -57010,7 +57010,7 @@ Theory line: "MHA ... each head a dedicated partition of the Tree DB table" + th
 Checked OK: scorer breath uniform per batch (Facade's cyc[0] is safe); consumed marks -> marks + pointer masks; cert features from the
 executor; token self once per problem; the skip fix (34/34).
 
-### 2026-11-07 18:40 -- THE ORGANS, WIRED (Bryce: "properly setup and smoke our new Breathing Transformer class to integrate with our external organs")
+### 2026-11-07 19:25 -- THE ORGANS, WIRED (Bryce: "properly setup and smoke our new Breathing Transformer class to integrate with our external organs")
 Theory lines: "each BT ... multiple heads that each have a dedicated partition on the Tree DB table" (11-07 ruling); the Live Oak Tree
 ("BIRCH decides when to add children; Welford stats maintain and grow it"); heads specialize, breaths never; the alternation.
 BUILT (class + organs; spec test 50/50 on CPU):
