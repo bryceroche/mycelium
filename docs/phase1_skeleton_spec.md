@@ -57148,3 +57148,23 @@ a type split three ways can still miss -- the risk); the rest PASS.
   and SMe3 (W = 3).** Bars per arm = SMc's six, unchanged (SM-P >= 0.90 on all three tiers). Beside: chart hit top-1..4 coverage.
   **Predictions:** SMe3 SM-P PASS; SMe2 borderline (the macro's target is the gold token's WORD chart, the query resolves its TYPE:
   16 charts / 6 types ~ 2.7 per type, so top-2 can miss the third) -- the top-k read names the width the tree needs.
+
+### 2026-11-07 22:17 -- SMe READ: BOTH ARMS 6/6 PASS -- the chart beam + the macro's own term remove the sealed read's cost
+| Arm | SM-P eval pointer acc (bus / data / surface) | chart hit top-1 / top-2 / top-3 (tau 1, empty notebook) | head ARI | purity |
+|---|---|---|---|---|
+| SMb sealed, textbook BIRCH | 0.740 / 0.440 / 0.555 FAIL | -- | 0.53 / 0.26 / 0.41 | 0.82 / 0.48 / 0.47 |
+| SMc sealed, BIC tree | 0.721 / 0.635 / 0.721 FAIL | 0.40 / 0.31 / 0.27 (top-1) | 0.69 / 0.47 / 0.68 | 0.95 / 0.80 / 0.88 |
+| SMd beam 2, gold-in-beam only | 0.490 / 0.568 / 0.604 FAIL | 0.02-0.13 / 0.05-0.16 | 0.72 / 0.77 / 0.80 | 0.99+ |
+| **SMe2 beam 2 + macro term** | **0.951 / 0.953 / 0.964 PASS** | bus .52/.72/.81, data .54/.79/.95, surf .45/.67/.76 | 0.72 / 0.82 / 0.82 | 0.98 / 0.99 / 1.00 |
+| **SMe3 beam 3 + macro term** | **0.984 / 0.987 / 0.977 PASS** | bus .79/.92/.98, data .70/.86/.96, surf .65/.80/.91 | 0.78 / 0.75 / 0.84 | 1.00 |
+- SM-J/T/C/A/R PASS in both (final loss 0.32-0.36 / 0.15-0.21; 18 partitions at 16 live; uncertified pass writes nothing; bus 1.0;
+  round trip + refusal). Predictions: SMe3 PASS (hit); SMe2 "borderline" -- it passed (the Conductor's eval reads at the breath
+  temperatures with the committed context, where top-2 covers more than the tau-1 empty-notebook chart-hit read shows).
+- **What the four forms teach (the class's chart contract, settled for now):** (1) the Tree grows by the BIC rule (no noise splits);
+  (2) the keys' charts may hold structure finer than the query resolves (here word ids under a type), so the read must not seal at one
+  chart: THE CHART BEAM (top-W, keys compete across the beam); (3) the macro needs its own term (-log p(chart(gold) | q)) or gold-in-
+  beam is a bypass. W = 3 reaches the flat read (0.98-0.99 vs SMa 0.99); W = 2 costs ~0.03-0.05 here.
+- **The trade, read honestly:** heads specialize LESS than under the noise-split tree (ARI 0.72-0.84 vs 0.26-0.53) -- the clean tree
+  charts the same type x word structure for every head. Heads still differ (ARI < 1); whether they should differ more is a question
+  for a real tier (the GSM tier's keys carry many more factors than this toy's two). Toy, one seed: wiring evidence, not a claim.
+- Next charted port (BTC3, GSM): chart_beam = 3 + the macro term, its first read the chart hit on the real tier. Not before BTC2 banks.
