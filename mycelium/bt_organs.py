@@ -169,18 +169,28 @@ def _primes(n, skip=0):
 
 # ---- THE TREE'S CHART TABLES ------------------------------------------------------------------------------------------------------------
 class ChartTable:
-    """One partition's charts: WELFORD stats per chart (n, mean, M2 per dim) + BIRCH growth (Zhang et al. 1996). A chart is LIVE
-    once spawned (n > 0). BIRCH's threshold T starts at 0 and only grows by REBUILD. update(x) (certified points only):
-    (1) one in-order pass over the OUTLIERS (points farther than T from every live chart): an outlier still beyond T spawns a chart
-    holding just itself (n = 1); when the partition is full, the two CLOSEST charts merge first (CF additivity: an exact Chan merge
-    of their Welford stats) and T^2 rises to their squared distance -- so the tree grows from a single root to its capacity and then
-    coarsens only where charts crowd, scale-free (no pooled radius: a root that absorbed every cluster can still split off charts);
-    (2) every other point joins its nearest live chart, each chart merging its batch by Chan's formula; (3) n is capped at `cap` (M2
-    scaled with it: the variance is kept, the memory bounded -- the charts follow a still-training projection).
-    The BIRCH clustering features are derived: N = n, LS = n mean, SS = sum M2 + n |mean|^2."""
-    def __init__(self, capacity, dim, cap=None):
-        self.C, self.d, self.cap = capacity, dim, cap; self.T2 = 0.0
+    """One partition's charts, a two-level BIRCH CF tree kept with WELFORD stats (n, mean, M2 per dim; BIRCH's clustering features are
+    derived: N = n, LS = n mean, SS = sum M2 + n |mean|^2; CF additivity = Chan's exact merge). THE LIVE OAK's growth rule (Bryce:
+    "BIRCH decides when to add children; Welford stats maintain and grow it ... new branches plateau as the tree matures"):
+      - a CHART is a BIRCH leaf node: it holds up to `n_micro` micro-CF entries, kept by textbook BIRCH inside the chart (a point
+        joins its nearest entry within the chart's threshold T, else spawns one; a full node merges its closest entry pair and T rises
+        to their distance). A chart's stats are the exact CF sum of its entries.
+      - a chart SPLITS by BIRCH's node split (seeds = its farthest entry pair, entries redistributed by closeness, two Lloyd passes at
+        the CF level) when the split PASSES THE BIC TEST: two diagonal Gaussians explain its points better than one after the
+        (2d + 1)/2 log n parameter cost and the mixing entropy -- one Gaussian never splits, separated clouds do. The closest live
+        chart pair MERGES when one Gaussian explains it better by the same test (charts that drift together rejoin).
+      - capacity is a CEILING, not a target: a split on a full table first merges the closest pair, only if that pair passes the
+        merge test; otherwise the split waits (`pressure` counts the waits). The tree grows from one root to the data's structure
+        and plateaus there. (11-07: textbook BIRCH on the charts themselves, T from 0, always filled capacity: 16 charts over 6
+        token types split each type on noise the query cannot see, and the sealed two-tier read paid log(splits) per pointer.)
+    `cap` bounds each chart's n (its entries' n and M2 scaled together: variance kept, memory bounded) and `max_idle` (None = never)
+    retires a chart that received no point for that many updates -- both for charts that follow a still-training projection. Only
+    the charts persist; a loaded chart restarts as a single entry."""
+    def __init__(self, capacity, dim, cap=None, n_micro=8, min_child=8, max_idle=None, var_floor=1e-9):
+        self.C, self.d, self.cap, self.M, self.min_child, self.max_idle, self.vf = capacity, dim, cap, n_micro, min_child, max_idle, var_floor
         self.n = np.zeros(capacity); self.mean = np.zeros((capacity, dim)); self.M2 = np.zeros((capacity, dim))
+        self.mn = np.zeros((capacity, n_micro)); self.mmean = np.zeros((capacity, n_micro, dim)); self.mM2 = np.zeros((capacity, n_micro, dim))
+        self.mT2 = np.zeros(capacity); self.idle = np.zeros(capacity, int); self.pressure = 0
 
     @property
     def live(self):
@@ -210,43 +220,133 @@ class ChartTable:
         x = np.asarray(x, np.float64)
         return np.full(len(x), -1) if not self.live.any() else self._d2(x).argmin(-1)
 
-    def _merge(self, a, nb, mb, m2b):
-        """Chan: chart a absorbs (nb, mean mb, M2 m2b)"""
-        na = self.n[a]; nn_ = na + nb; dl = mb - self.mean[a]
-        self.mean[a] = self.mean[a] + dl * nb / nn_; self.M2[a] = self.M2[a] + m2b + dl ** 2 * na * nb / nn_; self.n[a] = nn_
+    # -- CF algebra (exact) --
+    @staticmethod
+    def _sum(ns, means, M2s):
+        """the exact CF sum of entries (n_i, mean_i, M2_i) -> (n, mean, M2)"""
+        n = ns.sum()
+        if n <= 0: return 0.0, np.zeros(means.shape[-1]), np.zeros(means.shape[-1])
+        mu = (ns[:, None] * means).sum(0) / n
+        return n, mu, (M2s + ns[:, None] * (means - mu) ** 2).sum(0)
 
-    def _rebuild(self):
-        """BIRCH's rebuild step: merge the two closest live charts; T^2 rises to their squared distance"""
-        lv = np.flatnonzero(self.live); m = self.mean[lv]
+    def _loglik(self, n, M2):
+        """the diagonal Gaussian's maximized log-likelihood (up to the shared constant) from Welford stats"""
+        return -0.5 * n * np.log(M2 / max(n, 1e-12) + self.vf).sum()
+
+    def _bic_gain(self, groups):
+        """BIC(one Gaussian on the union) - BIC(one per group) over [(n, mean, M2)]: > 0 = the groups are separate charts"""
+        ns = np.array([g[0] for g in groups]); n, _, M2 = self._sum(ns, np.stack([g[1] for g in groups]), np.stack([g[2] for g in groups]))
+        if n <= 1 or (ns <= 0).any(): return -np.inf
+        ll2 = sum(self._loglik(g[0], g[2]) + g[0] * np.log(g[0] / n) for g in groups)
+        return (ll2 - self._loglik(n, M2)) - 0.5 * (len(groups) - 1) * (2 * self.d + 1) * np.log(n)
+
+    # -- the leaf level: micro entries inside one chart (textbook BIRCH, scoped to the chart) --
+    def _sync(self, c):
+        self.n[c], self.mean[c], self.M2[c] = self._sum(self.mn[c], self.mmean[c], self.mM2[c])
+
+    def _entry_rebuild(self, c):
+        """chart c is full of entries: merge its closest pair; T rises to their distance"""
+        lv = np.flatnonzero(self.mn[c] > 0); m = self.mmean[c, lv]
         d2 = ((m[:, None] - m[None]) ** 2).sum(-1); np.fill_diagonal(d2, np.inf)
-        i, j = np.unravel_index(d2.argmin(), d2.shape); a, b = lv[i], lv[j]
-        self.T2 = max(self.T2, float(d2[i, j]))
-        self._merge(a, self.n[b], self.mean[b].copy(), self.M2[b].copy())
-        self.n[b] = 0; self.mean[b] = 0; self.M2[b] = 0
+        i, j = np.unravel_index(d2.argmin(), d2.shape); a, b = lv[i], lv[j]; self.mT2[c] = max(self.mT2[c], float(d2[i, j]))
+        n, mu, M2 = self._sum(self.mn[c, [a, b]], self.mmean[c, [a, b]], self.mM2[c, [a, b]])
+        self.mn[c, a], self.mmean[c, a], self.mM2[c, a] = n, mu, M2; self.mn[c, b] = 0; self.mmean[c, b] = 0; self.mM2[c, b] = 0
 
-    def update(self, x):
-        """x (n, d) certified points -> (their charts (n,), charts spawned)"""
-        x = np.asarray(x, np.float64); spawned = 0
-        if not len(x): return np.zeros(0, int), 0
-        idx = np.full(len(x), -1)
-        cand = np.arange(len(x)) if not self.live.any() else np.flatnonzero(self._d2(x).min(-1) > self.T2)
-        for j in cand:                                                               # the BIRCH pass, outliers only, in order
-            if self.live.any() and self._d2(x[j:j + 1]).min() <= self.T2: continue
-            while self.live.all() and self.C > 1:
-                self._rebuild()
-                if self._d2(x[j:j + 1]).min() <= self.T2: break
-            if self.live.all() or self._d2(x[j:j + 1]).min() <= self.T2: continue      # (capacity 1: it joins the root)
-            c = int(np.flatnonzero(~self.live)[0]); self.mean[c] = x[j]; self.M2[c] = 0; self.n[c] = 1.0
-            idx[j] = c; spawned += 1
+    def _entries_d2(self, c, x):
+        d2 = ((x[:, None] - self.mmean[c][None]) ** 2).sum(-1); d2[:, self.mn[c] <= 0] = np.inf; return d2
+
+    def _absorb(self, c, xs):
+        """chart c absorbs points xs: outliers beyond T spawn entries (full -> rebuild), the rest Chan-merge into their nearest entry"""
+        idx = np.full(len(xs), -1)
+        if not (self.mn[c] > 0).any(): self.mn[c, 0], self.mmean[c, 0], self.mM2[c, 0] = 1.0, xs[0].copy(), 0; idx[0] = 0
+        for j in np.flatnonzero((idx < 0) & (self._entries_d2(c, xs).min(-1) > self.mT2[c])):
+            if self._entries_d2(c, xs[j:j + 1]).min() <= self.mT2[c]: continue
+            while (self.mn[c] > 0).all() and self.M > 1:
+                self._entry_rebuild(c)
+                if self._entries_d2(c, xs[j:j + 1]).min() <= self.mT2[c]: break
+            if (self.mn[c] > 0).all() or self._entries_d2(c, xs[j:j + 1]).min() <= self.mT2[c]: continue
+            e = int(np.flatnonzero(self.mn[c] <= 0)[0]); self.mn[c, e], self.mmean[c, e], self.mM2[c, e] = 1.0, xs[j].copy(), 0; idx[j] = e
         rest = idx < 0
         if rest.any():
-            near = self._d2(x[rest]).argmin(-1); idx[rest] = near
-            for c in np.unique(near):                                                # Chan: merge the batch into each chart
-                xs = x[rest][near == c]; mb = xs.mean(0); self._merge(c, len(xs), mb, ((xs - mb) ** 2).sum(0))
+            near = self._entries_d2(c, xs[rest]).argmin(-1)
+            for e in np.unique(near):
+                ys = xs[rest][near == e]; n, mu, M2 = self._sum(np.array([self.mn[c, e], len(ys)]), np.stack([self.mmean[c, e], ys.mean(0)]),
+                                                                np.stack([self.mM2[c, e], ((ys - ys.mean(0)) ** 2).sum(0)]))
+                self.mn[c, e], self.mmean[c, e], self.mM2[c, e] = n, mu, M2
+        self._sync(c)
+
+    # -- the node level: split / merge by BIC --
+    def _node_split(self, c):
+        """BIRCH's node split of chart c: farthest entry pair as seeds, entries to the nearer seed, two Lloyd passes -> (group masks)"""
+        lv = np.flatnonzero(self.mn[c] > 0)
+        if len(lv) < 2: return None
+        m, w = self.mmean[c, lv], self.mn[c, lv]
+        d2 = ((m[:, None] - m[None]) ** 2).sum(-1); i, j = np.unravel_index(d2.argmax(), d2.shape); sd = m[[i, j]]
+        for _ in range(3):
+            g = ((m[:, None] - sd[None]) ** 2).sum(-1).argmin(-1)
+            if g.min() == g.max(): return None
+            sd = np.stack([(w[g == k, None] * m[g == k]).sum(0) / w[g == k].sum() for k in (0, 1)])
+        return [lv[g == k] for k in (0, 1)]
+
+    def _try_split(self, c):
+        gs = self._node_split(c)
+        if gs is None: return False
+        parts = [self._sum(self.mn[c, e], self.mmean[c, e], self.mM2[c, e]) for e in gs]
+        if min(p[0] for p in parts) < self.min_child or self._bic_gain(parts) <= 0: return False
+        if self.live.all() and not self._try_merge():
+            self.pressure += 1; return False
+        f = int(np.flatnonzero(~self.live)[0]); e1 = gs[1]; k = len(e1)
+        self.mn[f, :k], self.mmean[f, :k], self.mM2[f, :k] = self.mn[c, e1], self.mmean[c, e1], self.mM2[c, e1]
+        self.mn[c, e1] = 0; self.mmean[c, e1] = 0; self.mM2[c, e1] = 0
+        self.mT2[f] = self.mT2[c]; self.idle[f] = 0; self._sync(c); self._sync(f); return True
+
+    def _closest_pair(self):
+        lv = np.flatnonzero(self.live)
+        if len(lv) < 2: return None
+        m = self.mean[lv]; d2 = ((m[:, None] - m[None]) ** 2).sum(-1); np.fill_diagonal(d2, np.inf)
+        i, j = np.unravel_index(d2.argmin(), d2.shape); return int(lv[i]), int(lv[j])
+
+    def _try_merge(self):
+        """the closest live chart pair merges when one Gaussian explains it better (BIC)"""
+        pr = self._closest_pair()
+        if pr is None: return False
+        a, b = pr
+        if self._bic_gain([(self.n[a], self.mean[a], self.M2[a]), (self.n[b], self.mean[b], self.M2[b])]) > 0: return False
+        self._fold(a, b); return True
+
+    def _fold(self, a, b):
+        """chart a takes chart b's entries (union, reduced to n_micro by entry rebuilds); b dies"""
+        ea, eb = np.flatnonzero(self.mn[a] > 0), np.flatnonzero(self.mn[b] > 0)
+        ns = np.concatenate([self.mn[a, ea], self.mn[b, eb]]); ms = np.concatenate([self.mmean[a, ea], self.mmean[b, eb]])
+        M2s = np.concatenate([self.mM2[a, ea], self.mM2[b, eb]]); T2 = max(self.mT2[a], self.mT2[b])
+        while len(ns) > self.M:                                                      # entry rebuilds on the union
+            d2 = ((ms[:, None] - ms[None]) ** 2).sum(-1); np.fill_diagonal(d2, np.inf); i, j = np.unravel_index(d2.argmin(), d2.shape)
+            T2 = max(T2, float(d2[i, j])); n, mu, M2 = self._sum(ns[[i, j]], ms[[i, j]], M2s[[i, j]])
+            ns[i], ms[i], M2s[i] = n, mu, M2; ns, ms, M2s = np.delete(ns, j), np.delete(ms, j, 0), np.delete(M2s, j, 0)
+        for t in (a, b): self.mn[t] = 0; self.mmean[t] = 0; self.mM2[t] = 0
+        k = len(ns); self.mn[a, :k], self.mmean[a, :k], self.mM2[a, :k] = ns, ms, M2s; self.mT2[a] = T2; self.mT2[b] = 0
+        self.idle[a] = min(self.idle[a], self.idle[b]); self._sync(a); self._sync(b)
+
+    def update(self, x):
+        """x (n, d) certified points -> (their charts after the update (n,), charts spawned by splits)"""
+        x = np.asarray(x, np.float64); spawned = 0
+        if not len(x): return np.zeros(0, int), 0
+        if not self.live.any(): self._absorb(0, x[:1]); x_ = x[1:]                 # the root
+        else: x_ = x
+        got = np.zeros(self.C, bool)
+        if len(x_):
+            near = self._d2(x_).argmin(-1)
+            for c in np.unique(near): self._absorb(c, x_[near == c]); got[c] = True
+        self.idle = np.where(got, 0, self.idle + 1)
+        if self.max_idle is not None:
+            for c in np.flatnonzero(self.live & (self.idle > self.max_idle)):
+                self.n[c] = 0; self.mean[c] = 0; self.M2[c] = 0; self.mn[c] = 0; self.mmean[c] = 0; self.mM2[c] = 0; self.mT2[c] = 0
+        for c in np.flatnonzero(self.live): spawned += self._try_split(c)
+        while self._try_merge(): pass
         if self.cap:
-            f = np.where(self.n > self.cap, self.cap / np.maximum(self.n, 1e-12), 1.0)
-            self.n = self.n * f; self.M2 = self.M2 * f[:, None]
-        return idx, spawned
+            for c in np.flatnonzero(self.n > self.cap):
+                f = self.cap / self.n[c]; self.mn[c] *= f; self.mM2[c] *= f; self._sync(c)
+        return self.nearest(x), spawned
 
     def state(self):
         return self.n.copy(), self.mean.copy(), self.M2.copy()
@@ -254,9 +354,8 @@ class ChartTable:
     def set_state(self, n, mean, M2):
         assert mean.shape == (self.C, self.d), (mean.shape, self.C, self.d)
         self.n, self.mean, self.M2 = np.asarray(n, np.float64).copy(), np.asarray(mean, np.float64).copy(), np.asarray(M2, np.float64).copy()
-        lv = np.flatnonzero(self.live); self.T2 = 0.0                                # T is not stored: a full table resumes at its
-        if len(lv) == self.C and len(lv) > 1:                                        # closest pair (the next rebuild's distance)
-            m = self.mean[lv]; d2 = ((m[:, None] - m[None]) ** 2).sum(-1); np.fill_diagonal(d2, np.inf); self.T2 = float(d2.min())
+        self.mn[:] = 0; self.mmean[:] = 0; self.mM2[:] = 0; self.mT2[:] = 0; self.idle[:] = 0
+        self.mn[:, 0], self.mmean[:, 0], self.mM2[:, 0] = self.n, self.mean, self.M2   # a loaded chart restarts as one entry
 
 
 class TreeTables:

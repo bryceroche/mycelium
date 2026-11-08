@@ -57082,3 +57082,33 @@ Theory line: the Breathing Transformer as the compute engine (the tiered-BT ruli
 - **Predictions:** gate PASS; BTC-N PASS; BTC-G FAIL; BTC-CF PASS. A FAIL closes this form, never the line.
 - Chain `.cache/run_btc2.sh` from a frozen worktree (`/home/bryce/mycelium-runs/btc2`, detached at the pin's commit; cwd = the repo for
   `.cache`), so class work on the branch never reaches a running seed.
+
+### 2026-11-07 21:19 -- BTC2 GATE PASS (s0 step 1000) + THE LIVE OAK'S GROWTH RULE (BIRCH plateau) + SMc pinned
+- **BTC2 gate (pinned 21:04): PASS.** s0 step 1000, symmetry read ORIG[:64]: 2.56 distinct predicted types per problem (gold 3.09; the
+  no-skip defect 1.00), open-slot z spread 7.04 (defect 3.8e-6). Beside: TEST step 0.111 at step 1000 (BTC s0 FINAL 0.102); 663 s for the
+  first 1000 steps incl. the eval. The chain runs on.
+- **ROOT CAUSE of the SMb chart cost (code read + the spec):** textbook BIRCH starts T at 0 and only raises it when full, so a partition
+  ALWAYS fills its capacity: 16 charts over 6 token types split each type on noise the query cannot see; the sealed two-tier read then
+  pays log(splits) per pointer (the 0.48-0.86 final loss floor; 0.44-0.74 eval pointer accuracy). A tree that fills capacity never
+  plateaus -- against the theory line ("new branches plateau as the tree matures").
+- **FIX (bt_organs.ChartTable, a two-level BIRCH CF tree on Welford stats):** a chart = a BIRCH leaf node of <= 8 micro-CF entries
+  (textbook BIRCH inside the chart); a chart SPLITS by BIRCH's node split (farthest entry pair as seeds, redistribution, Lloyd at the CF
+  level) only when the split passes a BIC test (two diagonal Gaussians vs one, from the Welford M2s, minus the (2d+1)/2 log n cost and
+  the mixing entropy); the closest chart pair MERGES when one Gaussian explains it better; capacity is a ceiling (a split on a full
+  table waits unless the closest pair merges: );  retires charts a moving source abandoned. A first form (online
+  2-means children per chart) split impurely (the children cannot re-assign past points) -- replaced before any run.
+- **Spec 54/54 (CPU):** two clouds -> exactly 2 charts at capacity 4 (pure); one Gaussian never splits (isotropic, and 6x stretched),
+  2000 points at capacity 16; six clouds behind an all-cluster root -> exactly 6 of 16, purity 1.000; converging clouds merge 2 -> 1;
+  max_idle retires an abandoned chart; Welford/CF exact; the cap holds. (Also fixed: the two-cloud check's coverage term indexed the
+  labels by chart id; the old form hid it behind an 'or'.)
+
+**SMc pinned (the organs re-smoke on the BIC tree; bt_organs_smoke.py, same task/seed/steps; TreeTables(cap=4000, max_idle=50);
+DEV=CPU: the GPU is BTC2's).** Theory line: the Live Oak ("BIRCH decides when to add children ... branches plateau"); heads specialize.
+| Bar | Pass |
+|---|---|
+| SM-J / SM-C / SM-A / SM-R | unchanged from SMa/SMb |
+| SM-T | 18 partitions, every one >= 2 live charts, no equal pairs (unchanged) |
+| **SM-P (new: the cost)** | eval pointer accuracy (the Conductor pass) >= 0.90 on all three tiers (flat root SMa 0.99; SMb 0.44-0.74) |
+- Beside (not bars): live charts per partition (prediction: a plateau below 16 in most partitions), chart hit (the pointer query's top
+  chart = the gold token's chart) and its mass p(chart(gold) | q), purity, head ARI. **Predictions:** SM-P PASS; SM-T PASS; heads still
+  specialize but less (ARI rises: fewer, type-shaped charts leave the heads less room to differ) -- a trade to read, not a bar.
