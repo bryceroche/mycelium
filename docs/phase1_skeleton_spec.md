@@ -57263,3 +57263,21 @@ if these beat it.*
 - **PREDICTIONS:** SCR-LAST FAIL (+0.000..0.010: the first layer at full width, the reader's second pass still squeezed); SCR-END
   borderline (+0.010..0.020: the old model's placement, but nine other differences stand); **SCR-FUN PASS** (+0.020..0.030: full-width
   layers, a third of the parameters, the clock instead of a content turn -- less to memorize with, more depth); FUNW: no prediction.
+
+### 2026-11-08 11:21 -- BTL READ: regularization and the two suspects all FAIL (predicted); the 5k gap is FITTING, not overfitting
+*Serves: "generalize the reader" (regularize the reader). Read off `.cache/gsm_btl_verdict.txt` (chain done 11:20).*
+| arm (5k, s0) | ORIG step | CFNUM | CFNAME | TEST step | TEST type | params |
+|---|---|---|---|---|---|---|
+| BT4RB8_5k | 0.7034 | 0.6166 | 0.5778 | 0.1604 | 0.3027 | 6.57M |
+| E0 (BTC2) | 0.4858 | 0.4317 | 0.3959 | 0.1380 | 0.3022 | 12.04M |
+| DROP 0.1 | 0.4964 | 0.4409 | 0.4042 | 0.1435 | 0.3125 | 12.04M |
+| WD 0.1 | 0.5086 | 0.4436 | 0.4143 | 0.1443 | 0.3039 | 12.04M |
+| TID (no token id) | 0.4830 | 0.4288 | 0.3802 | 0.1438 | 0.3193 | 12.04M |
+| SC (no selfcond) | 0.4906 | 0.4353 | 0.3941 | 0.1393 | 0.3054 | 12.04M |
+- **SCR-DROP +0.0055 FAIL | SCR-WD +0.0063 FAIL | SCR-TID +0.0058 FAIL | SCR-SC +0.0013 FAIL** (bar >= +0.020). Predictions (all FAIL): correct.
+  E0 GAP vs BT4RB8_5k -0.0224; every arm's gap stays below -0.010 (none closes it).
+- **The read the table forces:** at 5k BTC2 is not overfitting -- it fits ORIG far SLOWER (0.486 vs 0.703) while transferring a larger
+  share of what it fits (TEST/ORIG 0.284 vs 0.228). Regularizers trade nothing for nothing on an under-fit model; the 5k gap is
+  fitting speed. The 18k decline (peak 0.152-0.157 -> 0.13) is a separate, later effect and stays unattributed. Not a claim; a frame for BTW.
+- **Consequence for BTW:** no BTL arm passed, so the chain skips FUNW mechanically (as pinned). LAST started 11:21.
+- Closes: the dropout / weight-decay / token-id / selfcond forms as the cause of the 5k gap. The line (regularize the reader) stays open.
