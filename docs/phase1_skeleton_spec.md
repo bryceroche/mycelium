@@ -56982,3 +56982,9 @@ had something in it.
   (new: identical slot states with distinct ids read differently; the skip's input width = 2 x planes). Also: the constants
   (`sel`, `_own_t`) are never parameters nor saved (s0's saved `_own_t` = the fixed map exactly: never trained), strict `load`.
 - BTC banks as a FAIL of THAT FORM (the defect); the fixed form is BTC2 (needs a pin + the word).
+
+### 2026-11-07 17:56 -- BTC seed 1 STOPPED (Bryce: "no need to train the broken build")
+- `systemctl --user stop btc` at the end of training, before its final score and the chain's verdict. Last eval at step 18000 (the broken form,
+  no ID skip): ORIG step 0.297 type 0.317 / TEST step 0.067 type 0.138 (the run swung +-0.1 between evals, as s0 did).
+- BTC banks on seed 0's FINAL read: BTC-N FAIL (TEST step 0.102 vs BT4RB8 0.1634), a FAIL of the no-skip form (the class defect), not of the
+  line (patience charter). No verdict script run; s1's weights are kept as a specimen of the defect. Next form: BTC2 (the skip fixed), pending its word.
