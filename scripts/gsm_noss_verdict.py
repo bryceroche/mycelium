@@ -2,11 +2,11 @@
 NOSS-ROAD: CJ(NOSS_s0) <= CJ(BTC2_s0) - 0.040 -> the slot-self road is a template road (a seed twin before any claim).
 NOSS-UNSEEN: TEST-U (unseen-skeleton step_all) - BTC2_s0's >= +0.020 -> a lead. Beside: TEST step, seen, ORIG/CF from the json.
 -> .cache/gsm_noss_verdict.txt"""
-import json, sys
+import json, os, sys
 
 import numpy as np
 
-sys.path.insert(0, "scripts")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gsm_cj_verdict import cj
 
 R = {}
