@@ -57247,3 +57247,19 @@ the 11-07 form stays the default (waist_at='every'), bit-identical.*
 - **The port:** `BTC_TIE / BTC_TURN / BTC_MQA / BTC_PTRSHARE` (pointer: one query per operand a/b, one key per kind t/s/c -- the reference's
   qa/qb/kt/ks/kc form) and **`BTC_FUNNEL=1`** = all four + 4 blocks + waist 'last'. **Params: FUNNEL 4,541,849** (4 layers) vs BTC2
   12,037,281 vs BT4RB8 6,567,345. CPU: one real GSM step runs. The GSM tier has no charted roads yet (BTC3 brings the Tree into this path).
+
+### 2026-11-08 10:21 -- BTW PINNED: the waist placement + THE FUNNEL TIER on GSM8K (Bryce: "word given for the queue")
+*Serves: "U-Net per cycle" (one squeeze per tier per breath, on the last layer) + "rotate the QUERIES" (clock turns) + "memory leaves the
+MLP for the Tree" (a small reader: tied layers, shared K/V, shared pointer). The BTC2 FAIL closes the every-road-squeezes form on GSM only
+if these beat it.*
+- **Arms (5,000 steps, seed 0, tinygrad GPU, frozen worktree `mycelium-runs/btw` at this commit; chain `.cache/run_btw.sh` waits for BTL):**
+  LAST = BTC_WAIST=last (2 layers, the last squeezes) | END = BTC_WAIST=end (one waist per breath after the layers: silhouette + pointers
+  only; the BT4RB8 placement) | FUN = BTC_FUNNEL=1 (4 tied layers, last squeezes, clock turns, shared K/V, shared pointer; 4.54M) |
+  FUNW = FUN + BTL's best SCR-PASS regularizer (chosen mechanically from the BTL verdict; NOT run if no BTL arm passes). The 128-dim
+  waist control is dropped (Bryce: NO to narrowing the 512; the question is placement).
+- **Bars (`scripts/gsm_btw_verdict.py`), same frame as BTL:** **SCR-x:** TEST step_all - E0 (BTL_E0_s0, 0.1408-ish read on full TEST at
+  FINAL) >= +0.020 -> a lead -> seed twin (never a claim alone). Beside, named: GAP vs BT4RB8_5k_s0 (TEST 0.1604; >= -0.010 = closed),
+  CF splits, ORIG, curve peak - final, params.
+- **PREDICTIONS:** SCR-LAST FAIL (+0.000..0.010: the first layer at full width, the reader's second pass still squeezed); SCR-END
+  borderline (+0.010..0.020: the old model's placement, but nine other differences stand); **SCR-FUN PASS** (+0.020..0.030: full-width
+  layers, a third of the parameters, the clock instead of a content turn -- less to memorize with, more depth); FUNW: no prediction.

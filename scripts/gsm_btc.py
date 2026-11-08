@@ -353,7 +353,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
