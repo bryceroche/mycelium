@@ -57257,8 +57257,8 @@ if these beat it.*
   only; the BT4RB8 placement) | FUN = BTC_FUNNEL=1 (4 tied layers, last squeezes, clock turns, shared K/V, shared pointer; 4.54M) |
   FUNW = FUN + BTL's best SCR-PASS regularizer (chosen mechanically from the BTL verdict; NOT run if no BTL arm passes). The 128-dim
   waist control is dropped (Bryce: NO to narrowing the 512; the question is placement).
-- **Bars (`scripts/gsm_btw_verdict.py`), same frame as BTL:** **SCR-x:** TEST step_all - E0 (BTL_E0_s0, 0.1408-ish read on full TEST at
-  FINAL) >= +0.020 -> a lead -> seed twin (never a claim alone). Beside, named: GAP vs BT4RB8_5k_s0 (TEST 0.1604; >= -0.010 = closed),
+- **Bars (`scripts/gsm_btw_verdict.py`), same frame as BTL:** **SCR-x:** TEST step_all - E0 (BTL_E0_s0: full TEST at FINAL
+  0.1380, read off the artifact) >= +0.020 -> a lead -> seed twin (never a claim alone). Beside, named: GAP vs BT4RB8_5k_s0 (TEST 0.1604; >= -0.010 = closed),
   CF splits, ORIG, curve peak - final, params.
 - **PREDICTIONS:** SCR-LAST FAIL (+0.000..0.010: the first layer at full width, the reader's second pass still squeezed); SCR-END
   borderline (+0.010..0.020: the old model's placement, but nine other differences stand); **SCR-FUN PASS** (+0.020..0.030: full-width
