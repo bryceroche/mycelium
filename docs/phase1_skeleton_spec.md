@@ -57095,7 +57095,7 @@ Theory line: the Breathing Transformer as the compute engine (the tiered-BT ruli
   (textbook BIRCH inside the chart); a chart SPLITS by BIRCH's node split (farthest entry pair as seeds, redistribution, Lloyd at the CF
   level) only when the split passes a BIC test (two diagonal Gaussians vs one, from the Welford M2s, minus the (2d+1)/2 log n cost and
   the mixing entropy); the closest chart pair MERGES when one Gaussian explains it better; capacity is a ceiling (a split on a full
-  table waits unless the closest pair merges: );  retires charts a moving source abandoned. A first form (online
+  table waits unless the closest pair merges: `pressure`); `max_idle` retires charts a moving source abandoned. A first form (online
   2-means children per chart) split impurely (the children cannot re-assign past points) -- replaced before any run.
 - **Spec 54/54 (CPU):** two clouds -> exactly 2 charts at capacity 4 (pure); one Gaussian never splits (isotropic, and 6x stretched),
   2000 points at capacity 16; six clouds behind an all-cluster root -> exactly 6 of 16, purity 1.000; converging clouds merge 2 -> 1;
