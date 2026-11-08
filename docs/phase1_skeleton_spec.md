@@ -57212,3 +57212,20 @@ closes a form; this ladder names which organ costs what).*
 - **PREDICTIONS:** E0 TEST ~0.14 (GAP ~ -0.02); SCR-DROP FAIL (+0.005..0.015; the decline flattens), SCR-WD FAIL, SCR-TID FAIL (low
   capacity channel), SCR-SC FAIL. I.e. regularization alone does not close the gap; the gap lives in the architecture rows (waist on the
   reader queries, tau on every road, pointer form) -- the next rungs, pinned after this read.
+
+### 2026-11-08 08:50 -- waist_at BUILT (Bryce: "word given, build waist_at now"; the rung waits for the BTL read + the word)
+*Serves: "U-Net per cycle: expand and collapse each breath, the silhouette at the bottleneck" -- ONE bottleneck per breath. The 11-07
+ruling form ("the waist compresses queries on all three roads") squeezes every road of every block; Bryce's 11-08 question: layers of
+full-width MHA blocks per tier with the compression on the last. Evidence it is worth a rung: BT4RB8 (TEST +0.034 over BTC2) squeezes
+ONCE per breath, after its attention (`gsm_breath_reader.py:330` z = down(h) -> silhouette + pointer queries); its reader is full width.*
+- **`BTConfig.waist_at`:** 'every' (the 11-07 form; no new parameters, bit-identical) | 'last' (only the last block's roads squeeze) |
+  'end' (no residual road squeezes; the breath's one waist feeds the silhouette + the pointer roads). Unsqueezed queries = qln(h) + the
+  waist's ID skip (the 11-07 symmetry fix holds: identical open slots still ask different queries). Port: `BTC_WAIST`. GSM params:
+  12,037,281 / 12,039,329 / 12,039,329 (the waist is not where BTC2's extra 5.5M live).
+- **Spec 64/64** (new: 'every' = the 11-07 weights; 'last' with one block = 'every' exactly; 'end': perturbing the waist moves the pointer
+  road only, never token_self / slot_self / cross; the ID skip on full-width queries). The trainer gives a zero grad to a parameter the
+  loss never reaches ('end': the token waist; tinygrad's AdamW refuses a None grad); CPU: one real GSM step runs in all three forms.
+- **Determinism (beside):** BTL E0's step-5000 line = BTC2 s0's step-5000 line exactly (loss 1.0689, TEST[:600] 0.141): the where-gated
+  NaN guard is bit-identical on finite runs, and 5k arms read the 18k runs' trajectories honestly.
+- **The rung (to pin after BTL; named, not pinned):** 5k, s0: 'last' | 'end' | 'every' + d_waist 128 (the widening control; flagged vs
+  the stone's 512 -> 64), each vs E0 on SCR (>= +0.020); a BTL lead stacks onto them.

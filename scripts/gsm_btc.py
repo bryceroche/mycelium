@@ -23,7 +23,7 @@ Modes (BTC_MODE): smoke (BTC_STEPS steps, s/step) | train (BT_STEPS, scored ever
 .cache/gsmb_btc_{TAG}.json; BT_SAVE=1 -> .safetensors + atoms .npy). Env: BT_SEED, BT_TAG, BT_BATCH, BT_LR; BTC_D / BTC_NH / BTC_DB /
 BTC_BLOCKS (defaults 512 / 8 / 64 / 2);
 BTC_WD (AdamW weight decay, 0.01) / BTC_DROP (BTConfig.dropout, 0): the regularization knobs; BTC_TOKID=0 drops the word-hash key
-from token_self (ledger 11-08).
+from token_self; BTC_WAIST = BTConfig.waist_at (every / last / end: where the queries squeeze) (ledger 11-08).
 """
 import json, math, os, sys, time, zlib
 
@@ -49,6 +49,7 @@ PTR = [f"p{r}{kd}" for r in "ab" for kd in KINDS]                   # pa_t pa_s 
 BUCKET = 32
 SELFCOND, STAMP = os.environ.get("BTC_SELFCOND", "1") == "1", os.environ.get("BTC_STAMP", "1") == "1"
 WD, DROP = float(os.environ.get("BTC_WD", "0.01")), float(os.environ.get("BTC_DROP", "0"))   # regularization (BTC2 = 0.01 / 0)
+WAIST = os.environ.get("BTC_WAIST", "every")      # BTConfig.waist_at: every | last | end (ledger 11-08)
 TOKID = os.environ.get("BTC_TOKID", "1") == "1"   # token_self matches on token_id (a word-hash key); 0 = t9 only (ledger 11-08)
 _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) > j) for j in range(K)])   # the scorer: rank j commits at
 
@@ -62,7 +63,7 @@ def config(d_in, d_aux):
                      ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D) for n in PTR)
     return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF, n_atoms=NT,
                         n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC,
-                        dropout=DROP)
+                        dropout=DROP, waist_at=WAIST)
 
 
 # ---- the port: one BR batch -> host arrays at a bucketed question length -----------------------------------------------------------
@@ -200,6 +201,8 @@ class Trainer:
             gn = Tensor.stack(*[(p.grad ** 2).sum() for p in gp]).sum().sqrt()
             coef = (1.0 / (gn + 1e-6)).minimum(1.0); fin = lo.isfinite() & gn.isfinite()
             for p in gp: p.grad = fin.where(p.grad * coef, 0.0)                                     # where-gated (NaN * 0 stays NaN)
+            for p in self.params:                                                                   # a param the loss never reaches
+                if p.grad is None: p.grad = p.zeros_like()                                          # (waist_at=end: the token waist)
             zz = z.detach().reshape(-1, z.shape[-1]).contiguous()
             Tensor.realize(lo, zz, *[p.grad for p in gp])                                       # the silhouettes BEFORE the update
             self.opt.step()
@@ -344,7 +347,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, waist_at=WAIST, d_waist=DB, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))

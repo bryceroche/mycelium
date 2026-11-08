@@ -364,4 +364,27 @@ with Tensor.train(): e5t = b5.enter_tokens(xd).numpy()
 check("dropout: eval = the no-dropout model exactly; training zeroes about p of the entry", np.array_equal(e0, e5) and 0.35 < (e5t == 0).mean() < 0.65,
       f"zeroed {(e5t == 0).mean():.2f}")
 
+# 15. waist_at (11-08): where the queries squeeze. 'every' keeps the 11-07 form's weights exactly; 'last' with one block = 'every';
+# 'end': no residual road reads the waist (perturbing it moves only the pointer road + the silhouette); the IDs still rejoin
+def mk(**kw):
+    Tensor.manual_seed(0); return BTM.BreathingTransformer(BTM.BTConfig(**{**CFG, **kw}))
+be, bl1 = mk(), mk(waist_at="last")
+check("waist_at 'every' = the 11-07 weights (no new parameters); 'last'/'end' add only the query LNs",
+      set(be.state_dict()) == set(mk(waist_at="every").state_dict())
+      and set(bl1.state_dict()) - set(be.state_dict()) == {k for k in bl1.state_dict() if k.startswith("qln.")} != set())
+same_init = all(np.array_equal(v_.numpy(), bl1.state_dict()[k_].numpy()) for k_, v_ in be.state_dict().items())   # the LNs draw no rng
+ioq, _ = inputs(be); oe, ol = be.breath(ioq, 0), bl1.breath(ioq, 0)
+check("waist_at 'last' with one block = 'every' exactly", same_init and all(np.array_equal(oe["logp"][r].numpy(), ol["logp"][r].numpy()) for r in oe["logp"]))
+bn = mk(waist_at="end"); ion, _ = inputs(bn); o0 = bn.breath(ion, 0)
+wd0 = bn.waist["slot"].up.weight.numpy(); bn.waist["slot"].up.weight = Tensor(wd0 + 0.5).contiguous()
+wt0 = bn.waist["token"].up.weight.numpy(); bn.waist["token"].up.weight = Tensor(wt0 + 0.5).contiguous()
+o1_ = bn.breath(ion, 0)
+res_same = all(np.array_equal(o0["logp"][r].numpy(), o1_["logp"][r].numpy()) for r in ("token_self", "slot_self", "cross"))
+ptr_moved = not np.allclose(o0["logp"]["pointer"].numpy(), o1_["logp"]["pointer"].numpy())
+check("waist_at 'end': the residual roads never read the waist; the pointer road does", res_same and ptr_moved)
+hs_ = Tensor.zeros(B, K, CFG["d_model"]).contiguous(); ion.h = {**ion.h, "slot": hs_}
+q2 = np.exp(bn.breath(ion, 0, roads=("slot_self",))["logp"]["slot_self"].numpy())
+check("waist_at 'end': identical open slots still ask different queries (the ID skip rejoins full-width queries)",
+      np.abs(q2[:, :, 0] - q2[:, :, 1]).max() > 1e-4, f"{np.abs(q2[:, :, 0] - q2[:, :, 1]).max():.2e}")
+
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

@@ -155,11 +155,14 @@ class BTConfig:
     mask_neg: float = -1e4                     # a masked logit (exp underflows to 0 in fp32)
     logit_clip: float = 1e4
     ln_eps: float = 1e-5
+    waist_at: str = "every"                    # where queries squeeze (11-08): 'every' road of every block (the 11-07 form) | 'last' block's
+                                               # roads only | 'end' = no road; one waist per breath (the silhouette + the pointer roads)
     dropout: float = 0.0                       # regularization: each residual road's write + the token entry, TRAINING only (0 = off)
     weyl_seed: int = 0                         # offsets the primes behind the id phases (a different, still fixed, code)
 
     def __post_init__(self):
         assert self.tau_kind in ("geometric", "linear", "constant"), self.tau_kind
+        assert self.waist_at in ("every", "last", "end"), self.waist_at
         assert self.n_breaths >= 1 and self.blocks_per_breath >= 1
         names = [f.name for f in self.factors]
         assert len(set(names)) == len(names), f"duplicate factor names: {names}"
@@ -390,6 +393,8 @@ class BreathingTransformer:
         if c.n_partitions:
             self.chart = nn.Linear(c.d_waist, c.n_partitions * c.d_chart)            # head h's view of a silhouette: partition h's space
         if c.d_bus: self.bus_in = nn.Linear(2 * c.d_bus, c.d_model, bias=False)       # the T256 bus read (Re, Im) per slot
+        if c.waist_at != "every":                                                   # a full-width query's LN (unsqueezed roads)
+            self.qln = {s: nn.LayerNorm(c.d_model, eps=c.ln_eps) for s in STREAMS}
         if c.n_atoms:
             self.reent = nn.Linear(c.d_waist, c.d_model)                             # committed: atom x radius, back up from the waist space
             if c.soft_belief: self.belief = nn.Linear(c.d_waist, c.d_model, bias=False)   # uncommitted: what the BT believes
@@ -458,12 +463,14 @@ class BreathingTransformer:
             B = next(iter(h.values())).shape[0]; nc, F = self.c.n_const, len(self.layout.factors)
             h["const"] = self.const.unsqueeze(0).expand(B, nc, self.c.d_model)
             ang.setdefault("const", Tensor.zeros(B, nc, self.layout.P).contiguous()); pres.setdefault("const", Tensor.zeros(B, nc, F).contiguous())
-        for blk in self.blocks:
+        nb = len(self.blocks)
+        for bi, blk in enumerate(self.blocks):
             for spec in self.c.roads:
                 if spec.name not in blk.roads: continue
                 if (roads is None and not spec.runs(b)) or (roads is not None and spec.name not in roads): continue
                 s, k = spec.query, spec.key
-                z, u = self.waist[s](h[s], self.ids(ang[s], pres[s]))
+                idq = self.ids(ang[s], pres[s]); z, u = self.waist[s](h[s], idq)
+                if not self._squeezes(spec, bi == nb - 1): u = self.qln[s](h[s]) + self.waist[s].skip(idq)   # full width, the IDs still rejoin
                 ch = self._charts(io, spec, z, h[k], ang[k], pres[k]) if spec.charted() else None
                 hq, lp = blk.roads[spec.name](h[s], u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name], tau, ch)
                 h[s] = hq; lps[spec.name] = lp
@@ -474,6 +481,11 @@ class BreathingTransformer:
         if self.c.n_partitions:                                                      # what the Tree's Welford/BIRCH fold reads
             out["chart_pts"] = {s: self.chart_coords(zs[s]).detach() for s in {r.key for r in self.c.roads if r.charted()} if s in zs}
         return out
+
+    def _squeezes(self, spec, last):
+        """does this road's query pass the waist? (waist_at; a pointer road always reads the silhouette in 'end')"""
+        w = self.c.waist_at
+        return w == "every" or (w == "last" and last) or (w == "end" and not spec.residual)
 
     def ids(self, ang, pres):
         """the ID tags the skip carries: (B, L, 2P) = cos / sin of the stream's own stamps, zero on absent factors' planes"""
