@@ -111,6 +111,13 @@ qs = b1.breath(io1, 0)["logp"]["cross"].numpy(); b1.waist["slot"].down.weight = 
 check("keys bypass the waist (the key stream's waist changes nothing)", np.allclose(base, kt, atol=1e-6))
 check("queries pass the waist (the query stream's waist changes the read)", np.abs(base - qs).max() > 1e-3, f"{np.abs(base - qs).max():.3f}")
 
+# 6b. THE SKIP breaks slot symmetry: identical slot states, different slot ids -> different queries; the skip reads IDs only
+io_s, _ = inputs(bt); io_s.h["slot"] = Tensor.zeros(B, K, 32).contiguous() + 0.1
+zs_ = bt.breath(io_s, 1, roads=("slot_self", "cross"))["logp"]["cross"].numpy()
+check("THE SKIP: identical slot states with distinct slot ids read differently", np.abs(zs_[:, :, 0] - zs_[:, :, 1]).max() > 1e-4,
+      f"{np.abs(zs_[:, :, 0] - zs_[:, :, 1]).max():.2e}")
+check("THE SKIP carries only the ID tags (its input width = 2 x planes)", bt.waist["slot"].skip.weight.shape == (32, 2 * bt.layout.P))
+
 # 7. wildcards: a factor no head matches is invisible; a matched one is not
 o_a = bt.breath(inputs(bt, beam=0)[0], 0)["logp"]["cross"].numpy(); o_b = bt.breath(inputs(bt, beam=3)[0], 0)["logp"]["cross"].numpy()
 check("wildcard factor (beam) leaves the read unchanged", np.allclose(o_a, o_b, atol=1e-6))
@@ -156,6 +163,10 @@ iox.marks = {"token": Tensor(np.ones((B, LT, 1), np.float32))}
 om = bx.breath(iox, 0, roads=("cross",))
 check("a road subset runs only those roads; marks change the read", set(om["logp"]) == {"cross"}
       and np.abs(om["logp"]["cross"].numpy() - o_nm["logp"]["cross"].numpy()).max() > 1e-4)
+
+# 9c. constants are never parameters, never saved, even after a forward built them
+ks = list(bt2.state_dict())
+check("no constant buffer in the parameters or the saved state", not [k for k in ks if k.endswith(("sel", "_own_t"))], str([k for k in ks if "own" in k][:3]))
 
 # 10. the organs
 t6 = O.T6Clock(span=6)

@@ -56963,3 +56963,22 @@ Breathing transformer for every tier going forward"). `scripts/gsm_btc.py` = the
 - BT4RB8 references (banked): TEST step_all 0.1634 / 0.1664; CFNUM 0.8553 / 0.8867; CFNAME 0.8086 / 0.8464.
 - **Predictions:** BTC-N PASS; BTC-G FAIL (size does not buy TEST transfer: R4/B3); BTC-CF PASS.
 - Chain: `.cache/run_btc.sh` (s0 then s1, then `scripts/gsm_btc_verdict.py`). A FAIL closes this FORM (the port's choices), never the line.
+
+### 2026-11-07 16:15 — BTC s0 READ + AUTOPSY: a CLASS DEFECT (the U-Net skip was missing; uncommitted slots were one query) -- fixed
+
+Bryce, 11-07: *"lets be patient with the new BT class. I wonder if the external organs are wired up correctly."* His gut fired; the drawer
+had something in it.
+- **BTC s0 FINAL:** ORIG step 0.514 (BT4RB8 0.951) | CFNUM 0.439 | CFNAME 0.393 | TEST 0.102 (0.163); type 0.540 / 0.510 / 0.476 / 0.223.
+  BTC-N (both seeds ≥ −0.020) cannot pass on s0's −0.061; s1 is still training.
+- **Autopsy** (`scripts/gsm_btc_autopsy.py`, s0, 300 items): teacher-forced type ORIG 0.520 / TEST 0.188 (scored 0.540 / 0.223) -- NOT
+  exposure bias; rebuilt atoms 0.564 / 0.217 -- atom lag minor; teacher-forced pointers 0.852 / 0.429.
+- **The defect (the symmetry read, s0 weights, ORIG[:16], empty notebook):** every uncommitted slot computes the SAME silhouette (max
+  spread 3.8e-6) -> 1.00 distinct predicted type per problem (gold 4.12). The composite keys rotated the query's phase planes but NEVER
+  rejoined the query's content: `u = up(z)` had no skip, every uncommitted slot entered as the same mask vector, and slot
+  self-attention averages identical values. The step could not know which step it was.
+- **Fix (the spec, as Bryce stated it: "unet compression and skip connection each breath cycle ... composite keys skip the
+  compression"):** `Waist`: u = up(z) + skip(the stream's own composite-key phasors) -- the skip carries ONLY the ID tags (cos/sin of
+  its stamps on the present factors' planes; `BTConfig.skip_factors`, beam excluded as bookkeeping), never the state. Spec test 34/34
+  (new: identical slot states with distinct ids read differently; the skip's input width = 2 x planes). Also: the constants
+  (`sel`, `_own_t`) are never parameters nor saved (s0's saved `_own_t` = the fixed map exactly: never trained), strict `load`.
+- BTC banks as a FAIL of THAT FORM (the defect); the fixed form is BTC2 (needs a pin + the word).

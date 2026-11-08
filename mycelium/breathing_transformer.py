@@ -124,6 +124,7 @@ class BTConfig:
     d_aux: int = 0                             # extra token features entering without the reader LN (0 = none)
     d_mark: int = 0                            # per-breath mark features per stream (e.g. consumed marks; 0 = none)
     n_const: int = 0                           # learned constant keys (the 'const' key stream)
+    skip_factors: tuple = ("token_id", "slot_id", "t6", "t9", "table", "level")   # the IDs the U-Net skip carries (beam: bookkeeping)
     soft_belief: bool = False                  # enter_slots reads a soft type belief (the soft notebook) for uncommitted slots
     n_atoms: int = 0                           # the Tree atoms the notebook commits slots to (0 = no atom entry)
     n_breaths: int = 6
@@ -240,12 +241,15 @@ def _zero_linear(i, o):
 
 
 class Waist:
-    """THE U-NET's waist for one stream: z = down(LN(h)) (the silhouette, d_waist), u = up(z) (the compressed query base)."""
-    def __init__(self, c):
+    """THE U-NET for one stream: z = down(LN(h)) (the silhouette, d_waist); u = up(z) + skip(ID tags) (the query base).
+    THE SKIP carries ONLY the stream's own composite-key phasors (cos / sin of its stamps on the present factors' planes), never the
+    state: the IDs bypass the waist and rejoin after it (11-07 fix: without it every uncommitted slot was the same query)."""
+    def __init__(self, c, P):
         self.ln = nn.LayerNorm(c.d_model, eps=c.ln_eps); self.down = nn.Linear(c.d_model, c.d_waist); self.up = nn.Linear(c.d_waist, c.d_model)
+        self.skip = nn.Linear(2 * P, c.d_model, bias=False)
 
-    def __call__(self, h):
-        z = self.down(self.ln(h)); return z, self.up(z)
+    def __call__(self, h, ids):
+        z = self.down(self.ln(h)); return z, self.up(z) + self.skip(ids)
 
 
 class Road:
@@ -349,7 +353,7 @@ class BreathingTransformer:
         if c.d_aux: self.aux_in = nn.Linear(c.d_aux, c.d_model)
         if c.d_mark: self.mark = {s: nn.Linear(c.d_mark, c.d_model) for s in STREAMS}
         if c.n_const: self.const = (Tensor.randn(c.n_const, c.d_model) * 0.02).contiguous()
-        self.waist = {s: Waist(c) for s in STREAMS}
+        self.waist = {s: Waist(c, self.layout.P) for s in STREAMS}
         self.blocks = [Block(c, self.layout, i == c.blocks_per_breath - 1) for i in range(c.blocks_per_breath)]   # shared by EVERY breath
         self.sil_scale = Tensor.zeros(1).contiguous()                               # the silhouette classifier's learned scale (log)
         self.mask_slot = Tensor.zeros(c.d_model).contiguous()                       # an uncommitted slot's entry
@@ -403,24 +407,44 @@ class BreathingTransformer:
                 if spec.name not in blk.roads: continue
                 if (roads is None and not spec.runs(b)) or (roads is not None and spec.name not in roads): continue
                 s, k = spec.query, spec.key
-                z, u = self.waist[s](h[s])
+                z, u = self.waist[s](h[s], self.ids(ang[s], pres[s]))
                 hq, lp = blk.roads[spec.name](h[s], z, u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name],
                                               tau, io.charts.get(spec.name), io.key_charts.get(spec.name))
                 h[s] = hq; lps[spec.name] = lp
         h.pop("const", None)
-        zs = {s: self.waist[s](h[s])[0] for s in STREAMS if s in h}
+        zs = {s: self.waist[s](h[s], self.ids(ang[s], pres[s]))[0] for s in STREAMS if s in h}
         return {"h": h, "z": zs, "logp": lps}
+
+    def ids(self, ang, pres):
+        """the ID tags the skip carries: (B, L, 2P) = cos / sin of the stream's own stamps, zero on absent factors' planes"""
+        if not hasattr(self, "_skip_sel"):
+            self._skip_sel = Tensor(np.array([f.name in self.c.skip_factors for f in self.layout.factors], np.float32)).realize()
+        pp = self.layout.presence_planes(pres * self._skip_sel)
+        return Tensor.cat(ang.cos() * pp, ang.sin() * pp, dim=-1)
 
     def silhouette_logp(self, z, atoms, tau):
         """The silhouette classified against the Tree's atoms (GRAVITY form: softmax over -distance / tau). z (..., d_waist)."""
         d = -((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp()
         return _over_tau(d, tau).log_softmax(-1)
 
-    CONSTANTS = ("sel",)                       # realized constant buffers (never trained, never saved)
+    CONSTANTS = ("sel", "_own_t", "_skip_sel")              # realized constant buffers (never trained, never saved)
+
+    @classmethod
+    def _is_const(cls, k):
+        parts = k.split(".")
+        return parts[0] == "layout" or "L" in parts or parts[-1] in cls.CONSTANTS
 
     def parameters(self):
         return list(self.state_dict().values())
 
+    def load(self, sd):
+        """Load saved weights: the keys must equal state_dict()'s exactly (no silent fallbacks), shapes must match."""
+        own = self.state_dict(); sd = {k: v for k, v in sd.items() if not self._is_const(k)}   # (files saved before 11-07 15:40 carry _own_t)
+        assert set(sd) == set(own), f"key mismatch: missing {sorted(set(own) - set(sd))[:5]}, unexpected {sorted(set(sd) - set(own))[:5]}"
+        for k, v in own.items():
+            assert v.shape == sd[k].shape, (k, v.shape, sd[k].shape)
+            v.replace(sd[k].to(v.device)).realize()
+
     def state_dict(self):
         from tinygrad.nn.state import get_state_dict
-        return {k: v for k, v in get_state_dict(self).items() if not k.startswith("layout") and k.split(".")[-1] not in self.CONSTANTS}
+        return {k: v for k, v in get_state_dict(self).items() if not self._is_const(k)}
