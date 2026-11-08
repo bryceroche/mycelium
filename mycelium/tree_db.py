@@ -78,6 +78,11 @@ CREATE TABLE IF NOT EXISTS centroids(
   generation TEXT NOT NULL, node INTEGER NOT NULL, n REAL NOT NULL, ls BLOB NOT NULL, ss REAL NOT NULL, built TEXT NOT NULL,
   PRIMARY KEY(generation, node));
 """
+SCHEMA_CHARTS = """
+CREATE TABLE IF NOT EXISTS chart_stats(
+  generation TEXT NOT NULL, chart INTEGER NOT NULL, n REAL NOT NULL, mean BLOB NOT NULL, m2 BLOB NOT NULL, built TEXT NOT NULL,
+  PRIMARY KEY(generation, chart));                                             -- a BT partition's Welford charts (model space)
+"""
 SCHEMA_V3 = """
 CREATE INDEX IF NOT EXISTS nodes_parent ON nodes(parent);
 CREATE TABLE IF NOT EXISTS macros(
@@ -171,7 +176,7 @@ class TreeDB:
                 self.c.execute("UPDATE meta SET v=? WHERE k='schema_version'", (VERSION,))
                 self.c.execute("INSERT OR REPLACE INTO meta VALUES ('upgraded_from_2', ?)", (_now(),))
             v = VERSION
-        self.c.executescript(SCHEMA_V3)
+        self.c.executescript(SCHEMA_V3); self.c.executescript(SCHEMA_CHARTS)      # additive tables: created on open, nothing rewritten
         assert v == VERSION, f"{path}: schema version {v}, this code is {VERSION}"
 
     def close(self):
@@ -462,6 +467,22 @@ class TreeDB:
         if not rs:
             return None
         return np.array([r[0] for r in rs]), np.stack([_arr(r[1]) for r in rs]), np.array([r[2] for r in rs])
+
+    # ---- BT chart partitions (Welford per chart; generation-tagged like centroids; bt_organs.TreeTables) ----------
+    def save_charts(self, generation, n, mean, m2):
+        with self.c:
+            self.c.execute("DELETE FROM chart_stats WHERE generation=?", (generation,))
+            self.c.executemany("INSERT INTO chart_stats VALUES (?,?,?,?,?,?)",
+                               [(generation, i, float(n[i]), _blob(mean[i]), _blob(m2[i]), _now()) for i in range(len(n))])
+
+    def load_charts(self, generation, current):
+        """Welford (n, mean, m2) of `generation`'s charts; refuses unless it IS the current generation."""
+        if generation != current:
+            raise ValueError(f"never mix generations: charts of {generation!r} requested by generation {current!r}")
+        rs = self.c.execute("SELECT n, mean, m2 FROM chart_stats WHERE generation=? ORDER BY chart", (generation,)).fetchall()
+        if not rs:
+            return None
+        return np.array([r[0] for r in rs]), np.stack([_arr(r[1]) for r in rs]), np.stack([_arr(r[2]) for r in rs])
 
 
 def migrate_v1(src, dst):

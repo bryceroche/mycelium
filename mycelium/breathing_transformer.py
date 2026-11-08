@@ -9,7 +9,10 @@ THE SPEC (each line is enforced by construction here; `scripts/test_breathing_tr
     bus, the Tree DB, the CSP solver. A breath is a pure function of what the organs hand it; whatever persists between breaths
     goes through an organ (the alternation ruling), never through a hidden residual.
   - One BT per TIER (the tier's invariance contract is its `BTConfig.tier`). BREATHS are weight-tied (never specialize); HEADS
-    specialize, each head reads its own partition (tier, head) of the Tree's tables.
+    specialize, each head reads its own partition (tier, head) of the Tree's tables: head h of every charted road in a tier reads
+    partition (tier, h) through the tier's chart projection for head h (so 3 tiers x 6 heads = 18 partitions, 18 centroid sets).
+    The partitions' centroids are maintained OUTSIDE the BT (`bt_organs.ChartTable`: Welford stats + BIRCH spawning) from the
+    points the breath hands back (`out['chart_pts']`), and enter the next breath as data (`BreathIO.charts`, never parameters).
   - No RoPE: position and time enter only as composite-key phases from the clocks. No MLP: the only maps are linear projections,
     LayerNorm and attention (no activation function exists in this file).
   - THE U-NET every breath: the query stream passes the waist (d_model -> d_waist -> d_model); KEYS NEVER PASS IT (content keys and
@@ -24,7 +27,10 @@ THE SPEC (each line is enforced by construction here; `scripts/test_breathing_tr
     writing a residual.
   - THE TWO-TIER SOFTMAX on a road with charts: log p(key) = log p(chart(key) | q) + log p(key | chart, q). Tier 1 (macro) is the
     waist's query against the head's Tree chart centroids; tier 2 (micro) is content + composite-key match within the chart. The
-    micro score cannot move mass between charts (the residual-seal law: the CS form).
+    micro score cannot move mass between charts (the residual-seal law: the CS form). A key's CHART is the macro view of it: its
+    silhouette (the key stream's waist z) through the same head's chart projection, snapped to the nearest live centroid (the
+    discrete mirror; no gradient crosses the snap) -- unless the organs hand an exact chart (`BreathIO.key_charts`, e.g. the
+    Tree's symbolic lookup). The MICRO match (content + composite keys) never passes the waist.
   - DIFFUSION DYNAMICS: every logit (chart and micro) is divided by the breath's temperature; tau falls over the breaths
     (`BTConfig.tau_first -> tau_last`, geometric or linear), so the representation sharpens slowly.
 
@@ -82,13 +88,13 @@ def default_factors(id_planes=8, slot_speeds=CK.T6_SPEEDS, small_planes=4):
 @dataclass(frozen=True)
 class RoadSpec:
     """A road: queries from `query` stream (through the waist), keys/values from `key` stream (full state).
-    match[h] = the factors head h matches (wildcards elsewhere); n_charts[h] = 0 -> a flat softmax for that head."""
+    match[h] = the factors head h matches (wildcards elsewhere); charts = True -> the two-tier softmax, head h on partition (tier, h)."""
     name: str
     query: str                                 # 'token' | 'slot'
     key: str
     n_heads: int
     match: tuple                               # per head: tuple of factor names
-    n_charts: tuple = ()                       # per head (empty = no charts on this road)
+    charts: bool = False                       # the two-tier softmax over the tier's Tree partitions (head h -> partition h)
     residual: bool = True                      # False = a POINTER road (returns log-probs, writes nothing)
     breaths: tuple = None                      # the breaths this road runs on (None = every breath); the weights are the same
     d_head: int = 0                            # this road's head width (0 = BTConfig.d_head; e.g. one full-width pointer head)
@@ -97,19 +103,19 @@ class RoadSpec:
         return self.breaths is None or b in self.breaths
 
     def charted(self):
-        return any(c > 0 for c in self.n_charts)
+        return self.charts
 
 
-def default_roads(n_heads=8, n_charts=0, pointer_heads=1, token_breaths=(0,)):
+def default_roads(n_heads=6, charts=False, pointer_heads=1, token_breaths=(0,)):
     """The three roads of the ruling + one pointer road. Token self-attention runs on breath 0 only by default (Bryce 11-07: "we dont
     have to run token self attention every breath"; token_breaths=None = every breath). Token self matches token address (T9) and identity; slot self matches slot
     order + breath time; cross matches the token address and the Tree table/level; every head of a road shares the default match
-    (heads still specialize through their weights and their own Tree partitions)."""
-    cc = lambda h: (n_charts,) * h if n_charts else ()
-    return (RoadSpec("token_self", "token", "token", n_heads, (("t9", "token_id"),) * n_heads, breaths=token_breaths),
+    (heads still specialize through their weights and their own Tree partitions). charts=True charts every road whose KEYS are tokens
+    (token self, cross, pointer): partition h then holds head h's view of the tokens."""
+    return (RoadSpec("token_self", "token", "token", n_heads, (("t9", "token_id"),) * n_heads, charts, breaths=token_breaths),
             RoadSpec("slot_self", "slot", "slot", n_heads, (("slot_id", "t6"),) * n_heads),
-            RoadSpec("cross", "slot", "token", n_heads, (("t9", "table", "level"),) * n_heads, cc(n_heads)),
-            RoadSpec("pointer", "slot", "token", pointer_heads, (("t9", "table", "level"),) * pointer_heads, cc(pointer_heads), False))
+            RoadSpec("cross", "slot", "token", n_heads, (("t9", "table", "level"),) * n_heads, charts),
+            RoadSpec("pointer", "slot", "token", pointer_heads, (("t9", "table", "level"),) * pointer_heads, charts, False))
 
 
 @dataclass(frozen=True)
@@ -120,6 +126,9 @@ class BTConfig:
     d_waist: int = 64
     d_head: int = 64
     d_chart: int = 64                          # the macro chart space (read off the waist)
+    n_partitions: int = 0                      # this tier's Tree partitions = its heads (head h of a charted road -> partition h)
+    n_charts: int = 16                         # chart capacity per partition (BIRCH spawns live charts up to it)
+    d_bus: int = 0                             # T256 bus planes the slots read (0 = no bus entry)
     d_cert: int = 3                            # the notebook's certificate features per slot
     d_aux: int = 0                             # extra token features entering without the reader LN (0 = none)
     d_mark: int = 0                            # per-breath mark features per stream (e.g. consumed marks; 0 = none)
@@ -148,7 +157,9 @@ class BTConfig:
         for r in self.roads:
             assert r.query in STREAMS and r.key in KEY_STREAMS, r
             assert len(r.match) == r.n_heads, f"road {r.name}: one match tuple per head"
-            assert not r.n_charts or len(r.n_charts) == r.n_heads, f"road {r.name}: one chart count per head"
+            if r.charts:
+                assert r.key in STREAMS, f"road {r.name}: charted keys need a waist (their chart is their silhouette's)"
+                assert 0 < r.n_heads <= self.n_partitions, f"road {r.name}: {r.n_heads} heads, {self.n_partitions} partitions"
             for m in r.match:
                 assert set(m) <= set(names), f"road {r.name}: unknown factor in {m}"
         assert len({r.name for r in self.roads}) == len(self.roads), "duplicate road names"
@@ -160,9 +171,13 @@ class BTConfig:
         if self.tau_kind == "linear": return self.tau_first + a * (self.tau_last - self.tau_first)
         return self.tau_first * (self.tau_last / self.tau_first) ** a
 
-    def partition(self, road, head):
-        """The Tree table partition a head reads: (tier, road/head)."""
-        return (self.tier, f"{road}/h{head}")
+    def partition(self, head):
+        """The Tree table partition head h reads (every charted road of this tier): (tier, 'h{head}')."""
+        assert 0 <= head < self.n_partitions, (head, self.n_partitions)
+        return (self.tier, f"h{head}")
+
+    def partitions(self):
+        return [self.partition(h) for h in range(self.n_partitions)]
 
 
 # ---- THE COMPOSITE KEYS (disjoint planes) ---------------------------------------------------------------------------------------------
@@ -265,14 +280,12 @@ class Road:
         self.sel = Tensor(layout.selector(spec.match)).realize()      # (H, F, P) constant, realized once
         if spec.residual:
             self.v = nn.Linear(c.d_model, H * Dh); self.o = nn.Linear(H * Dh, c.d_model)
-        if spec.charted():
-            self.zq = nn.Linear(c.d_waist, H * c.d_chart)            # the macro query lives in the waist
 
-    def logp(self, z, u, hk, qa, ka, kpres, valid, tau, charts=None, key_charts=None):
+    def logp(self, u, hk, qa, ka, kpres, valid, tau, ch=None):
         """log p(key | query) per head: (B, H, Lq, Lk).
-        z (B, Lq, d_waist), u (B, Lq, D) the query's waist; hk (B, Lk, D) the key state; qa (B, Lq, P) / ka (B, Lk, P) the stamps;
-        kpres (B, Lk, F) key factor presence; valid (B, Lq, Lk) bool; charts: per head (C_h, d_chart) Tensors (the Tree's centroids),
-        key_charts: (B, H, Lk) int (the Tree's chart of every key, per head partition)."""
+        u (B, Lq, D) the query's waist output; hk (B, Lk, D) the key state; qa (B, Lq, P) / ka (B, Lk, P) the stamps;
+        kpres (B, Lk, F) key factor presence; valid (B, Lq, Lk) bool; ch (charted roads): dict(cq (B, H, Lq, dc) the queries' chart
+        coords, cent (H, C, dc) the partitions' centroids, ok (H, C) live charts, kc (B, H, Lk) int each key's chart)."""
         c, S, H, Dh, P = self.c, self.spec, self.spec.n_heads, self.Dh, self.L.P
         B, Lq, Lk = u.shape[0], u.shape[1], hk.shape[1]
         q = self.q(u).reshape(B, Lq, H, Dh).transpose(1, 2) * (1 / math.sqrt(Dh))
@@ -286,22 +299,16 @@ class Road:
         F = _over_tau(q @ k.transpose(-2, -1) + qid @ kid.transpose(-2, -1), tau)
         F = F.clip(-c.logit_clip, c.logit_clip)
         m = valid.unsqueeze(1)                                                                      # (B, 1, Lq, Lk)
-        if not S.charted() or charts is None:
+        if not S.charted() or ch is None:
             return m.where(F, c.mask_neg).log_softmax(-1)
-        return self._two_tier(F, z, m, tau, charts, key_charts)
+        return self._two_tier(F, m, tau, ch)
 
-    def _two_tier(self, F, z, m, tau, charts, key_charts):
-        """log p(chart(t) | q) + F_t - lse_{chart(t)} F (the seal); per head with its own chart count (padded to the max)."""
-        c, S, H = self.c, self.spec, self.spec.n_heads
-        B, Lq = z.shape[0], z.shape[1]; Cm = max(S.n_charts)
-        zq = self.zq(z).reshape(B, Lq, H, c.d_chart).transpose(1, 2)                               # (B, H, Lq, dc)
-        dist = []
-        for h in range(H):
-            Ch = charts[h]; n = Ch.shape[0]; assert n == S.n_charts[h], f"road {S.name} head {h}: {n} charts, spec {S.n_charts[h]}"
-            d = _over_tau(-((zq[:, h].unsqueeze(-2) - Ch) ** 2).sum(-1) * (1 / math.sqrt(c.d_chart)), tau)   # (B, Lq, n)
-            dist.append(d.pad((None, None, (0, Cm - n)), value=c.mask_neg) if n < Cm else d)
-        lc = Tensor.stack(*dist, dim=1)                                                             # (B, H, Lq, Cm)
-        oh = key_charts.one_hot(Cm).cast(dtypes.float)                                             # (B, H, Lk, Cm)
+    def _two_tier(self, F, m, tau, ch):
+        """log p(chart(t) | q) + F_t - lse_{chart(t)} F (the seal); every head on its own partition's live charts."""
+        c = self.c; cent, ok, Cm = ch["cent"], ch["ok"], ch["cent"].shape[1]
+        d = -((ch["cq"].unsqueeze(-2) - cent.unsqueeze(1)) ** 2).sum(-1) * (1 / math.sqrt(c.d_chart))     # (B, H, Lq, C)
+        lc = ok.unsqueeze(1).where(_over_tau(d, tau), c.mask_neg)                                  # dead charts never draw mass
+        oh = ch["kc"].one_hot(Cm).cast(dtypes.float)                                               # (B, H, Lk, C)
         F_ = m.where(F, c.mask_neg)
         inc = m.unsqueeze(-1) & (oh.unsqueeze(2) > 0.5)                                            # (B, H, Lq, Lk, Cm)
         fm = inc.where(F_.unsqueeze(-1), c.mask_neg).max(3)                                        # per-chart max
@@ -311,8 +318,8 @@ class Road:
         lp = (lchr - lsec) @ oh.transpose(-1, -2)                                                  # (B, H, Lq, Lk): each key's chart terms
         return m.where(lp + F_, c.mask_neg)
 
-    def __call__(self, hq, z, u, hk, qa, ka, kpres, valid, tau, charts=None, key_charts=None):
-        lp = self.logp(z, u, hk, qa, ka, kpres, valid, tau, charts, key_charts)
+    def __call__(self, hq, u, hk, qa, ka, kpres, valid, tau, ch=None):
+        lp = self.logp(u, hk, qa, ka, kpres, valid, tau, ch)
         if not self.spec.residual: return hq, lp
         B, Lk, H, Dh = hk.shape[0], hk.shape[1], self.spec.n_heads, self.Dh
         v = self.v(self.lnk(hk)).reshape(B, Lk, H, Dh).transpose(1, 2)
@@ -336,8 +343,9 @@ class BreathIO:
     angles: dict                               # stream -> (B, L, P) composite-key angles
     presence: dict                             # stream -> (B, L, F) factor presence
     valid: dict                                # road name -> (B, Lq, Lk) bool (padding, consumed marks, the solver's breaker)
-    charts: dict = field(default_factory=dict)       # road name -> per head (C_h, d_chart) Tensor (the Tree's centroids)
-    key_charts: dict = field(default_factory=dict)   # road name -> (B, H, Lk) int
+    charts: Tensor = None                            # (n_partitions, C, d_chart) this tier's partitions' centroids (TreeTables.io)
+    chart_ok: Tensor = None                          # (n_partitions, C) bool: the live charts (BIRCH has spawned them)
+    key_charts: dict = field(default_factory=dict)   # road name -> (B, H, Lk) int: an exact chart per key (else: the silhouette's)
     marks: dict = field(default_factory=dict)        # stream -> (B, L, d_mark) per-breath marks (added at the breath's start)
 
 
@@ -358,6 +366,9 @@ class BreathingTransformer:
         self.sil_scale = Tensor.zeros(1).contiguous()                               # the silhouette classifier's learned scale (log)
         self.mask_slot = Tensor.zeros(c.d_model).contiguous()                       # an uncommitted slot's entry
         self.cert = nn.Linear(c.d_cert, c.d_model)
+        if c.n_partitions:
+            self.chart = nn.Linear(c.d_waist, c.n_partitions * c.d_chart)            # head h's view of a silhouette: partition h's space
+        if c.d_bus: self.bus_in = nn.Linear(2 * c.d_bus, c.d_model, bias=False)       # the T256 bus read (Re, Im) per slot
         if c.n_atoms:
             self.reent = nn.Linear(c.d_waist, c.d_model)                             # committed: atom x radius, back up from the waist space
             if c.soft_belief: self.belief = nn.Linear(c.d_waist, c.d_model, bias=False)   # uncommitted: what the BT believes
@@ -374,9 +385,10 @@ class BreathingTransformer:
         h (B, L, D) + cond_in(radius x atoms[atom]). atom (B, L) int, radius (B, L), atoms (A, d_waist)."""
         return h + self.cond_in(radius.unsqueeze(-1) * (atom.one_hot(atoms.shape[0]).cast(dtypes.float) @ atoms))
 
-    def enter_slots(self, committed, cert, atom=None, radius=None, belief=None, atoms=None):
+    def enter_slots(self, committed, cert, atom=None, radius=None, belief=None, atoms=None, bus=None):
         """The notebook's write-back -> the slot stream. committed (B, K) bool; cert (B, K, d_cert); atom (B, K) int, radius (B, K),
-        belief (B, K, A) soft type distribution, atoms (A, d_waist) the Tree's atom centroids (needs n_atoms)."""
+        belief (B, K, A) soft type distribution, atoms (A, d_waist) the Tree's atom centroids (needs n_atoms); bus (B, K, 2 d_bus) the
+        T256 bus read at each slot's key (PhaseBus.features: what the other tiers bound there)."""
         B, K = committed.shape
         h = self.mask_slot.reshape(1, 1, -1).expand(B, K, self.c.d_model)
         if self.c.n_atoms and atoms is not None:
@@ -386,7 +398,29 @@ class BreathingTransformer:
             if atom is not None:
                 re = self.reent(radius.unsqueeze(-1) * (atom.one_hot(atoms.shape[0]).cast(dtypes.float) @ atoms))
                 h = committed.unsqueeze(-1).where(re, h)
+        if bus is not None:
+            assert self.c.d_bus, "bus read given but BTConfig.d_bus is 0"
+            h = h + self.bus_in(bus)
         return h + self.cert(cert)
+
+    def chart_coords(self, z):
+        """(B, L, d_waist) silhouettes -> (B, n_partitions, L, d_chart): every head's view, in its partition's space"""
+        B, L = z.shape[0], z.shape[1]
+        return self.chart(z).reshape(B, L, self.c.n_partitions, self.c.d_chart).transpose(1, 2)
+
+    def _charts(self, io, spec, zq, hk, ak, pk):
+        """the two-tier inputs for a charted road: the queries' chart coords, the head partitions' centroids, each key's chart"""
+        H = spec.n_heads
+        assert io.charts is not None and io.chart_ok is not None, f"road {spec.name} is charted: the organs must hand BreathIO.charts"
+        cent, ok = io.charts[:H], io.chart_ok[:H]
+        root = Tensor.arange(ok.shape[1]).reshape(1, -1) == 0                      # an empty partition = one root chart (a flat read)
+        ok = ok | (root & ok.logical_not().all(-1, keepdim=True))
+        kc = io.key_charts.get(spec.name)
+        if kc is None:                                                               # the key's silhouette, snapped (no gradient)
+            zk = self.waist[spec.key](hk, self.ids(ak, pk))[0].detach()
+            dk = ((self.chart_coords(zk)[:, :H].unsqueeze(-2) - cent.unsqueeze(1)) ** 2).sum(-1)
+            kc = ok.unsqueeze(1).where(dk, float("inf")).argmin(-1)                 # (B, H, Lk): the nearest live chart
+        return dict(cq=self.chart_coords(zq)[:, :H], cent=cent, ok=ok, kc=kc)
 
     def tau(self, b):
         return self.c.tau(b)
@@ -408,12 +442,15 @@ class BreathingTransformer:
                 if (roads is None and not spec.runs(b)) or (roads is not None and spec.name not in roads): continue
                 s, k = spec.query, spec.key
                 z, u = self.waist[s](h[s], self.ids(ang[s], pres[s]))
-                hq, lp = blk.roads[spec.name](h[s], z, u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name],
-                                              tau, io.charts.get(spec.name), io.key_charts.get(spec.name))
+                ch = self._charts(io, spec, z, h[k], ang[k], pres[k]) if spec.charted() else None
+                hq, lp = blk.roads[spec.name](h[s], u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name], tau, ch)
                 h[s] = hq; lps[spec.name] = lp
         h.pop("const", None)
         zs = {s: self.waist[s](h[s], self.ids(ang[s], pres[s]))[0] for s in STREAMS if s in h}
-        return {"h": h, "z": zs, "logp": lps}
+        out = {"h": h, "z": zs, "logp": lps}
+        if self.c.n_partitions:                                                      # what the Tree's Welford/BIRCH fold reads
+            out["chart_pts"] = {s: self.chart_coords(zs[s]).detach() for s in {r.key for r in self.c.roads if r.charted()} if s in zs}
+        return out
 
     def ids(self, ang, pres):
         """the ID tags the skip carries: (B, L, 2P) = cos / sin of the stream's own stamps, zero on absent factors' planes"""

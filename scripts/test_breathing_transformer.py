@@ -13,7 +13,7 @@ from mycelium.tree_db import TreeDB
 
 B, LT, K, C = 2, 7, 3, 3
 CFG = dict(tier="business", d_in=16, d_model=32, d_waist=8, d_head=8, d_chart=8, d_cert=3, n_atoms=5, n_breaths=6, soft_belief=True,
-           roads=BTM.default_roads(n_heads=2, n_charts=C))
+           n_partitions=2, n_charts=C, d_bus=16, roads=BTM.default_roads(n_heads=2, charts=True))
 OK = []
 
 
@@ -36,11 +36,11 @@ def inputs(bt, seed=0, beam=None, sent=None):
     vt = Tensor(np.broadcast_to(pad[:, None, :], (B, LT, LT)).copy()); vs = Tensor(np.ones((B, K, K), bool))
     vc = Tensor(np.broadcast_to((pad & ~nb.consumed)[:, None, :], (B, K, LT)).copy())
     kc = Tensor(rng.integers(0, C, (B, 2, LT)))
-    charts = {r: [Tensor(rng.standard_normal((C, 8)).astype(np.float32)) for _ in range(2 if r == "cross" else 1)] for r in ("cross", "pointer")}
     io = BTM.BreathIO(h={"token": ht, "slot": hs}, angles={"token": Tensor(ta), "slot": Tensor(sa)},
                       presence={"token": Tensor(tp), "slot": Tensor(spr)},
                       valid={"token_self": vt, "slot_self": vs, "cross": vc, "pointer": vc},
-                      charts=charts, key_charts={"cross": kc, "pointer": kc[:, :1]})
+                      charts=Tensor(rng.standard_normal((2, C, 8)).astype(np.float32)), chart_ok=Tensor(np.ones((2, C), bool)),
+                      key_charts={"cross": kc, "pointer": kc[:, :1]})
     return io, pad & ~nb.consumed
 
 
@@ -68,8 +68,9 @@ check("no RoPE: no rotary position table in the BT", not re.findall(r"\b(rope|ro
 n6 = sum(p.numel() for p in BTM.BreathingTransformer(c).parameters())
 n12 = sum(p.numel() for p in BTM.BreathingTransformer(BTM.BTConfig(**{**CFG, "n_breaths": 12})).parameters())
 check("weight-tied breaths: params independent of the breath count", n6 == n12, f"{n6} params at 6 and 12 breaths")
-check("each head reads its own Tree partition", len({c.partition(r.name, h) for r in c.roads for h in range(r.n_heads)})
-      == sum(r.n_heads for r in c.roads))
+pp = {(r.name, h): c.partition(h) for r in c.roads if r.charted() for h in range(r.n_heads)}
+check("each head reads its own Tree partition (tier, head), the same one on every charted road",
+      len(set(pp.values())) == c.n_partitions and pp[("cross", 0)] == pp[("pointer", 0)] == ("business", "h0") and pp[("cross", 1)] == ("business", "h1"))
 
 # 5. a breath: shapes, normalization, the seal
 Tensor.manual_seed(0); bt = BTM.BreathingTransformer(c)
@@ -138,7 +139,7 @@ with Tensor.train():
     io2, _ = inputs(bt2); o2 = bt2.breath(io2, 0)
     nb_belief = Tensor(np.full((B, K, 5), 0.2, np.float32))
     nbx = O.Notebook(B, K, LT); nbx.write(0, 0, atom=1, radius=0.5, cert=[0, 1, 0], tick=0)
-    hs2 = bt2.enter_slots(**nbx.tensors(), belief=nb_belief, atoms=Tensor(np.ones((5, 8), np.float32)))
+    hs2 = bt2.enter_slots(**nbx.tensors(), belief=nb_belief, atoms=Tensor(np.ones((5, 8), np.float32)), bus=Tensor(np.ones((B, K, 32), np.float32)))
     loss = sum(v.exp().mul(v.clip(-50, 0)).sum() for v in o2["logp"].values()) + o2["h"]["token"].square().mean() \
         + o2["h"]["slot"].square().mean() + o2["z"]["slot"].square().mean() + hs2.square().mean() \
         + bt2.silhouette_logp(o2["z"]["slot"], Tensor(np.ones((5, 8), np.float32)), 1.0)[..., 0].mean() \
@@ -179,10 +180,10 @@ for j, v in enumerate((4, 7, 1)): bus.write(keys[j:j + 1], book[v:v + 1])
 got = [int(bus.cleanup(keys[j:j + 1], book)[0][0]) for j in range(3)]
 check("T256 bus: bind three pairs, unbind by the conjugate, clean up", got == [4, 7, 1], str(got))
 with tempfile.TemporaryDirectory() as d:
-    db = TreeDB(os.path.join(d, "t.db")); tt = O.TreeTables(db, "gen-test"); part = c.partition("cross", 0)
-    tab = tt.table(part, C, 8); tab.update(rng.standard_normal((20, 8)), rng.integers(0, C, 20)); cen = tab.centroids(); tt.save()
-    tt2 = O.TreeTables(db, "gen-test")
-    check("Tree tables: a partition's centroids round-trip through SQLite", np.allclose(tt2.table(part, C, 8).centroids(), cen, atol=1e-6))
+    db = TreeDB(os.path.join(d, "t.db")); tt = O.TreeTables(db, "gen-test"); part = c.partition(0)
+    tab = tt.table(part, C, 8); tab.update(rng.standard_normal((40, 8))); tab.update(rng.standard_normal((40, 8)) + 6); st = tab.state(); tt.save()
+    tt2 = O.TreeTables(db, "gen-test"); st2 = tt2.table(part, C, 8).state()
+    check("Tree tables: a partition's Welford charts round-trip through SQLite", all(np.allclose(a_, b_) for a_, b_ in zip(st, st2)))
     try: tt2.load_generation(part, "gen-other"); refused = False
     except ValueError: refused = True
     check("Tree tables: another generation's centroids are refused", refused)
@@ -193,8 +194,13 @@ with tempfile.TemporaryDirectory() as d:
 
 # 11. the alternation
 class Port:
-    def io(self, bt_, organs, b): return inputs(bt_)[0]
+    def __init__(self, cert=True): self.cert = cert
+    def io(self, bt_, organs, b):
+        io_ = inputs(bt_)[0]
+        if organs.tree is not None: io_.charts, io_.chart_ok = organs.tree.io(bt_); io_.key_charts = {}
+        return io_
     def propose(self, bt_, out_, organs, b): return out_["logp"]["pointer"].numpy().argmax(-1)
+    def certified(self, bt_, out_, organs, b): return {"token": np.ones((B, LT), bool)} if self.cert else {}
 
 
 class Solver:
@@ -209,5 +215,93 @@ org = O.Organs(notebook=O.Notebook(B, K, LT), t6=O.T6Clock(), t9=O.T9Clock())
 tr = O.Conductor([(bt, Port()), (BTM.BreathingTransformer(c_dt), Port())], Solver()).run(org)
 check("Conductor: every breath, every tier, coarse tier first; the clock ticks", len(tr) == 12 and [t[1] for t in tr[:2]] == ["business", "data"]
       and org.t6.t == 6 and org.notebook.committed[0].all())
+
+
+# 12. THE TREE PARTITIONS: Welford + BIRCH, (tier, head) partitions, live charts, certified writes only
+rng = np.random.default_rng(5); t = O.ChartTable(4, 3); xs = []
+for j in range(5):
+    x = rng.standard_normal((30, 3)) + (8 * (j % 2)); xs.append(x); t.update(x)
+X = np.concatenate(xs); idx = t.nearest(X); live = np.flatnonzero(t.live)
+check("BIRCH: two separated clouds spawn two live charts (not more)", len(live) == 2, f"live {live.tolist()}, n {t.n[live].round(1).tolist()}")
+# Welford exactness: a fresh table fed in batches with fixed membership equals the direct mean/var
+t2 = O.ChartTable(2, 3, spawn_k=1e9); t2.update(X[:1])                     # one chart only (threshold never fires)
+for x in xs: t2.update(x)
+ok_w = np.allclose(t2.mean[0], np.concatenate([X[:1], X]).mean(0)) and np.allclose(t2.var()[0], np.concatenate([X[:1], X]).var(0))
+check("Welford: batch-merged mean / variance equal the direct ones (Chan)", ok_w)
+cf_ok = np.allclose(t2.LS[0], np.concatenate([X[:1], X]).sum(0)) and np.isclose(t2.SS[0], (np.concatenate([X[:1], X]) ** 2).sum())
+check("BIRCH CF derived exactly: LS = sum x, SS = sum |x|^2", cf_ok)
+t3 = O.ChartTable(2, 3, cap=50)
+for x in xs: t3.update(x)
+check("the cap bounds memory (n <= cap) and keeps the variance", t3.n.max() <= 50 + 1e-9 and np.all(t3.var()[t3.live] > 0.3))
+
+tiers = ("business", "data", "surface"); NH6 = 6
+cfg6 = lambda tr: BTM.BTConfig(**{**CFG, "tier": tr, "n_partitions": NH6, "n_charts": 8, "roads": BTM.default_roads(n_heads=NH6, charts=True)})
+Tensor.manual_seed(0); bts = [BTM.BreathingTransformer(cfg6(tr)) for tr in tiers]
+with tempfile.TemporaryDirectory() as d:
+    db = TreeDB(os.path.join(d, "t.db")); tt = O.TreeTables(db, "gen-smoke")
+    for bt_ in bts:
+        io_, _ = inputs(bt_); io_.charts, io_.chart_ok = tt.io(bt_); io_.key_charts = {}
+        check(f"{bt_.c.tier}: a fresh partition has no live chart (the BIRCH root grows from certified data)", not io_.chart_ok.numpy().any()) if bt_ is bts[0] else None
+        for j in range(4):
+            io_, _ = inputs(bt_, seed=j); io_.charts, io_.chart_ok = tt.io(bt_); io_.key_charts = {}
+            o_ = bt_.breath(io_, 1); tt.observe(bt_, o_["chart_pts"]["token"].numpy(), np.ones((B, LT), bool))
+    parts = sorted(tt.tables)
+    check("3 tiers x 6 heads = 18 distinct Tree partitions", len(parts) == 18 and len({p[0] for p in parts}) == 3, str(parts[:3]))
+    cents = [tt.tables[p].centroids()[tt.tables[p].live] for p in parts]
+    gap = min(np.abs(a_[:1] - b_[:1]).max() for i, a_ in enumerate(cents) for b_ in cents[i + 1:])
+    check("every partition holds its own centroids (min pairwise gap of first charts)", all(len(x_) for x_ in cents) and gap > 1e-3, f"{gap:.3e}")
+    io_, _ = inputs(bts[0], seed=9); io_.charts, io_.chart_ok = tt.io(bts[0]); io_.key_charts = {}
+    o_ = bts[0].breath(io_, 1, roads=("cross",))
+    pts = o_["chart_pts"]["token"].numpy(); okm = io_.chart_ok.numpy(); cen = io_.charts.numpy()
+    kc_ = np.stack([np.where(okm[h][None, None], ((pts[:, h][:, :, None] - cen[h][None, None]) ** 2).sum(-1), np.inf).argmin(-1)
+                    for h in range(NH6)], 1)
+    io_.key_charts = {"cross": Tensor(kc_)}; o2_ = bts[0].breath(io_, 1, roads=("cross",))
+    check("a key's chart = its silhouette's nearest LIVE centroid in its head's partition",
+          np.allclose(o_["logp"]["cross"].numpy(), o2_["logp"]["cross"].numpy(), atol=1e-5))
+    hm = 0; cen = np.random.default_rng(3).standard_normal(cen.shape).astype(np.float32) * 0.3; okm = np.ones_like(okm)
+    dead = okm.copy(); dead[hm, 0] = False
+    io_.charts = Tensor(cen); io_.chart_ok = Tensor(dead); io_.key_charts = {}
+    o3_ = bts[0].breath(io_, 1, roads=("cross",)); pts3 = o3_["chart_pts"]["token"].numpy()
+    kc3 = np.stack([np.where(dead[h][None, None], ((pts3[:, h][:, :, None] - cen[h][None, None]) ** 2).sum(-1), np.inf).argmin(-1)
+                    for h in range(NH6)], 1)
+    io_.key_charts = {"cross": Tensor(kc3)}; o4_ = bts[0].breath(io_, 1, roads=("cross",))
+    check("a dead chart is never a key's chart (the internal snap skips charts BIRCH has not spawned)",
+          okm[hm].sum() >= 2 and np.allclose(o3_["logp"]["cross"].numpy(), o4_["logp"]["cross"].numpy(), atol=1e-5), f"head {hm}: {dead[hm].sum()} live, chart 0 dead; keys on charts {np.unique(kc3[:, hm]).tolist()}")
+    io_.chart_ok = Tensor(np.zeros_like(okm)); io_.key_charts = {}; o5_ = bts[0].breath(io_, 1, roads=("cross",))
+    fl = BTM.BTConfig(**{**cfg6("business").__dict__, "roads": BTM.default_roads(n_heads=NH6, charts=False)})
+    rd = bts[0].blocks[0].roads["cross"]; rd.spec, sp0 = fl.roads[2], rd.spec
+    o6_ = bts[0].breath(io_, 1, roads=("cross",)); rd.spec = sp0
+    p5 = np.exp(o5_["logp"]["cross"].numpy())
+    check("an empty partition (fresh Tree) reads as one root chart = the flat softmax", np.allclose(p5.sum(-1), 1, atol=1e-4)
+          and np.allclose(p5, np.exp(o6_["logp"]["cross"].numpy()), atol=1e-5))
+    n_before = {p: tt.tables[p].n.sum() for p in parts}
+    tt.save(); tt2 = O.TreeTables(db, "gen-smoke")
+    same = all(np.allclose(tt2.table(p, 8, 8).centroids(), tt.tables[p].centroids()) for p in parts)
+    check("all 18 partitions round-trip through SQLite (generation-tagged)", same)
+
+    # the alternation writes ONLY certified points
+    org = O.Organs(notebook=O.Notebook(B, K, LT), t6=O.T6Clock(), t9=O.T9Clock(), tree=tt)
+    tt_n = lambda: sum(tt.tables[p].n.sum() for p in parts)
+    n0 = tt_n(); O.Conductor([(bts[0], Port(cert=False)), (bts[1], Port(cert=False))], Solver()).run(org)
+    n1 = tt_n(); org2 = O.Organs(notebook=O.Notebook(B, K, LT), t6=O.T6Clock(), t9=O.T9Clock(), tree=tt)
+    O.Conductor([(bts[0], Port()), (bts[1], Port())], Solver()).run(org2); n2 = tt_n()
+    check("Conductor: uncertified breaths never write the Tree; certified ones fold into their tier's partitions", n1 == n0 and n2 > n1,
+          f"{n0:.0f} -> {n1:.0f} -> {n2:.0f}")
+    check("the surface tier's partitions were untouched by the business/data run", all(tt.tables[p].n.sum() == n_before[p] for p in parts if p[0] == "surface"))
+    db.close()
+
+# 13. THE T256 BUS between tiers: per-slot keys, a tier salt, the BT's bus entry
+busB = O.PhaseBus(B, 256); kb = O.PhaseBus.phases(np.broadcast_to(np.arange(K), (B, K)), 256, salt=0)
+book = O.PhaseBus.phases(np.arange(5), 256, salt=7); typ = np.array([[3, 1, 4], [0, 2, 2]])
+busB.write(kb, book[typ], radius=np.ones((B, K)))
+got, sc = busB.cleanup(kb, book)
+kd = O.PhaseBus.phases(np.broadcast_to(np.arange(K), (B, K)), 256, salt=1)
+check("bus: each slot's binding unbinds at its own key (per-slot, conjugate) and cleans up", (got == typ).all(), str(got.tolist()))
+check("bus: another tier's salt reads noise, not the binding", np.abs(busB.cleanup(kd, book)[1]).max() < 0.35 < sc.min(), f"{sc.min():.2f}")
+cb = BTM.BTConfig(**{**CFG, "d_bus": 256}); Tensor.manual_seed(0); bb = BTM.BreathingTransformer(cb)
+nbb = O.Notebook(B, K, LT); f_ = busB.features(kb)
+h_a = bb.enter_slots(**nbb.tensors(), atoms=Tensor(np.ones((5, 8), np.float32))).numpy()
+h_b = bb.enter_slots(**nbb.tensors(), atoms=Tensor(np.ones((5, 8), np.float32)), bus=Tensor(f_)).numpy()
+check("the BT reads the bus: slot entries change with the bus read (2P features)", f_.shape == (B, K, 512) and np.abs(h_a - h_b).max() > 1e-3)
 
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

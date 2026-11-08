@@ -57009,3 +57009,31 @@ Theory line: "MHA ... each head a dedicated partition of the Tree DB table" + th
    Consistent with the old reader, not with the class's organ contract.
 Checked OK: scorer breath uniform per batch (Facade's cyc[0] is safe); consumed marks -> marks + pointer masks; cert features from the
 executor; token self once per problem; the skip fix (34/34).
+
+### 2026-11-07 18:40 -- THE ORGANS, WIRED (Bryce: "properly setup and smoke our new Breathing Transformer class to integrate with our external organs")
+Theory lines: "each BT ... multiple heads that each have a dedicated partition on the Tree DB table" (11-07 ruling); the Live Oak Tree
+("BIRCH decides when to add children; Welford stats maintain and grow it"); heads specialize, breaths never; the alternation.
+BUILT (class + organs; spec test 50/50 on CPU):
+- PARTITION = (tier, head): head h of EVERY charted road of a tier reads partition (tier, 'h{h}') through the tier's chart projection
+  for head h (`BTConfig.n_partitions`, `partition(h)`); 3 tiers x 6 heads = 18 partitions, each its own centroids. Charted roads by
+  default: every road whose keys are tokens (token self, cross, pointer): partition h = head h's view of the tokens.
+- A KEY'S CHART = its silhouette (the key stream's waist z) through head h's chart projection, snapped to the nearest LIVE centroid
+  (the discrete mirror, no gradient); the micro match (content + composite keys) still never passes the waist. An exact chart from
+  the organs (`BreathIO.key_charts`) overrides. An empty partition = one root chart = the flat softmax (a fresh Tree reads flat).
+- `ChartTable`: Welford per chart (n, mean, M2; batches merged by Chan, exact), n capped (the charts follow a training projection),
+  BIRCH CFs derived (N, LS, SS), BIRCH growth: one in-order pass over the outliers (beyond T, T^2 = 9 x pooled mean sq radius): join
+  a chart born this pass or spawn one (capacity, max 2 per update). Persisted per partition in the Tree DB's new additive
+  `chart_stats` table (generation-tagged, a foreign generation refused).
+- The breath hands back `out['chart_pts']` (every head's chart coords of the keys); `TreeTables.observe` folds CERTIFIED points
+  into each head's own partition; the Conductor asks the port which points are certified (test-time: none -> the Tree is untouched).
+- T256 bus: per-slot keys (`PhaseBus.phases(ids, P, salt)`, a salt per writing tier, id + 1 so no key is the identity), the BT's
+  bus entry `enter_slots(bus=PhaseBus.features(key))`.
+SMOKE PINNED (scripts/bt_organs_smoke.py; synthetic typed tokens; 3 tiers x 6 heads on the GPU, TinyJit; wiring bars, not claims):
+  SM-J  every tier trains 600 steps under TinyJit with the Tree's charts as changing inputs: finite throughout; final 50-step mean
+        loss <= 0.7 x the first 50-step mean, every tier
+  SM-T  after training: 18 partitions, each with >= 2 live charts; no two partitions' centroid sets equal
+  SM-C  an uncertified Conductor pass (6 breaths, 3 tiers) leaves every partition's n unchanged
+  SM-A  the same pass commits every slot by breath 6; committed slots carry their commit breath as their T6 stamp (>= 2 distinct
+        stamps per problem on average); the data tier's bus cleanup of the business tier's committed types >= 0.95
+  SM-R  save -> reload: all 18 partitions identical; another generation refused
+  beside (no bar): pointer accuracy per tier at eval; chart purity vs token type per partition; head-vs-head chart agreement.
