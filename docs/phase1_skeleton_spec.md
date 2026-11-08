@@ -56988,3 +56988,24 @@ had something in it.
   no ID skip): ORIG step 0.297 type 0.317 / TEST step 0.067 type 0.138 (the run swung +-0.1 between evals, as s0 did).
 - BTC banks on seed 0's FINAL read: BTC-N FAIL (TEST step 0.102 vs BT4RB8 0.1634), a FAIL of the no-skip form (the class defect), not of the
   line (patience charter). No verdict script run; s1's weights are kept as a specimen of the defect. Next form: BTC2 (the skip fixed), pending its word.
+
+### 2026-11-07 18:20 -- THE ORGAN WIRING AUDIT (Bryce's word; zero GPU, code read of the class, bt_organs and the BTC port)
+Theory line: "MHA ... each head a dedicated partition of the Tree DB table" + the alternation (organs outside the BT).
+1. TREE PARTITIONS BY (tier, head): IN THE CLASS, NOT IN THE RUN. `BTConfig.partition(road, head)` -> (tier, "road/hN"); `TreeTables`
+   loads/saves per-partition generation-tagged CFs; `Road._two_tier` takes per-head centroids + per-head key charts. But BTC set no
+   `n_charts` on any road: the two-tier softmax never ran, no partition was loaded, the Tree DB was never opened. All heads of a road
+   share one match set (they specialize by weights only).
+2. GAP IN THE CLASS: nothing assigns a KEY to a chart. `key_charts` (B, H, Lk) is an input; the spec test feeds random ones. The
+   centroids live in d_chart (the waist query's space); keys are full states that never pass the waist. A key's chart needs a defined
+   source (the Tree's exact lookup of the key's symbolic ID = the discrete mirror, or a key-side projection) before any charted run.
+3. THE SILHOUETTE CODEBOOK IS NOT THE TREE: `gsm_btc.Atoms` is a local capped Welford saved as .npy; not a ChartTable, not in TreeDB,
+   not generation-tagged, not partitioned.
+4. RADIUS TRAIN/SCORE MISMATCH (a real defect): training commits every slot at radius 1.0 (`BR.notebook(..., np.ones)`); the scorer
+   commits at radius pt*ca*cb (< 1). `reent(radius x atom)` never sees a sub-1 radius in training: the confidence dial is untrained.
+5. T6 STAMP ON SLOTS IS "NOW", NOT THE COMMIT: `host_io` stamps every slot with the current breath (train and score alike); the
+   organ's `Notebook.tick` (the commit's T6 stamp) is unused. Within a problem every slot has the same t6: slot_self's t6 factor is dead.
+6. UNUSED ORGANS: `Notebook` (BR.notebook used instead; it does the solver's write-back: execute + certificates, consumed marks),
+   `T6Clock` (breath index passed directly), `PhaseBus` (entity phases enter as aux features), `Conductor` (BR.score is the loop).
+   Consistent with the old reader, not with the class's organ contract.
+Checked OK: scorer breath uniform per batch (Facade's cyc[0] is safe); consumed marks -> marks + pointer masks; cert features from the
+executor; token self once per problem; the skip fix (34/34).
