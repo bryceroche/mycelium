@@ -97,6 +97,30 @@ m1 = chart_mass(bt.breath(io, 0), kc)
 check("THE SEAL: the micro score cannot move mass between charts", np.allclose(m0, m1, atol=1e-5), f"max shift {np.abs(m0 - m1).max():.2e}")
 cr.k.weight = Tensor(w0).contiguous()
 
+# 5b. THE CHART BEAM (W = 2): pruned charts get no mass; inside the beam the micro moves mass across charts; gold-in-beam; W >= C = PoE
+Tensor.manual_seed(0); btb = BTM.BreathingTransformer(BTM.BTConfig(**{**c.__dict__, "chart_beam": 2})); btb.load(bt.state_dict())
+ob = btb.breath(io, 0); pb_ = np.exp(ob["logp"]["cross"].numpy()); mb0 = chart_mass(ob, kc)
+check("chart beam: every query's mass sits on at most W = 2 charts, and sums to 1",
+      (np.sum(mb0 > 1e-6, -1) <= 2).all() and np.allclose(pb_.sum(-1), 1, atol=1e-4), f"charts per query max {np.sum(mb0 > 1e-6, -1).max()}")
+crb = btb.blocks[0].roads["cross"]; crb.k.weight = Tensor(w0 + np.random.default_rng(1).standard_normal(w0.shape).astype(np.float32)).contiguous()
+mb1 = chart_mass(btb.breath(io, 0), kc); crb.k.weight = Tensor(w0).contiguous()
+check("chart beam: the micro moves mass between the beam's charts, never into a pruned chart",
+      np.abs(mb0 - mb1).max() > 1e-3 and ((mb0 > 1e-6) | (mb1 <= 1e-6)).all(), f"max shift {np.abs(mb0 - mb1).max():.2e}")
+gk = np.zeros((B, K, LT), bool); pr = np.argwhere(mb0[:, 0] <= 1e-6)                            # (b, query, chart) pruned for head 0
+bq = next((b_, q_, c_) for b_, q_, c_ in pr if ((kc[b_, 0] == c_) & open_[b_]).any())
+kk = int(np.flatnonzero((kc[bq[0], 0] == bq[2]) & open_[bq[0]])[0]); gk[bq[0], bq[1], kk] = True
+io.beam_keep = {"cross": Tensor(gk)}; mk_ = chart_mass(btb.breath(io, 0), kc); io.beam_keep = {}
+check("chart beam: gold-in-beam keeps a pruned key's chart reachable (training)", mk_[bq[0], 0, bq[1], bq[2]] > 1e-6, f"mass {mk_[bq[0], 0, bq[1], bq[2]]:.3e}")
+Tensor.manual_seed(0); btf = BTM.BreathingTransformer(BTM.BTConfig(**{**c.__dict__, "chart_beam": C})); btf.load(bt.state_dict())
+of = btf.breath(io, 0, roads=("cross",)); lpf = of["logp"]["cross"].numpy()
+lps = bt.breath(io, 0, roads=("cross",))["logp"]["cross"].numpy(); same = []
+for b_ in range(B):
+    for c_ in np.unique(kc[b_, 0]):
+        ks = np.flatnonzero((kc[b_, 0] == c_) & open_[b_])
+        if len(ks) >= 2: same.append(np.abs((lpf[b_, 0][:, ks] - lpf[b_, 0][:, ks[:1]]) - (lps[b_, 0][:, ks] - lps[b_, 0][:, ks[:1]])).max())
+check("chart beam W >= C = the product of experts: sums to 1; inside one chart the key ratios equal the sealed read's (the chart term cancels)",
+      np.allclose(np.exp(lpf).sum(-1), 1, atol=1e-4) and len(same) > 0 and max(same) < 1e-3, f"{len(same)} charts, max ratio gap {max(same):.1e}")
+
 o1 = bt.breath(io, 1)
 check("token self-attention runs on breath 0 only (default)", "token_self" in out["logp"] and "token_self" not in o1["logp"]
       and np.allclose(o1["h"]["token"].numpy(), io.h["token"].numpy()))

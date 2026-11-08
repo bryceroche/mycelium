@@ -57112,3 +57112,24 @@ DEV=CPU: the GPU is BTC2's).** Theory line: the Live Oak ("BIRCH decides when to
 - Beside (not bars): live charts per partition (prediction: a plateau below 16 in most partitions), chart hit (the pointer query's top
   chart = the gold token's chart) and its mass p(chart(gold) | q), purity, head ARI. **Predictions:** SM-P PASS; SM-T PASS; heads still
   specialize but less (ARI rises: fewer, type-shaped charts leave the heads less room to differ) -- a trade to read, not a bar.
+
+### 2026-11-07 21:39 -- SMc READ (5/6: SM-P FAIL) + THE CHART BEAM built (Bryce: "pick top 2 guesses") + SMd pinned
+- **SMc (DEV=CPU, 600 steps, the BIC tree, max_idle 50):** SM-J/T/C/A/R PASS; **SM-P FAIL**: eval pointer accuracy 0.721 / 0.635 / 0.721
+  (SMb 0.740 / 0.440 / 0.555; flat SMa 0.99). Beside: EVERY partition grew to 16 live charts by step 200 (real structure: the BIC
+  test splits only what one Gaussian cannot explain -- here the word ids under each type), purity 0.946 / 0.799 / 0.880 (SMb 0.82 /
+  0.48 / 0.47), head ARI 0.69 / 0.47 / 0.68 (SMb 0.53 / 0.26 / 0.41: heads still differ, less -- the predicted trade), chart hit
+  (the pointer query's top chart = the gold token's chart) 0.40 / 0.31 / 0.27, mass 0.29 / 0.29 / 0.22. Final loss 0.44 / 0.50 / 0.37.
+- **Reading:** the growth rule is fixed (no noise splits) but the cost stays: the keys carry REAL structure finer than the query can
+  resolve, and the SEALED read normalizes the micro inside one chart -- a wrong key alone in its chart never meets the gold key in
+  another. Banks as a FAIL of the sealed form on the BIC tree; the BIC tree stays (it is the plateau rule; it raised purity).
+- **THE CHART BEAM (breathing_transformer.py, `BTConfig.chart_beam` = W; 0 keeps the sealed read):** the macro keeps each query's
+  top-W charts (keys elsewhere get no mass: the road stays mandatory); inside the beam the keys compete across charts, log p(key) =
+  log_softmax over the beam's keys of [log p(chart | q) + micro]; `BreathIO.beam_keep` = gold-in-beam for training. Theory line:
+  "between charts the bridge (beam + solver) chooses at the junctions". Spec 58/58 (new: <= W charts carry mass; the micro moves mass
+  between beam charts, never into a pruned one; gold-in-beam keeps a pruned chart reachable; W >= C = the product of experts, key
+  ratios inside a chart equal the sealed read's to 1.2e-7).
+
+**SMd pinned (bt_organs_smoke.py, SM_BEAM=2, the pointer road trains gold-in-beam; everything else = SMc; DEV=CPU).** Bars = SMc's six,
+unchanged, incl. **SM-P >= 0.90 eval pointer accuracy on all three tiers** (eval: no gold, pure top-2). Beside: chart hit top-1 / top-2
+coverage / mass, live charts, purity, ARI. **Predictions:** SM-P PASS (top-2 covers the type's word charts when a type splits in two;
+a type split three ways can still miss -- the risk); the rest PASS.

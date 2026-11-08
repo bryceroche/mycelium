@@ -31,6 +31,13 @@ THE SPEC (each line is enforced by construction here; `scripts/test_breathing_tr
     silhouette (the key stream's waist z) through the same head's chart projection, snapped to the nearest live centroid (the
     discrete mirror; no gradient crosses the snap) -- unless the organs hand an exact chart (`BreathIO.key_charts`, e.g. the
     Tree's symbolic lookup). The MICRO match (content + composite keys) never passes the waist.
+  - THE CHART BEAM (`BTConfig.chart_beam` = W > 0; the theory line "between charts the bridge (beam + solver) chooses at the
+    junctions"): the macro keeps each query's top-W charts (a discrete prune: keys in the other charts get no mass -- the road stays
+    mandatory, the micro can never reach a pruned chart); inside the beam the keys COMPETE across charts: log p(key) =
+    log_softmax over the beam's keys of [log p(chart(key) | q) + micro(key)]. (11-07, SMb/SMc: the sealed read normalizes the micro
+    within ONE chart, so a wrong key alone in its chart never meets the gold key in another; the keys' charts carry structure finer
+    than the query resolves -- word ids under a type -- and the sealed read paid for it.) Training passes `BreathIO.beam_keep` (the
+    gold keys) so the gold key's chart is always in the beam (gold-in-beam); W >= the live charts = the full product of experts.
   - DIFFUSION DYNAMICS: every logit (chart and micro) is divided by the breath's temperature; tau falls over the breaths
     (`BTConfig.tau_first -> tau_last`, geometric or linear), so the representation sharpens slowly.
 
@@ -128,6 +135,7 @@ class BTConfig:
     d_chart: int = 64                          # the macro chart space (read off the waist)
     n_partitions: int = 0                      # this tier's Tree partitions = its heads (head h of a charted road -> partition h)
     n_charts: int = 16                         # chart capacity per partition (BIRCH spawns live charts up to it)
+    chart_beam: int = 0                        # 0 = the sealed two-tier read; W > 0 = THE CHART BEAM (top-W charts per query, keys compete)
     d_bus: int = 0                             # T256 bus planes the slots read (0 = no bus entry)
     d_cert: int = 3                            # the notebook's certificate features per slot
     d_aux: int = 0                             # extra token features entering without the reader LN (0 = none)
@@ -315,6 +323,14 @@ class Road:
         Sm = inc.where(F_.unsqueeze(-1) - fm.unsqueeze(3), c.mask_neg).exp().sum(3)                # (B, H, Lq, Cm)
         lsec = fm + Sm.maximum(1e-30).log()                                                        # lse within each chart
         lchr = (Sm > 0.5).where(lc, c.mask_neg).log_softmax(-1)                                    # only charts with an open key
+        if c.chart_beam:                                                                            # THE CHART BEAM
+            rank = (lchr.unsqueeze(-1) < lchr.unsqueeze(-2)).cast(dtypes.float).sum(-1)            # charts strictly ahead of each chart
+            beam = (rank < c.chart_beam) & (Sm > 0.5)
+            if ch.get("keep") is not None:                                                         # gold-in-beam: the kept keys' charts
+                beam = beam | ((ch["keep"].unsqueeze(1).cast(dtypes.float) @ oh) > 0.5)
+            kin = m & ((beam.cast(dtypes.float) @ oh.transpose(-1, -2)) > 0.5)                     # (B, H, Lq, Lk): a key in the beam
+            lg = kin.where(lchr @ oh.transpose(-1, -2) + F, c.mask_neg).log_softmax(-1)
+            return kin.where(lg, c.mask_neg)
         lp = (lchr - lsec) @ oh.transpose(-1, -2)                                                  # (B, H, Lq, Lk): each key's chart terms
         return m.where(lp + F_, c.mask_neg)
 
@@ -346,6 +362,7 @@ class BreathIO:
     charts: Tensor = None                            # (n_partitions, C, d_chart) this tier's partitions' centroids (TreeTables.io)
     chart_ok: Tensor = None                          # (n_partitions, C) bool: the live charts (BIRCH has spawned them)
     key_charts: dict = field(default_factory=dict)   # road name -> (B, H, Lk) int: an exact chart per key (else: the silhouette's)
+    beam_keep: dict = field(default_factory=dict)    # road name -> (B, Lq, Lk) bool: keys whose charts the chart beam must keep (gold)
     marks: dict = field(default_factory=dict)        # stream -> (B, L, d_mark) per-breath marks (added at the breath's start)
 
 
@@ -420,7 +437,7 @@ class BreathingTransformer:
             zk = self.waist[spec.key](hk, self.ids(ak, pk))[0].detach()
             dk = ((self.chart_coords(zk)[:, :H].unsqueeze(-2) - cent.unsqueeze(1)) ** 2).sum(-1)
             kc = ok.unsqueeze(1).where(dk, float("inf")).argmin(-1)                 # (B, H, Lk): the nearest live chart
-        return dict(cq=self.chart_coords(zq)[:, :H], cent=cent, ok=ok, kc=kc)
+        return dict(cq=self.chart_coords(zq)[:, :H], cent=cent, ok=ok, kc=kc, keep=io.beam_keep.get(spec.name))
 
     def tau(self, b):
         return self.c.tau(b)

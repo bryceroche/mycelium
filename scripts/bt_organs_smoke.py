@@ -8,7 +8,7 @@ diffusion breath (a random breath b, tau(b) per example, slots committed with pr
 their T6 stamp and their target's type as the certificate); the business tier's committed types ride the T256 bus (salt 0) into
 every tier's slot entry. After each step the tier's certified token chart points fold into its own partitions (Welford + BIRCH).
 Eval: one Conductor pass, 6 breaths x 3 tiers, solver = commit the most confident pointers (no Tree writes: uncertified).
-Env: SM_STEPS (600), SM_B (32), SM_SEED (0), SM_DB (tree db path; default a fresh file under .cache). -> .cache/bt_organs_smoke.json
+Env: SM_STEPS (600), SM_B (32), SM_SEED (0), SM_BEAM (the chart beam W, default 2; 0 = the sealed read of SMa-SMc), SM_DB (tree db path; default a fresh file under .cache). -> .cache/bt_organs_smoke.json
 """
 import json, math, os, sys, time
 
@@ -22,6 +22,7 @@ from mycelium import bt_organs as O
 from mycelium.tree_db import TreeDB
 
 STEPS, B, SEED = int(os.environ.get("SM_STEPS", "600")), int(os.environ.get("SM_B", "32")), int(os.environ.get("SM_SEED", "0"))
+BEAM = int(os.environ.get("SM_BEAM", "2"))
 DBP = os.environ.get("SM_DB", f".cache/bt_organs_smoke_s{SEED}.db")
 TIERS, NH, K, L, SENT, NTY, DIN, NCYC, PBUS = ("business", "data", "surface"), 6, 6, 32, 8, 6, 64, 6, 256
 GEN = f"smoke-s{SEED}"
@@ -30,7 +31,7 @@ BOOK = O.PhaseBus.phases(np.arange(NTY), PBUS, salt=7)                          
 
 
 def config(tier):
-    return BTM.BTConfig(tier=tier, d_in=DIN, d_model=256, d_waist=64, d_head=32, d_chart=32, d_cert=NTY, n_partitions=NH, n_charts=16,
+    return BTM.BTConfig(tier=tier, d_in=DIN, d_model=256, d_waist=64, d_head=32, d_chart=32, d_cert=NTY, n_partitions=NH, n_charts=16, chart_beam=BEAM,
                         d_bus=PBUS, n_breaths=NCYC, roads=BTM.default_roads(n_heads=NH, charts=True))
 
 
@@ -66,13 +67,14 @@ def bus_read(nbB, n):
     return bus, key
 
 
-def forward(bt, x, ta, tp, sa, sp, vt, vc, vs, charts, ok, com, cert, bus, tau):
+def forward(bt, x, ta, tp, sa, sp, vt, vc, vs, charts, ok, com, cert, bus, tau, keep=None):
     io = BTM.BreathIO(h={"token": bt.enter_tokens(x)}, angles={"token": ta}, presence={"token": tp}, valid={"token_self": vt},
                       charts=charts, chart_ok=ok)
     ht = bt.breath(io, 0, roads=("token_self",))["h"]["token"]                       # the reader (breath 0's token road)
     hs = bt.enter_slots(com, cert, bus=bus)
     io = BTM.BreathIO(h={"token": ht, "slot": hs}, angles={"token": ta, "slot": sa}, presence={"token": tp, "slot": sp},
-                      valid={"slot_self": vs, "cross": vc, "pointer": vc}, charts=charts, chart_ok=ok)
+                      valid={"slot_self": vs, "cross": vc, "pointer": vc}, charts=charts, chart_ok=ok,
+                      beam_keep={} if keep is None else {"pointer": keep})                       # training: gold-in-beam
     return bt.breath(io, None, roads=("slot_self", "cross", "pointer"), tau=tau)
 
 
@@ -86,7 +88,7 @@ class Tier:
     def _step(self, x, ta, tp, sa, sp, vt, vc, vs, charts, ok, com, cert, bus, tau, g):
         with Tensor.train():
             self.opt.zero_grad()
-            o = forward(self.bt, x, ta, tp, sa, sp, vt, vc, vs, charts, ok, com, cert, bus, tau)
+            o = forward(self.bt, x, ta, tp, sa, sp, vt, vc, vs, charts, ok, com, cert, bus, tau, keep=g.one_hot(L) > 0)
             lp = o["logp"]["pointer"][:, 0]                                          # (B, K, L)
             lo = -(lp * g.one_hot(L).cast(dtypes.float)).sum(-1).mean()
             lo.backward()
@@ -107,7 +109,7 @@ def masks(n):
 def main():
     T = lambda a: Tensor(np.ascontiguousarray(a))
     if os.path.exists(DBP): os.remove(DBP)
-    db = TreeDB(DBP); tt = O.TreeTables(db, GEN, cap=4000)
+    db = TreeDB(DBP); tt = O.TreeTables(db, GEN, cap=4000, max_idle=50)
     Tensor.manual_seed(SEED); tiers = {t: Tier(t) for t in TIERS}
     for t in TIERS: tt.attach(tiers[t].bt)
     r = np.random.default_rng(SEED + 1); los = {t: [] for t in TIERS}; t0 = time.time(); vt, vc, vs = masks(B)
@@ -144,7 +146,7 @@ def main():
 
     # beside: purity of each partition's charts vs token type, head-vs-head agreement (ARI) within a tier
     re_ = np.random.default_rng(99); ty, x, wid, sent = problems(64, re_); vt6, vc6, vs6 = masks(64)
-    pur, ari = {}, {}
+    pur, ari, hit = {}, {}, {}
     for t in TIERS:
         tr = tiers[t]; ta, tp = token_io(tr.bt, wid, sent); nb = O.Notebook(64, K, L, NTY); sa, sp = slot_io(tr.bt, nb, np.zeros(64))
         charts, ok = tt.io(tr.bt); bus0 = np.zeros((64, K, 2 * PBUS), np.float32)
@@ -154,7 +156,16 @@ def main():
             a = tt.tables[p].nearest(pts[:, h].reshape(-1, pts.shape[-1])); assign.append(a)
             ct = np.zeros((16, NTY)); np.add.at(ct, (a, ty.reshape(-1)), 1); pur["|".join(p)] = float(ct.max(1).sum() / ct.sum())
         ari[t] = float(np.mean([_ari(assign[i], assign[j]) for i in range(NH) for j in range(i + 1, NH)]))
-    res["purity"], res["head_ari"] = pur, ari
+        # chart hit: the pointer road (head 0 -> partition h0): does the query's top chart hold the gold token's chart? (tau 1)
+        tb = tt.tables[tr.bt.c.partition(0)]; cent = tb.centroids(); g = gold(ty, t)
+        cq = tr.bt.chart_coords(o["z"]["slot"]).numpy()[:, 0]                                       # (64, K, dc)
+        kc = tb.nearest(pts[:, 0][np.arange(64)[:, None], g].reshape(-1, pts.shape[-1])).reshape(64, K)
+        d = -((cq[:, :, None] - cent[None, None]) ** 2).sum(-1) / math.sqrt(cent.shape[-1]); d[..., ~tb.live] = -np.inf
+        pc = np.exp(d - d.max(-1, keepdims=True)); pc /= pc.sum(-1, keepdims=True)
+        top2 = np.argsort(-d, -1)[..., :2]
+        hit[t] = dict(hit=float((d.argmax(-1) == kc).mean()), top2=float((top2 == kc[..., None]).any(-1).mean()),
+                      mass=float(np.take_along_axis(pc, kc[..., None], -1).mean()))
+    res["purity"], res["head_ari"], res["chart_hit"] = pur, ari, hit
 
     # SM-C + SM-A: one Conductor pass, uncertified, 6 breaths x 3 tiers
     nE = 64; ty, x, wid, sent = problems(nE, np.random.default_rng(7))
@@ -238,7 +249,9 @@ def verdict(res):
     Lj.append(f"SM-A  all committed {a['all_committed']}, T6 stamps/problem {a['stamps_per_problem']}, bus cleanup {a['bus_cleanup']:.4f} -> "
               f"{'PASS' if all(a['all_committed'].values()) and sm >= 2 and a['bus_cleanup'] >= 0.95 else 'FAIL'}")
     r = res["SM-R"]; Lj.append(f"SM-R  round trip {r['roundtrip']}, foreign refused {r['foreign_refused']} -> {'PASS' if r['roundtrip'] and r['foreign_refused'] else 'FAIL'}")
-    Lj.append(f"  beside: pointer acc {a['ptr_acc']}; head ARI per tier {res['head_ari']}")
+    pa = a["ptr_acc"]; Lj.append(f"SM-P  eval pointer accuracy {pa} (>= 0.90 all three tiers) -> {'PASS' if min(pa.values()) >= 0.90 else 'FAIL'}")
+    Lj.append(f"  beside: head ARI per tier {res['head_ari']}; chart hit (pointer query's top chart = gold's chart, mass) {res['chart_hit']}")
+    lv_ = res["SM-T"]["live"]; Lj.append(f"  beside: live charts per partition {sorted(lv_.values())} (capacity 16)")
     pu = res["purity"]; Lj.append("  beside: purity per tier (mean over heads) " + " ".join(
         f"{t} {np.mean([v for k_, v in pu.items() if k_.startswith(t)]):.3f}" for t in TIERS) + f" (chance ~{1 / NTY:.3f} + chart count)")
     print("\n".join(Lj)); open(".cache/bt_organs_smoke_verdict.txt", "w").write("\n".join(Lj) + "\n")
