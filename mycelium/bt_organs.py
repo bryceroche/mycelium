@@ -321,7 +321,7 @@ class TierPort(Protocol):
 
 @dataclass
 class Organs:
-    notebook: Notebook
+    notebook: object                           # a Notebook (shared) or {tier: Notebook} (each tier its own slots)
     t6: T6Clock
     t9: T9Clock
     tree: TreeTables = None
@@ -345,7 +345,8 @@ class Conductor:
             for bt, port in self.tiers:
                 out = bt.breath(port.io(bt, organs, b), b)
                 props = port.propose(bt, out, organs, b)
-                trace.append((b, bt.c.tier, self.solver.step(bt.c.tier, props, organs.notebook, organs.t6.t)))
+                nb = organs.notebook[bt.c.tier] if isinstance(organs.notebook, dict) else organs.notebook   # one notebook per tier, or shared
+                trace.append((b, bt.c.tier, self.solver.step(bt.c.tier, props, nb, organs.t6.t)))
                 if organs.tree is not None and bt.c.n_partitions:
                     for s, msk in port.certified(bt, out, organs, b).items():
                         organs.tree.observe(bt, out["chart_pts"][s].numpy(), msk)
