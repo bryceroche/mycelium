@@ -57168,3 +57168,21 @@ a type split three ways can still miss -- the risk); the rest PASS.
   charts the same type x word structure for every head. Heads still differ (ARI < 1); whether they should differ more is a question
   for a real tier (the GSM tier's keys carry many more factors than this toy's two). Toy, one seed: wiring evidence, not a claim.
 - Next charted port (BTC3, GSM): chart_beam = 3 + the macro term, its first read the chart hit on the real tier. Not before BTC2 banks.
+
+### 2026-11-08 06:07 -- BTC2 READ: ALL THREE BARS FAIL (the fixed class on GSM8K trails BT4RB8 by 0.034 / 0.035 TEST step)
+| Read (s0 / s1) | BTC2 | BT4RB8 | delta |
+|---|---|---|---|
+| ORIG step_all | 0.8848 / 0.8965 | 0.9514 / 0.9660 | -0.067 / -0.070 |
+| CFNUM step_all | 0.7732 / 0.7940 | 0.8553 / 0.8867 | -0.082 / -0.093 |
+| CFNAME step_all | 0.7029 / 0.7100 | 0.8086 / 0.8464 | -0.106 / -0.136 |
+| **TEST step_all** | **0.1295 / 0.1312** | 0.1634 / 0.1664 | **-0.034 / -0.035** |
+| TEST type_ok | 0.2710 / 0.2773 | 0.3012 / 0.3095 | -0.030 / -0.032 |
+- **BTC-N FAIL** (-0.034 / -0.035 vs >= -0.020 both); **BTC-G FAIL** (predicted); **BTC-CF FAIL** (-0.082 / -0.106 / -0.093 / -0.136 vs
+  >= -0.030 all). Predictions: N and CF PASS -- both missed. Params 12.04M vs 6.57M. Chain done 03:01 (verdict `.cache/gsm_btc2_verdict.txt`).
+- **What the fixes bought (vs BTC, the no-skip form, s0):** ORIG step 0.514 -> 0.885, TEST 0.102 -> 0.130, CFNUM 0.439 -> 0.773; the
+  symmetry read healed (distinct types / problem 1.00 -> 3.02-3.06, gold 3.09). The class defects were real and are fixed.
+- **What it still lacks (texture, both seeds):** TEST step peaked early (s0 0.152 at steps 4000 / 8000) and drifted to 0.129 while ORIG
+  kept climbing (0.882 -> 0.890 over the last 1000 steps, not converged): the class fits ORIG SLOWER than BT4RB8 and transfers LESS.
+  The CF gaps exceed the ORIG gap (-0.08..-0.14 vs -0.07): BTC2 is less invariant to name / number edits, not only less fit.
+  Not yet attributed: the BTC port differs from BT4RB8 in more than one organ (three roads, waist on queries, T6+T9 stamps, ID skip,
+  self-conditioned radius). A FAIL closes this form (BTC2), never the line.
