@@ -57050,3 +57050,17 @@ the first batch (every type), so its radius spans every cluster and no point is 
 FIX (textbook BIRCH, Zhang et al. 1996): the threshold T starts at 0 and only grows by REBUILD: each point joins its nearest chart if
 within T, else spawns a chart; when the partition is full, the two closest charts MERGE (CF additivity = an exact Chan merge of their
 Welford stats) and T rises to their distance. Scale-free, no pooled radius. Re-smoke under the same pinned bars (SMb).
+
+### 2026-11-07 19:43 -- ORGANS RE-SMOKE SMb (textbook BIRCH; seed 0, 600 steps, 125 s): 5/5 PASS -- the organs are wired
+  SM-J  PASS  loss first/last 50: business 2.076 -> 0.482, data 2.120 -> 0.860, surface 2.104 -> 0.670
+  SM-T  PASS  18 partitions, every one at its 16-chart capacity (grown from the root at step 0), no two equal
+  SM-C  PASS  the uncertified Conductor pass changed no partition
+  SM-A  PASS  all slots committed in all tiers; 6.0 distinct T6 commit stamps per problem; bus cleanup 1.0000
+  SM-R  PASS  18 partitions round-trip through SQLite; a foreign generation refused
+  beside: chart purity vs token type (mean over heads) business 0.822 / data 0.478 / surface 0.470 (chance 0.167): the partitions
+  discover the token types unsupervised (only the pointer loss trains the projection). Head-vs-head ARI within a tier 0.53 / 0.26 /
+  0.41 (1.0 = identical): THE HEADS SPECIALIZE -- each head charts the tokens its own way.
+  beside, A COST: pointer accuracy at eval 0.740 / 0.440 / 0.555 vs 0.992 / 0.995 / 0.995 with one root chart (SMa = the flat read),
+  and the final loss 0.48-0.86 vs 0.04-0.05. The two-tier softmax is SEALED: a query that picks the wrong chart cannot recover the
+  key inside another chart, and the keys' charts come from a projection still training (they move under the query). Not a bar; the
+  first thing to read on a real tier (query chart accuracy: does the query's top chart hold the gold key?).
