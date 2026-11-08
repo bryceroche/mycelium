@@ -105,6 +105,8 @@ class RoadSpec:
     residual: bool = True                      # False = a POINTER road (returns log-probs, writes nothing)
     breaths: tuple = None                      # the breaths this road runs on (None = every breath); the weights are the same
     d_head: int = 0                            # this road's head width (0 = BTConfig.d_head; e.g. one full-width pointer head)
+    share_q: str = None                        # roads naming the same group share ONE query projection (the shared pointer: per operand)
+    share_k: str = None                        # ... ONE key projection (the shared pointer: per key kind)
 
     def runs(self, b):
         return self.breaths is None or b in self.breaths
@@ -157,12 +159,18 @@ class BTConfig:
     ln_eps: float = 1e-5
     waist_at: str = "every"                    # where queries squeeze (11-08): 'every' road of every block (the 11-07 form) | 'last' block's
                                                # roads only | 'end' = no road; one waist per breath (the silhouette + the pointer roads)
+    tie_layers: bool = False                   # the blocks of a breath share every road's projections (q k v o turn); each block keeps
+                                               # its own LNs + ID gains (depth by reuse: 11-08, Bryce's funnel tier)
+    query_turn: str = "learned"                # 'learned' = turn(u) per query (content-driven) | 'clock' = a per-head fixed rotation of
+                                               # the query's own stamp (the gears rotate the queries; H x P parameters)
+    shared_kv: bool = False                    # one key/value head shared by every head of a road (multi-query; heads keep their queries)
     dropout: float = 0.0                       # regularization: each residual road's write + the token entry, TRAINING only (0 = off)
     weyl_seed: int = 0                         # offsets the primes behind the id phases (a different, still fixed, code)
 
     def __post_init__(self):
         assert self.tau_kind in ("geometric", "linear", "constant"), self.tau_kind
         assert self.waist_at in ("every", "last", "end"), self.waist_at
+        assert self.query_turn in ("learned", "clock"), self.query_turn
         assert self.n_breaths >= 1 and self.blocks_per_breath >= 1
         names = [f.name for f in self.factors]
         assert len(set(names)) == len(names), f"duplicate factor names: {names}"
@@ -281,17 +289,29 @@ class Waist:
 
 class Road:
     """One road: its own heads, softmax, charts and (unless a pointer) its own output projection."""
-    def __init__(self, c, spec, layout):
+    def __init__(self, c, spec, layout, pool=None):
         H, Dh = spec.n_heads, spec.d_head or c.d_head
         self.c, self.spec, self.L, self.Dh = c, spec, layout, Dh
+        self.kH = 1 if c.shared_kv else H                           # key/value heads (multi-query: one, broadcast to every head)
+        pool = {} if pool is None else pool                         # shared projections (tie_layers / share_q / share_k), by key
+        def get(key, make):
+            if key is None: return make()
+            if key not in pool: pool[key] = make()
+            return pool[key]
+        tie = spec.name if c.tie_layers else None
         self.lnk = nn.LayerNorm(c.d_model, eps=c.ln_eps)
-        self.q = nn.Linear(c.d_model, H * Dh)                       # from the waist's u
-        self.k = nn.Linear(c.d_model, H * Dh)                       # from the FULL key state (keys never compress)
-        self.turn = _zero_linear(c.d_model, H * layout.P)           # the query's learned turn per plane (zero-init: match my own stamp)
+        self.q = get(("q", spec.share_q) if spec.share_q else tie and ("q", tie), lambda: nn.Linear(c.d_model, H * Dh))   # from u
+        self.k = get(("k", spec.share_k) if spec.share_k else tie and ("k", tie),
+                     lambda: nn.Linear(c.d_model, self.kH * Dh))                                # from the FULL key state (never compressed)
+        if c.query_turn == "learned":
+            self.turn = get(tie and ("turn", tie), lambda: _zero_linear(c.d_model, H * layout.P))   # the query's learned turn (zero-init)
+        else:
+            self.hturn = get(tie and ("hturn", tie), lambda: Tensor.zeros(H, layout.P).contiguous())   # the gears: a fixed turn per head
         self.gain = Tensor.full((H, len(layout.factors)), c.id_gain_init).contiguous()
         self.sel = Tensor(layout.selector(spec.match)).realize()      # (H, F, P) constant, realized once
         if spec.residual:
-            self.v = nn.Linear(c.d_model, H * Dh); self.o = nn.Linear(H * Dh, c.d_model)
+            self.v = get(tie and ("v", tie), lambda: nn.Linear(c.d_model, self.kH * Dh))
+            self.o = get(tie and ("o", tie), lambda: nn.Linear(H * Dh, c.d_model))
 
     def logp(self, u, hk, qa, ka, kpres, valid, tau, ch=None):
         """log p(key | query) per head: (B, H, Lq, Lk).
@@ -301,9 +321,11 @@ class Road:
         c, S, H, Dh, P = self.c, self.spec, self.spec.n_heads, self.Dh, self.L.P
         B, Lq, Lk = u.shape[0], u.shape[1], hk.shape[1]
         q = self.q(u).reshape(B, Lq, H, Dh).transpose(1, 2) * (1 / math.sqrt(Dh))
-        k = self.k(self.lnk(hk)).reshape(B, Lk, H, Dh).transpose(1, 2)
-        a = qa.unsqueeze(2) + self.turn(u).reshape(B, Lq, H, P)                                   # the query rotates; the key never does
-        a = a.transpose(1, 2)                                                                       # (B, H, Lq, P)
+        k = self.k(self.lnk(hk)).reshape(B, Lk, self.kH, Dh).transpose(1, 2)                      # (B, H or 1, Lk, Dh)
+        if c.query_turn == "learned":
+            a = (qa.unsqueeze(2) + self.turn(u).reshape(B, Lq, H, P)).transpose(1, 2)              # the query rotates; the key never does
+        else:
+            a = qa.unsqueeze(1) + self.hturn.reshape(1, H, 1, P)                                    # the gears turn each head's query
         w = (self.gain.unsqueeze(-1) * self.sel.detach()).sum(1)                                   # (H, P): wildcards weigh 0
         kp = self.L.presence_planes(kpres).unsqueeze(1)                                            # (B, 1, Lk, P)
         qid = Tensor.cat(a.cos() * w[None, :, None], a.sin() * w[None, :, None], dim=-1)
@@ -343,7 +365,7 @@ class Road:
         lp = self.logp(u, hk, qa, ka, kpres, valid, tau, ch)
         if not self.spec.residual: return hq, lp
         B, Lk, H, Dh = hk.shape[0], hk.shape[1], self.spec.n_heads, self.Dh
-        v = self.v(self.lnk(hk)).reshape(B, Lk, H, Dh).transpose(1, 2)
+        v = self.v(self.lnk(hk)).reshape(B, Lk, self.kH, Dh).transpose(1, 2)
         any_ = valid.any(-1, keepdim=True).unsqueeze(1)                                             # a query with no open key reads 0
         o = (any_.where(lp.exp(), 0.0) @ v).transpose(1, 2).reshape(hq.shape[0], hq.shape[1], H * Dh)
         return hq + self.o(o).dropout(self.c.dropout), lp
@@ -352,8 +374,8 @@ class Road:
 class Block:
     """One block of a breath: every road once, in config order (residual roads update their query stream in place). Pointer roads
     (residual False) live in the LAST block only: they read the finished state (an earlier copy would never reach a loss)."""
-    def __init__(self, c, layout, last):
-        self.roads = {r.name: Road(c, r, layout) for r in c.roads if r.residual or last}
+    def __init__(self, c, layout, last, pool=None):
+        self.roads = {r.name: Road(c, r, layout, pool) for r in c.roads if r.residual or last}
 
 
 # ---- THE BREATHING TRANSFORMER --------------------------------------------------------------------------------------------------------
@@ -386,7 +408,8 @@ class BreathingTransformer:
         if c.d_mark: self.mark = {s: nn.Linear(c.d_mark, c.d_model) for s in STREAMS}
         if c.n_const: self.const = (Tensor.randn(c.n_const, c.d_model) * 0.02).contiguous()
         self.waist = {s: Waist(c, self.layout.P) for s in STREAMS}
-        self.blocks = [Block(c, self.layout, i == c.blocks_per_breath - 1) for i in range(c.blocks_per_breath)]   # shared by EVERY breath
+        pool = {}                                                                    # projections shared across blocks / roads
+        self.blocks = [Block(c, self.layout, i == c.blocks_per_breath - 1, pool) for i in range(c.blocks_per_breath)]   # shared by EVERY breath
         self.sil_scale = Tensor.zeros(1).contiguous()                               # the silhouette classifier's learned scale (log)
         self.mask_slot = Tensor.zeros(c.d_model).contiguous()                       # an uncommitted slot's entry
         self.cert = nn.Linear(c.d_cert, c.d_model)
@@ -470,8 +493,9 @@ class BreathingTransformer:
                 if (roads is None and not spec.runs(b)) or (roads is not None and spec.name not in roads): continue
                 s, k = spec.query, spec.key
                 idq = self.ids(ang[s], pres[s]); z, u = self.waist[s](h[s], idq)
-                if not self._squeezes(spec, bi == nb - 1): u = self.qln[s](h[s]) + self.waist[s].skip(idq)   # full width, the IDs still rejoin
-                ch = self._charts(io, spec, z, h[k], ang[k], pres[k]) if spec.charted() else None
+                sq = self._squeezes(spec, bi == nb - 1)
+                if not sq: u = self.qln[s](h[s]) + self.waist[s].skip(idq)                          # full width, the IDs still rejoin
+                ch = self._charts(io, spec, z, h[k], ang[k], pres[k]) if spec.charted() and sq else None   # the Tree: at the squeeze only
                 hq, lp = blk.roads[spec.name](h[s], u, h[k], ang[s], ang[k], pres[k], io.valid[spec.name], tau, ch)
                 h[s] = hq; lps[spec.name] = lp
                 if ch is not None and "lchr" in ch: mac[spec.name] = (ch["lchr"], ch["kc"])     # (the two-tier read ran)
@@ -507,7 +531,10 @@ class BreathingTransformer:
         return parts[0] == "layout" or "L" in parts or parts[-1] in cls.CONSTANTS
 
     def parameters(self):
-        return list(self.state_dict().values())
+        out, seen = [], set()                                                       # a shared projection appears under every road's name
+        for v in self.state_dict().values():
+            if id(v) not in seen: seen.add(id(v)); out.append(v)
+        return out
 
     def load(self, sd):
         """Load saved weights: the keys must equal state_dict()'s exactly (no silent fallbacks), shapes must match."""

@@ -23,7 +23,8 @@ Modes (BTC_MODE): smoke (BTC_STEPS steps, s/step) | train (BT_STEPS, scored ever
 .cache/gsmb_btc_{TAG}.json; BT_SAVE=1 -> .safetensors + atoms .npy). Env: BT_SEED, BT_TAG, BT_BATCH, BT_LR; BTC_D / BTC_NH / BTC_DB /
 BTC_BLOCKS (defaults 512 / 8 / 64 / 2);
 BTC_WD (AdamW weight decay, 0.01) / BTC_DROP (BTConfig.dropout, 0): the regularization knobs; BTC_TOKID=0 drops the word-hash key
-from token_self; BTC_WAIST = BTConfig.waist_at (every / last / end: where the queries squeeze) (ledger 11-08).
+from token_self; BTC_WAIST = BTConfig.waist_at (every / last / end: where the queries squeeze);
+the funnel levers BTC_TIE / BTC_TURN (learned|clock) / BTC_MQA / BTC_PTRSHARE, and BTC_FUNNEL=1 = all of them + 4 blocks + 'last' (ledger 11-08).
 """
 import json, math, os, sys, time, zlib
 
@@ -44,12 +45,16 @@ _KM = np.zeros((NT, 2, 3), np.float32)
 for _j, (_, _a, _b) in enumerate(BR.TYPES):
     _KM[_j, 0, KINDS.index(_a)] = 1; _KM[_j, 1, KINDS.index(_b)] = 1
 _KM[STOP] = 1
-D, NH, DB, NBLK = (int(os.environ.get(k, v)) for k, v in (("BTC_D", "512"), ("BTC_NH", "8"), ("BTC_DB", "64"), ("BTC_BLOCKS", "2")))
+FUNNEL = os.environ.get("BTC_FUNNEL", "0") == "1"   # THE FUNNEL TIER (Bryce 11-08): 4 tied layers, one squeeze (the last), clock turns,
+_FD = dict(BTC_BLOCKS="4", BTC_WAIST="last", BTC_TIE="1", BTC_TURN="clock", BTC_MQA="1", BTC_PTRSHARE="1") if FUNNEL else {}   # shared KV + pointer
+_env = lambda k, v: os.environ.get(k, _FD.get(k, v))
+D, NH, DB, NBLK = (int(_env(k, v)) for k, v in (("BTC_D", "512"), ("BTC_NH", "8"), ("BTC_DB", "64"), ("BTC_BLOCKS", "2")))
 PTR = [f"p{r}{kd}" for r in "ab" for kd in KINDS]                   # pa_t pa_s pa_c pb_t pb_s pb_c
 BUCKET = 32
 SELFCOND, STAMP = os.environ.get("BTC_SELFCOND", "1") == "1", os.environ.get("BTC_STAMP", "1") == "1"
 WD, DROP = float(os.environ.get("BTC_WD", "0.01")), float(os.environ.get("BTC_DROP", "0"))   # regularization (BTC2 = 0.01 / 0)
-WAIST = os.environ.get("BTC_WAIST", "every")      # BTConfig.waist_at: every | last | end (ledger 11-08)
+WAIST = _env("BTC_WAIST", "every")      # BTConfig.waist_at: every | last | end (ledger 11-08)
+TIE, TURN, MQA, PTRSHARE = _env("BTC_TIE", "0") == "1", _env("BTC_TURN", "learned"), _env("BTC_MQA", "0") == "1", _env("BTC_PTRSHARE", "0") == "1"
 TOKID = os.environ.get("BTC_TOKID", "1") == "1"   # token_self matches on token_id (a word-hash key); 0 = t9 only (ledger 11-08)
 _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) > j) for j in range(K)])   # the scorer: rank j commits at
 
@@ -60,10 +65,11 @@ def config(d_in, d_aux):
              BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH),
              BTM.RoadSpec("cross", "slot", "token", NH, (("t9",),) * NH)) + tuple(
         BTM.RoadSpec(n, "slot", {"t": "token", "s": "slot", "c": "const"}[n[2]], 1,
-                     ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D) for n in PTR)
+                     ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D,
+                     share_q=n[1] if PTRSHARE else None, share_k=n[2] if PTRSHARE else None) for n in PTR)
     return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF, n_atoms=NT,
                         n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC,
-                        dropout=DROP, waist_at=WAIST)
+                        dropout=DROP, waist_at=WAIST, tie_layers=TIE, query_turn=TURN, shared_kv=MQA)
 
 
 # ---- the port: one BR batch -> host arrays at a bucketed question length -----------------------------------------------------------
@@ -347,7 +353,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, waist_at=WAIST, d_waist=DB, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))

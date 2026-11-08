@@ -57229,3 +57229,21 @@ ONCE per breath, after its attention (`gsm_breath_reader.py:330` z = down(h) -> 
   NaN guard is bit-identical on finite runs, and 5k arms read the 18k runs' trajectories honestly.
 - **The rung (to pin after BTL; named, not pinned):** 5k, s0: 'last' | 'end' | 'every' + d_waist 128 (the widening control; flagged vs
   the stone's 512 -> 64), each vs E0 on SCR (>= +0.020); a BTL lead stacks onto them.
+
+### 2026-11-08 09:54 -- THE FUNNEL TIER BUILT (Bryce 11-08: "yes to one squeeze per breath per tier on the last layer of each tier. Layers 1..3 at 512 without consulting Tree and Layer 4 at 64 with consult to Tree. Tree is partitioned by Tier, MHA head. on perf gains yes levers: tie attention weights, clock gears rotate queries, one shared pointer, shared KV across heads. NO lever: 256, stay at 512 dim. Uncertain lever: merge slot-self and cross into one joint softmax")
+*Serves: "U-Net per cycle" (one squeeze per tier per breath) + "the Live Oak Tree ... MHA searches it" (the Tree read at the squeeze, partition
+(tier, head) shared across the tier's layers) + "rotate the QUERIES ... its gears are query rotations" + "memory leaves the MLP for the
+Tree" (a small reader: the levers). Supersedes the 11-07 ruling's "the waist compresses queries on all three roads" FOR THE FUNNEL FORM;
+the 11-07 form stays the default (waist_at='every'), bit-identical.*
+- **Class options (`mycelium/breathing_transformer.py`):** `tie_layers` (a breath's blocks share every road's q/k/v/o/turn; each block
+  keeps its own LNs + ID gains; parameters() dedups shared tensors) | `query_turn='clock'` (no content turn: a per-head fixed rotation of
+  the query's own stamp, H x P) | `shared_kv` (one key/value head per road, multi-query) | `RoadSpec.share_q / share_k` (roads in a group
+  share one projection) | **the Tree only at the squeeze:** a charted road reads its partitions only where its query passes the waist
+  (waist_at 'last': the last block; earlier blocks attend flat at 512). Not built: the joint slot-self + cross softmax (uncertain; an arm
+  later if the ladder points there); d_model stays 512 (Bryce: NO to 256).
+- **Spec 71/71** (new: tied blocks share projections, not LNs/gains, and one AdamW step trains the shared weight; the clock turn: head 1
+  turned one slot back reads slot k-1, head 0 reads itself -- [[0,1,2],[1,0,1]]; shared K/V keeps per-head distributions; share groups;
+  charts consulted 3x under 'last' vs 5x under 'every' with two blocks).
+- **The port:** `BTC_TIE / BTC_TURN / BTC_MQA / BTC_PTRSHARE` (pointer: one query per operand a/b, one key per kind t/s/c -- the reference's
+  qa/qb/kt/ks/kc form) and **`BTC_FUNNEL=1`** = all four + 4 blocks + waist 'last'. **Params: FUNNEL 4,541,849** (4 layers) vs BTC2
+  12,037,281 vs BT4RB8 6,567,345. CPU: one real GSM step runs. The GSM tier has no charted roads yet (BTC3 brings the Tree into this path).

@@ -387,4 +387,49 @@ q2 = np.exp(bn.breath(ion, 0, roads=("slot_self",))["logp"]["slot_self"].numpy()
 check("waist_at 'end': identical open slots still ask different queries (the ID skip rejoins full-width queries)",
       np.abs(q2[:, :, 0] - q2[:, :, 1]).max() > 1e-4, f"{np.abs(q2[:, :, 0] - q2[:, :, 1]).max():.2e}")
 
+# 16. THE FUNNEL TIER's levers (11-08, Bryce's word): tied layers, clock-turned queries, shared K/V, shared pointer projections, the
+# Tree consulted only at the squeeze
+bu, bt2 = mk(blocks_per_breath=3), mk(blocks_per_breath=3, tie_layers=True)
+r0, r1 = bt2.blocks[0].roads["cross"], bt2.blocks[1].roads["cross"]
+np_u, np_t = sum(p.numel() for p in bu.parameters()), sum(p.numel() for p in bt2.parameters())
+check("tie_layers: the blocks share q/k/v/o/turn, keep their own LNs + ID gains; parameters() lists each tensor once",
+      r0.q is r1.q and r0.k is r1.k and r0.v is r1.v and r0.o is r1.o and r0.turn is r1.turn and r0.lnk is not r1.lnk and r0.gain is not r1.gain
+      and len({id(p) for p in bt2.parameters()}) == len(bt2.parameters()) and np_t < np_u, f"params {np_u} -> {np_t}")
+from tinygrad.nn.optim import AdamW
+ps_ = bt2.parameters(); [setattr(p, "requires_grad", True) for p in ps_]; opt_ = AdamW(ps_, lr=1e-2); iot, _ = inputs(bt2)
+with Tensor.train():
+    opt_.zero_grad(); lo_ = -bt2.breath(iot, 0)["logp"]["pointer"].max(-1).sum(); lo_.backward()
+    for p in ps_:
+        if p.grad is None: p.grad = p.zeros_like()
+    w_before = r0.q.weight.numpy().copy(); opt_.step()
+check("tie_layers: one optimizer step moves the shared projection once (trains through every block)", not np.allclose(w_before, r0.q.weight.numpy()))
+bc = mk(query_turn="clock", n_partitions=0, roads=(BTM.RoadSpec("slot_self", "slot", "slot", 2, (("slot_id",),) * 2),), id_gain_init=40.0)
+check("query_turn 'clock': no content turn; one fixed rotation per head (H x P)", not hasattr(bc.blocks[0].roads["slot_self"], "turn")
+      and bc.blocks[0].roads["slot_self"].hturn.shape == (2, bc.layout.P))
+nbk = O.Notebook(B, K, LT); sa_, sp_ = bc.layout.angles(nbk.slot_fields(), (B, K)); sl, se = bc.layout.slices["slot_id"]
+dlt = sa_[0, 1, sl:se] - sa_[0, 0, sl:se]; ht_ = np.zeros((2, bc.layout.P), np.float32); ht_[1, sl:se] = -dlt
+bc.blocks[0].roads["slot_self"].hturn = Tensor(ht_).contiguous()
+ioc = BTM.BreathIO(h={"slot": Tensor.zeros(B, K, CFG["d_model"]).contiguous()}, angles={"slot": Tensor(sa_)}, presence={"slot": Tensor(sp_)},
+                   valid={"slot_self": Tensor(np.ones((B, K, K), bool))})
+pk = bc.breath(ioc, 0)["logp"]["slot_self"].numpy().argmax(-1)                                   # (B, H, K)
+check("query_turn 'clock': the gears turn the query -- head 0 reads its own slot, head 1 (turned one slot back) reads slot k-1",
+      (pk[:, 0] == np.arange(K)).all() and (pk[:, 1, 1:] == np.arange(K - 1)).all(), str(pk[0].tolist()))
+bk = mk(shared_kv=True); rk = bk.blocks[0].roads["cross"]; iok, _ = inputs(bk); ok_ = bk.breath(iok, 0)["logp"]
+check("shared_kv: one key/value head per road (D x d_head), every head still its own query and distribution",
+      rk.k.weight.shape == (CFG["d_head"], CFG["d_model"]) and rk.v.weight.shape == (CFG["d_head"], CFG["d_model"])
+      and np.allclose(np.exp(ok_["cross"].numpy()).sum(-1), 1, atol=1e-4) and not np.allclose(ok_["cross"].numpy()[:, 0], ok_["cross"].numpy()[:, 1]))
+rds = (BTM.RoadSpec("pa", "slot", "token", 1, (("t9",),), residual=False, share_q="a", share_k="t"),
+       BTM.RoadSpec("pb", "slot", "token", 1, (("t9",),), residual=False, share_q="b", share_k="t"),
+       BTM.RoadSpec("pa2", "slot", "token", 1, (("t9",),), residual=False, share_q="a", share_k="t2"))
+bp = mk(roads=rds, n_partitions=0); R_ = bp.blocks[0].roads
+check("share_q / share_k: the shared pointer -- one query per operand, one key per key kind",
+      R_["pa"].q is R_["pa2"].q and R_["pa"].q is not R_["pb"].q and R_["pa"].k is R_["pb"].k and R_["pa"].k is not R_["pa2"].k)
+calls = []
+for wa, nbl in (("every", 2), ("last", 2)):
+    bw = mk(blocks_per_breath=nbl, waist_at=wa); f0 = bw._charts
+    def spy(*a_, _f=f0, **k_): calls.append(wa); return _f(*a_, **k_)
+    bw._charts = spy; iow, _ = inputs(bw); bw.breath(iow, 0)
+check("the Tree is consulted only where the query squeezes: waist_at 'last' reads charts in the last block only",
+      calls.count("every") == 5 and calls.count("last") == 3, f"every {calls.count('every')} / last {calls.count('last')}")
+
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)
