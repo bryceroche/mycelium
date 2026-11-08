@@ -57037,3 +57037,16 @@ SMOKE PINNED (scripts/bt_organs_smoke.py; synthetic typed tokens; 3 tiers x 6 he
         stamps per problem on average); the data tier's bus cleanup of the business tier's committed types >= 0.95
   SM-R  save -> reload: all 18 partitions identical; another generation refused
   beside (no bar): pointer accuracy per tier at eval; chart purity vs token type per partition; head-vs-head chart agreement.
+
+### 2026-11-07 19:36 -- ORGANS SMOKE (seed 0, 600 steps, 181 s on the GPU): 4/5 -- SM-T FAIL (BIRCH never grew)
+  SM-J  PASS  loss first/last 50: business 1.905 -> 0.040, data 1.872 -> 0.041, surface 1.895 -> 0.049 (TinyJit, charts as changing inputs)
+  SM-T  FAIL  18 partitions, but live charts min 1 max 1 (no two partitions equal)
+  SM-C  PASS  the uncertified Conductor pass changed no partition
+  SM-A  PASS  every slot committed by breath 6 in all three tiers; 6.0 distinct T6 commit stamps per problem; bus cleanup 1.0000
+  SM-R  PASS  18 partitions round-trip through SQLite; a foreign generation refused
+  beside: pointer acc 0.992 / 0.995 / 0.995 (the toy needs no charts); head ARI 1.0 and purity 0.180 = one chart per partition, trivially.
+ROOT CAUSE (a defect of the form, predicted at step 100): the spawn threshold was RELATIVE to the pooled radius. The root chart absorbs
+the first batch (every type), so its radius spans every cluster and no point is ever an outlier: the tree can never grow. Not BIRCH.
+FIX (textbook BIRCH, Zhang et al. 1996): the threshold T starts at 0 and only grows by REBUILD: each point joins its nearest chart if
+within T, else spawns a chart; when the partition is full, the two closest charts MERGE (CF additivity = an exact Chan merge of their
+Welford stats) and T rises to their distance. Scale-free, no pooled radius. Re-smoke under the same pinned bars (SMb).
