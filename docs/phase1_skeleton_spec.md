@@ -56989,7 +56989,7 @@ had something in it.
 - BTC banks on seed 0's FINAL read: BTC-N FAIL (TEST step 0.102 vs BT4RB8 0.1634), a FAIL of the no-skip form (the class defect), not of the
   line (patience charter). No verdict script run; s1's weights are kept as a specimen of the defect. Next form: BTC2 (the skip fixed), pending its word.
 
-### 2026-11-07 18:20 -- THE ORGAN WIRING AUDIT (Bryce's word; zero GPU, code read of the class, bt_organs and the BTC port)
+### 2026-11-07 18:00 -- THE ORGAN WIRING AUDIT (Bryce's word; zero GPU, code read of the class, bt_organs and the BTC port)
 Theory line: "MHA ... each head a dedicated partition of the Tree DB table" + the alternation (organs outside the BT).
 1. TREE PARTITIONS BY (tier, head): IN THE CLASS, NOT IN THE RUN. `BTConfig.partition(road, head)` -> (tier, "road/hN"); `TreeTables`
    loads/saves per-partition generation-tagged CFs; `Road._two_tier` takes per-head centroids + per-head key charts. But BTC set no
