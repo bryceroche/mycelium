@@ -57411,3 +57411,39 @@ the BTC". Serves: the BTC as THE reader for every tier (11-07 class ruling) -- i
   everything = the two-level zoom); gsm_btc `BTC_ZOOM=3` (atoms buffer: types | op x kind_a | ops; each silhouette feeds all three).
   Params: ZOOM 12,037,282, ZOOM3 12,037,283. CPU smoke runs a real GSM step.
 - **Gate:** ZOOM3 vs ZOOM is pinned only if FIT-ZOOM passes in FS (an arm against the 2-level form, same seed, weights saved).
+
+### 2026-11-08 21:15 -- BIND BUILT + PINNED: multiplicative binding (audit form 5) (Bryce: "word given for multiplicative binding")
+*Serves: "the SQL cross join is the nemesis ... clean binding and unbinding (phase angle + conjugate multiplication)" + "rotate the
+QUERIES" -- and the MLP's second role (Bryce 11-08 brainstorm): the per-position AND that writes the key the next shuffle routes by.*
+- **The frame (11-08 brainstorm, my reading):** in a transformer the MLP is the MAP (per position) and attention the SHUFFLE (q . k routes
+  by key) + REDUCE (the weighted sum). The MLP's second job is the nonlinear AND that builds a joint key; a standard model stores one
+  feature per seen combination there (the stored cross join). Our sanctioned AND is binding (a product computed from its factors). BTC's
+  match is ADDITIVE (q . k + gain x cos(qa - ka): content and address are two summands, a product of experts); BR's is MULTIPLICATIVE
+  (rot(q, a) . rot(k, ka): one bound key, "this content AT this address").
+- **Side note at pin time (FS, not its verdict):** FS_ZOOM_s0 FINAL ORIG step 0.516 (E0 0.4858: +0.030 < +0.050) -- FIT-ZOOM reads FAIL
+  off the log (predicted PASS); the FS verdict script banks it. TEST-U: E0S 0.0923, ZOOM 0.0965; CJ: E0S +0.0782, ZOOM +0.0821.
+- **Built:** `RoadSpec.bind` (BT class): the content q / k rotate by the head's matched CLOCK planes (tiled over Dh/2 content planes;
+  id factors -- the word hash, level -- stay additive: a hash phase on content would let content meet only the same word); an absent
+  key factor never turns its key; the additive id match is kept. `bmap` is a realized constant (never saved). gsm_btc `BTC_BIND=1`
+  (token self t9, slot self slot_id + t6, cross t9) | `=2` (+ the pointer roads: token pointers t9, slot pointers slot_id).
+  Spec: no new parameters; every stamp 0 = the unbound road exactly; live stamps move the match; RELATIVE at the road's score (a common
+  turn of query + key stamps leaves it unchanged); clock planes only. Spec 79/79; CPU smoke (BTC_MODE=smoke) runs BIND=1 and =2, params
+  12,037,281 (unchanged).
+- **Critique at pin time (an honest counter-signal):** BR (multiplicative) fits faster AND leans MORE on seen skeletons (CJ +0.125 /
+  +0.090 vs BTC2 +0.065 / +0.070). A bound key can also be a memorized combination; binding only defeats the cross join if the factors
+  are recognized apart and composed. So the pin reads TEST-U, not fit alone.
+- **PINNED (word: Bryce):** 5,000 steps, seed 0, BT_SAVE=1, frozen worktree `mycelium-runs/bind`, chain `.cache/run_bind.sh` (waits for
+  FS): **BIND** (BTC_BIND=1) | **BINDP** (BTC_BIND=2); each re-scored by the CJ probe. Verdict `scripts/gsm_bind_verdict.py`.
+- **Bars (vs E0 = BTC2 5k s0):** **FIT-x:** ORIG step_all - 0.4858 >= +0.050 (a seed twin before any claim). **UNSEEN-x:** TEST-U -
+  0.0923 >= +0.020. **CJ-x** (descriptive): CJ - (+0.0782), named only if >= 0.040 in size.
+- **PREDICTIONS:** FIT-BIND FAIL (+0.02..0.04: ranked 5th in the audit); UNSEEN-BIND FAIL; CJ rises, not named. FIT-BINDP FAIL;
+  UNSEEN-BINDP FAIL.
+
+### 2026-11-08 21:25 -- RESIDUAL TREE LEVELS: word given, gated on BIND's read (Bryce: "word given for residual Tree levels after BIND reads")
+*Serves: "the Tree, a literal database with coarse-to-fine granularity levels" + "the SQL cross join is the nemesis".*
+- **The idea (from Bryce's NCM relay; the residual-quantization family):** a Tree level stores what it ADDS to its parent, one codebook
+  of corrections SHARED across branches -- K codes per level, L levels: K x L stored, K^L composable on the fly (the Tree's form of
+  binding). The zoom as built is a hierarchy of separate classifiers with absolute child centroids (ZOOM: +0.030 ORIG, FIT FAIL read
+  off the log).
+- **Gate:** built and pinned after the BIND verdict banks. Its read is TEST-U (an unseen combination of a seen parent + a seen
+  correction), with bars pinned before the run.

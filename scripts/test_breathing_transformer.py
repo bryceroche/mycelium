@@ -454,4 +454,29 @@ c2_ = Tensor.randn(1, CFG["d_waist"]); bz3.sil_scale_c = bz.sil_scale_c; bz3.sil
 lz3 = bz3.silhouette_zoom_logp(zz_, at_, co_, Tensor(par_), 1.0, c2_, Tensor(p2_)).numpy()
 check("ZOOM3: three levels by the chain rule -- a distribution; one grandparent over everything = the two-level zoom",
       np.allclose(np.exp(lz3).sum(-1), 1, atol=1e-4) and np.allclose(lz3, lz, atol=1e-4))
+
+# -- MULTIPLICATIVE BINDING (ledger 11-08): content q / k rotate by the matched clock angles --
+import dataclasses
+rb_ = tuple(dataclasses.replace(r_, charts=False) for r_ in BTM.default_roads(n_heads=2))
+bu_, bb_ = mk(roads=rb_, n_partitions=0), mk(roads=tuple(dataclasses.replace(r_, bind=True) for r_ in rb_), n_partitions=0)
+check("bind adds no parameters (a constant plane map per road)", set(bu_.state_dict()) == set(bb_.state_dict()))
+wdiff = max(float(np.abs(v_.numpy() - bb_.state_dict()[k_].numpy()).max()) for k_, v_ in bu_.state_dict().items())
+for k_, v_ in bu_.state_dict().items(): bb_.state_dict()[k_].assign(v_.numpy()).realize()      # the same weights, by construction
+iob, _ = inputs(bb_); [iob.valid.__setitem__(k_, iob.valid["cross"]) for k_ in ("pointer",)]
+z0 = {s_: Tensor.zeros(*iob.angles[s_].shape) for s_ in iob.angles}
+io0 = dataclasses.replace(iob, angles=z0)
+ou0, ob0 = bu_.breath(io0, 0, tau=1.0)["logp"], bb_.breath(io0, 0, tau=1.0)["logp"]
+check("bind with every stamp at 0 = the unbound road exactly", all(np.allclose(ou0[r_].numpy(), ob0[r_].numpy(), atol=1e-5) for r_ in ou0),
+      f"init weight diff {wdiff:.1e}; " + " ".join(f"{r_} {np.abs(ou0[r_].numpy() - ob0[r_].numpy()).max():.1e}" for r_ in ou0))
+ou1, ob1 = bu_.breath(iob, 0, tau=1.0)["logp"], bb_.breath(iob, 0, tau=1.0)["logp"]
+check("bind with live stamps moves the content match (not a no-op)", not np.allclose(ou1["cross"].numpy(), ob1["cross"].numpy(), atol=1e-3))
+rs_ = bb_.blocks[0].roads["slot_self"]; u_ = Tensor.randn(B, K, CFG["d_model"]); hk_ = Tensor.randn(B, K, CFG["d_model"])
+sa_, sp_ = iob.angles["slot"], iob.presence["slot"]; vs_ = Tensor(np.ones((B, K, K), bool))
+l0_, l1_ = (rs_.logp(u_, hk_, sa_ + d_, sa_ + d_, sp_, vs_, 1.0).numpy() for d_ in (0.0, 0.7))
+check("bind is RELATIVE (the road's score): one common turn of query and key stamps leaves the match unchanged",
+      np.allclose(l0_, l1_, atol=1e-4), f"{np.abs(l0_ - l1_).max():.1e}")
+M_ = BTM._bind_map(bb_.layout.selector((("t9", "token_id"),)), np.array([bb_.layout.factors[i].kind == "clock" for i in bb_.layout.owner()]), 4)
+t9a, t9b = bb_.layout.slices["t9"]
+check("bind turns content by CLOCK planes only (the word-hash id stays additive)",
+      M_.sum(-1)[0, t9a:t9b].sum() == 4 and M_[0, slice(*bb_.layout.slices["token_id"])].sum() == 0)
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

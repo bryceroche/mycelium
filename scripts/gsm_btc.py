@@ -60,6 +60,8 @@ TOKID = os.environ.get("BTC_TOKID", "1") == "1"   # token_self matches on token_
 # THE FIT-SPEED knobs (ledger 11-08 audit: BR's forms where BTC differs; defaults = BTC2, bit-identical)
 TAU1 = os.environ.get("BTC_TAU", "")                 # a constant temperature (e.g. 1: no logit / tau anywhere, as BR) | "" = 2.0 -> 0.5
 PSCALE = os.environ.get("BTC_PSCALE", "0") == "1"    # pointer q . k unscaled (BR's lt = q . kt; BTC2: / sqrt(512))
+BIND = int(os.environ.get("BTC_BIND", "0") or 0)    # (ledger 11-08) multiplicative binding: 1 = the residual roads' content q / k rotate by
+                                                     # their matched key angles (BR's rotated attention); 2 = + the pointer roads
 SLOTK = os.environ.get("BTC_SLOTK", "0") == "1"      # each slot's learned identity + level embedding in its CONTENT (BR's slotk + lev)
 ZOOMN = int(os.environ.get("BTC_ZOOM", "0") or 0)    # 2 (or 1) = log p(type) = log p(op) + log p(type | op), op atoms (BR's BT_ZOOM);
 ZOOM, ZOOM3 = ZOOMN >= 1, ZOOMN >= 3                 # 3 = op -> op x kind_a -> type (the chain rule, ledger 11-08)
@@ -79,12 +81,12 @@ _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) >
 
 def config(d_in, d_aux):
     f = BTM.default_factors()
-    roads = (BTM.RoadSpec("token_self", "token", "token", NH, ((("t9", "token_id") if TOKID else ("t9",)),) * NH, breaths=(0,)),
-             *((BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH),) if SLOTSELF else ()),
-             BTM.RoadSpec("cross", "slot", "token", NH, (("t9",),) * NH)) + tuple(
+    roads = (BTM.RoadSpec("token_self", "token", "token", NH, ((("t9", "token_id") if TOKID else ("t9",)),) * NH, breaths=(0,), bind=BIND >= 1),
+             *((BTM.RoadSpec("slot_self", "slot", "slot", NH, (("slot_id", "t6", "level"),) * NH, bind=BIND >= 1),) if SLOTSELF else ()),
+             BTM.RoadSpec("cross", "slot", "token", NH, (("t9",),) * NH, bind=BIND >= 1)) + tuple(
         BTM.RoadSpec(n, "slot", {"t": "token", "s": "slot", "c": "const"}[n[2]], 1,
                      ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D,
-                     share_q=n[1] if PTRSHARE else None, share_k=n[2] if PTRSHARE else None, q_scale=1.0 if PSCALE else None) for n in PTR)
+                     share_q=n[1] if PTRSHARE else None, share_k=n[2] if PTRSHARE else None, q_scale=1.0 if PSCALE else None, bind=BIND >= 2) for n in PTR)
     return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF + ((K + LEVMAX + 1) if SLOTK else 0), n_atoms=NT, n_coarse=(NMID if ZOOM3 else NOP) if ZOOM else 0, n_coarse2=NOP if ZOOM3 else 0,
                         **(dict(tau_kind="constant", tau_first=float(TAU1)) if TAU1 else {}),
                         n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC,
@@ -379,7 +381,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, slotk=SLOTK, zoom=ZOOMN, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, bind=BIND, slotk=SLOTK, zoom=ZOOMN, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))

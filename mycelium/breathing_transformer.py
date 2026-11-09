@@ -38,6 +38,8 @@ THE SPEC (each line is enforced by construction here; `scripts/test_breathing_tr
     within ONE chart, so a wrong key alone in its chart never meets the gold key in another; the keys' charts carry structure finer
     than the query resolves -- word ids under a type -- and the sealed read paid for it.) Training passes `BreathIO.beam_keep` (the
     gold keys) so the gold key's chart is always in the beam (gold-in-beam); W >= the live charts = the full product of experts.
+  - MULTIPLICATIVE BINDING (`RoadSpec.bind`, ledger 11-08): the content q / k themselves rotate by the head's matched CLOCK angles, so
+    content and address meet in ONE product (a bound key: "this content AT this address") instead of two summands (content + id match).
   - DIFFUSION DYNAMICS: every logit (chart and micro) is divided by the breath's temperature; tau falls over the breaths
     (`BTConfig.tau_first -> tau_last`, geometric or linear), so the representation sharpens slowly.
 
@@ -108,6 +110,7 @@ class RoadSpec:
     share_q: str = None                        # roads naming the same group share ONE query projection (the shared pointer: per operand)
     share_k: str = None                        # ... ONE key projection (the shared pointer: per key kind)
     q_scale: float = None                      # the query's scale before q . k (None = 1/sqrt(d_head); 1.0 = the unscaled dot product)
+    bind: bool = False                         # MULTIPLICATIVE BINDING: the content q / k rotate by the head's matched CLOCK angles
 
     def runs(self, b):
         return self.breaths is None or b in self.breaths
@@ -274,6 +277,23 @@ def _over_tau(x, tau):
     return x * (1 / tau)
 
 
+def _rot(z, a):
+    """z (..., 2n) as n complex planes rotated by a (..., n): z * e^{ia}"""
+    zz = z.reshape(*z.shape[:-1], -1, 2); re, im = zz[..., 0], zz[..., 1]; c, s = a.cos(), a.sin()
+    return Tensor.stack(re * c - im * s, re * s + im * c, dim=-1).flatten(-2)          # (broadcasts: one shared key -> every head)
+
+
+def _bind_map(sel, clock, n):
+    """(H, P, n) one-hot: content plane j of head h turns with the head's j-th matched CLOCK plane (tiled; id factors stay in the
+    additive match -- a word-hash phase on content would let content meet only the same word); a head that matches no clock maps
+    every plane to nothing (angle 0: the unbound dot product)"""
+    M = np.zeros((sel.shape[0], sel.shape[2], n), np.float32)
+    for h in range(sel.shape[0]):
+        own = np.flatnonzero((sel[h].sum(0) > 0) & clock)
+        if len(own): M[h, own[np.arange(n) % len(own)], np.arange(n)] = 1.0
+    return M
+
+
 def _zero_linear(i, o):
     l = nn.Linear(i, o); l.weight = Tensor.zeros(o, i).contiguous(); l.bias = Tensor.zeros(o).contiguous(); return l
 
@@ -312,6 +332,8 @@ class Road:
             self.hturn = get(tie and ("hturn", tie), lambda: Tensor.zeros(H, layout.P).contiguous())   # the gears: a fixed turn per head
         self.gain = Tensor.full((H, len(layout.factors)), c.id_gain_init).contiguous()
         self.sel = Tensor(layout.selector(spec.match)).realize()      # (H, F, P) constant, realized once
+        if spec.bind: self.bmap = Tensor(_bind_map(layout.selector(spec.match),
+                                                           np.array([layout.factors[i].kind == "clock" for i in layout.owner()]), Dh // 2)).realize()   # (H, P, Dh/2) constant
         if spec.residual:
             self.v = get(tie and ("v", tie), lambda: nn.Linear(c.d_model, self.kH * Dh))
             self.o = get(tie and ("o", tie), lambda: nn.Linear(H * Dh, c.d_model))
@@ -331,6 +353,9 @@ class Road:
             a = qa.unsqueeze(1) + self.hturn.reshape(1, H, 1, P)                                    # the gears turn each head's query
         w = (self.gain.unsqueeze(-1) * self.sel.detach()).sum(1)                                   # (H, P): wildcards weigh 0
         kp = self.L.presence_planes(kpres).unsqueeze(1)                                            # (B, 1, Lk, P)
+        if S.bind:   # the conjunction in ONE score: Re(q e^{ia} conj(k e^{ika})) -- content matches only at the right relative phase
+            q = _rot(q, a @ self.bmap.unsqueeze(0))                                                # (B, H, Lq, Dh/2) angles
+            k = _rot(k, (ka.unsqueeze(1) * kp) @ self.bmap.unsqueeze(0))                           # an absent key factor never turns
         qid = Tensor.cat(a.cos() * w[None, :, None], a.sin() * w[None, :, None], dim=-1)
         kid = Tensor.cat(ka.cos().unsqueeze(1) * kp, ka.sin().unsqueeze(1) * kp, dim=-1)           # Re(e^{iq} conj e^{ik}) = cos(q - k)
         F = _over_tau(q @ k.transpose(-2, -1) + qid @ kid.transpose(-2, -1), tau)
@@ -540,7 +565,7 @@ class BreathingTransformer:
         lc = dc.log_softmax(-1) if coarse2 is None else grav(coarse2, self.sil_scale_c2).log_softmax(-1) @ parent2 + cond(dc, parent2)
         return lc @ parent + cond(grav(atoms, self.sil_scale), parent)                             # each atom reads its parent's row
 
-    CONSTANTS = ("sel", "_own_t", "_skip_sel")              # realized constant buffers (never trained, never saved)
+    CONSTANTS = ("sel", "bmap", "_own_t", "_skip_sel")              # realized constant buffers (never trained, never saved)
 
     @classmethod
     def _is_const(cls, k):
