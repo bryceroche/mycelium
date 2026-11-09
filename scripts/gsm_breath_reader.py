@@ -421,6 +421,12 @@ def make_net():
     return Net()
 
 
+MACRO_PLAN = 0   # (ledger 11-09 MACRO1; set by gsm_btc BTC_MACRO) breaths 0..MACRO_PLAN-1 commit the OP PLAN (p(op) = the type marginal),
+                 # the rest commit types: a slot's committed op enters the notebook (opk, opid, orad ride after the 5 arrays); the plan
+                 # conditions the type commit, never restricts it (soft evidence biases; only a proof crosses hard)
+_PAR1H = np.eye(NOP, dtype=np.float32)[PARENT]        # (NT, NOP): type -> its op
+
+
 def TAU(cyc):
     """the coarse-to-fine schedule: tau 2.0 at cycle 0 -> 0.5 at the last (a (B,) float tensor)"""
     return 2.0 ** (1.0 - 2.0 * cyc.float() / (NCYC - 1))
@@ -533,17 +539,27 @@ def score(net, its, states, tree, seed=0):
             dec = lambda i: ("t", int(i)) if i < L else (("s", int(i - L)) if i < L + K else ("c", int(i - L - K)))
             gt0 = gold(E)[1]
             sp = None
+            if MACRO_PLAN:
+                assert not (GATE or SEAL or SOFT or PHPTR or ORACLE), "MACRO_PLAN: the schedule form only"
+                opk = np.zeros((B, K), bool); opid = np.zeros((B, K), np.int64); orad = np.zeros((B, K), np.float32)
             for c in range(NCYC):
-                nb = nb_tensors(notebook(E, L, progs, com, typ, rad))
+                arrs = notebook(E, L, progs, com, typ, rad)
+                nb = nb_tensors((*arrs, opk.copy(), opid.copy(), orad.copy()) if MACRO_PLAN else arrs)
                 logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None, torch.full((B,), c), sp)
                 if SOFT and c + 1 < NCYC: sp = (logit / TAU(torch.full((B,), c + 1))[:, None, None]).softmax(-1)   # next cycle reads it
+                if MACRO_PLAN and c < MACRO_PLAN:                                                # THE PLAN: commit ops
+                    po = p.numpy() @ _PAR1H; oy, oc = po.argmax(-1), po.max(-1); target = math.ceil(K * (c + 1) / MACRO_PLAN)
+                    for b in range(B):
+                        for k in [k for k in np.argsort(-oc[b]) if not opk[b, k]][:max(target - opk[b].sum(), 0)]:
+                            opk[b, k] = True; opid[b, k] = oy[b, k]; orad[b, k] = oc[b, k]; cyc[b, k] = c
+                    continue
                 ty = gt0 if ORACLE else logit.argmax(-1).numpy()
                 pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if ORACLE else p.max(-1).values.numpy()
                 if SEAL: ty, pt = seal_decide(net, part, progs, com, logit, pa, pb, dec)
                 ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
                 ca = pa.softmax(-1).max(-1).values.numpy(); cb = pb.softmax(-1).max(-1).values.numpy()
                 conf = np.where(ty == STOP, pt, pt * ca * cb)                                     # the radius of each proposal
-                target = math.ceil(K * (c + 1) / NCYC)
+                target = math.ceil(K * (c + 1 - MACRO_PLAN) / (NCYC - MACRO_PLAN))
                 for b in range(B):
                     if GATE:   # BT6: the confidence dial decides WHEN; the last cycle forces every remaining slot
                         cand = [k for k in np.argsort(-conf[b]) if not com[b, k] and conf[b, k] >= float(GATE) * (1 - c / (NCYC - 1))]
@@ -553,6 +569,7 @@ def score(net, its, states, tree, seed=0):
                         cand = [k for k in np.argsort(-conf[b]) if not com[b, k]][:need]
                     for k in cand:
                         com[b, k] = True; typ[b, k] = ty[b, k]; rad[b, k] = conf[b, k]; IA[b, k], IB[b, k] = ia[b, k], ib[b, k]; cyc[b, k] = c
+                        if MACRO_PLAN: opk[b, k] = True; opid[b, k] = PARENT[ty[b, k]]
                         op = TYPES[ty[b, k]][0] if ty[b, k] != STOP else "."
                         progs[b][k] = (op, dec(ia[b, k]), dec(ib[b, k])) if op != "." else (".", None, None)
             gprogs, gt = gold(E)

@@ -57582,3 +57582,25 @@ pointers; learned residual codebooks + nested dropout = the later form).
   frozen worktree `mycelium-runs/sab`; chain `.cache/run_sab.sh`; verdict `scripts/gsm_sab_verdict.py`, against BIND_BIND_s0.
 - **Bars:** **TEST-x:** TEST step_all - 0.1267 >= +0.020. **UNSEEN-x:** TEST-U - 0.0931 >= +0.020. **KEEP-x:** ORIG - 0.6446 >= -0.050.
 - **PREDICTIONS:** SAB50: TEST PASS, UNSEEN FAIL, KEEP PASS. SAB25: TEST FAIL (smaller), UNSEEN FAIL, KEEP PASS.
+
+### 2026-11-09 13:22 -- MACRO1 BUILT + PINNED: the op plan, coarse to fine on designed codes (Bryce's word: "word given for your choice")
+*Serves: "abstract reasoning = zooming out on the Tree DB" + "the SQL cross join is the nemesis" + "clean binding and unbinding" (the plan
+code bound by phase) + Bryce 11-09 "phase binding and message passing are key".*
+- **Built (`BTC_MACRO=1`, `BTC_SABOP`; scorer `BR.MACRO_PLAN`, default 0 = the old schedule, bit-identical):** breaths 0-1 commit every
+  slot's OP (p(op) = the type marginal; ceil(K (c+1) / 2) slots by max p(op)); breaths 2-5 commit the TYPE + pointers on the old
+  confidence rule over four breaths. A committed op enters the slot as its op atom (row NT + op of the atoms buffer, Welford-fed as ZOOM)
+  at its op radius, AND as a phase: the new 'op' clock factor (ids 0..NOP, NOP = no plan yet; gears 60/120/180 deg) is matched by
+  slot_self and, under BIND, turns the slots' content (message passing over the plan). The plan CONDITIONS the type commit, never
+  restricts it (soft evidence only biases). Training draws the phase by the breath: plan rows (cyc < 2) have ops committed on the
+  unmasked slots and learn -log p(gold op) on the open ones; type rows have every op committed and learn the type + pointers on the
+  open ones. Sabotage per level (NCM's decreasing rates): ops at U(0, 2 SABOP), types at U(0, 2 SAB). Stamps on the plan schedule
+  (`macro_stamps`; contract check PASS); SELFCOND radii: p(type) x pointers for types, max p(op) for ops. Params 12,126,585 (+89,304: the
+  op planes widen the key projections). CPU smoke trains + scores end to end through the scorer.
+- **Known mismatch (inherited, named):** training draws the committed share from rr independent of the breath, as the base trainer does.
+- **PINNED (word given):** MACRO (BTC_BIND=1 BTC_MACRO=1 BTC_SAB=0.25 BTC_SABOP=0.5) and MACRO0 (BTC_BIND=1 BTC_MACRO=1, no sabotage),
+  5k s0, BT_SAVE, CJ-probed; frozen worktree `mycelium-runs/macro`; chain `.cache/run_macro.sh` waits for SAB; verdict
+  `scripts/gsm_macro_verdict.py` against BIND_BIND_s0 (ORIG 0.6446 | TEST 0.1267, op 0.461, type 0.288, ptr 0.180 | TEST-U 0.0931).
+- **Bars:** **UNSEEN-x:** TEST-U - 0.0931 >= +0.020. **TEST-x:** TEST - 0.1267 >= +0.020. **KEEP-x:** ORIG - 0.6446 >= -0.050.
+  **SAB-ATTR:** TEST-U (MACRO - MACRO0) named if >= 0.020 in size (descriptive).
+- **PREDICTIONS:** MACRO: UNSEEN FAIL (a coin flip leaning FAIL: ZOOM's op-then-type split failed fit, and the type now gets four breaths,
+  not six), TEST FAIL, KEEP PASS; MACRO0 at or below MACRO on TEST-U; TEST step_op rises over BIND's 0.461 in both.
