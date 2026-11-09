@@ -57565,3 +57565,20 @@ Artifacts `.cache/hr_BIND_BIND_s0.log`, `.cache/hr_BINDT_BIND_s1.log` (+ .cache/
 - **HEADROOM-PLAN NAMED** (>= +0.100 on both seeds). A perfect plan triples TEST-U: the plan level has the room, so the macro build goes
   ahead. Both walls are visible: under the perfect plan the pointers still miss ~70% of unseen-skeleton steps (and ~60% of seen) -- the
   plan is the bigger single lever, not the only one.
+
+### 2026-11-09 13:02 -- SAB BUILT + PINNED: the sabotage trick (NCM's coarse-code corruption) on the notebook (Bryce's word: "word given for your choice")
+*Serves: "Building the Bridge between continuous and discrete" (the write-back the next breath reads) + "the SQL cross join is the
+nemesis".* The word covers the plan of 13:0x: SAB first, then MACRO1 (designed codes: the op plan, then the kind residuals, then the
+pointers; learned residual codebooks + nested dropout = the later form).
+- **Built:** `BTC_SAB` (gsm_btc `sabotage()`): in training each committed non-STOP step is corrupted with a per-problem rate ~ U(0, 2 SAB)
+  (capped at 1): its type -> a uniformly random OTHER step type (never STOP), its op with it over the gold operands, so the executor's
+  write-back (values, certs, levels) carries the error downstream as the scorer's own wrong commits do. Loss on the open slots only;
+  gold untouched; own rng stream (SAB=0 bit-identical). Contract check (CPU, 4000x K draws): corrupted share 0.495 at SAB 0.5, all 36
+  replacement types used, open / STOP slots never touched, ops follow types, operands kept: PASS. GPU smoke (BIND=1, SAB=0.5): runs.
+- **Why:** BTC trains on a GOLD notebook and is scored on its OWN commits (TEST type_ok is low), so every later breath reads errors it
+  never saw in training. The minimal-history half of Bryce's list is already the BTC form (every breath re-enters from x + the notebook:
+  atom ids, radius, cert; no hidden state crosses breaths), so the notebook's honesty is the lever.
+- **PINNED (word given):** SAB25 (BTC_SAB=0.25) and SAB50 (BTC_SAB=0.5, NCM's mean) on BIND (BTC_BIND=1), 5k s0, BT_SAVE, CJ-probed;
+  frozen worktree `mycelium-runs/sab`; chain `.cache/run_sab.sh`; verdict `scripts/gsm_sab_verdict.py`, against BIND_BIND_s0.
+- **Bars:** **TEST-x:** TEST step_all - 0.1267 >= +0.020. **UNSEEN-x:** TEST-U - 0.0931 >= +0.020. **KEEP-x:** ORIG - 0.6446 >= -0.050.
+- **PREDICTIONS:** SAB50: TEST PASS, UNSEEN FAIL, KEEP PASS. SAB25: TEST FAIL (smaller), UNSEEN FAIL, KEEP PASS.

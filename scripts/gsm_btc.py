@@ -64,6 +64,10 @@ BIND = int(os.environ.get("BTC_BIND", "0") or 0)    # (ledger 11-08) multiplicat
                                                      # their matched key angles (BR's rotated attention); 2 = + the pointer roads
 BSKIP = ("pos",) if os.environ.get("BTC_BINDREL", "0") == "1" else ()   # (ledger 11-09) bind on the T9 OFFSET gears only (no absolute pos)
 SLOTK = os.environ.get("BTC_SLOTK", "0") == "1"      # each slot's learned identity + level embedding in its CONTENT (BR's slotk + lev)
+SAB = float(os.environ.get("BTC_SAB", "0") or 0)     # (ledger 11-09) THE SABOTAGE TRICK (NCM's coarse-code corruption): in training, each
+                                                     # committed step is corrupted with a per-problem rate ~ U(0, 2 SAB) (mean SAB): its type
+                                                     # -> a random other step type, its op with it (gold operands kept), so the notebook the
+                                                     # breath reads carries wrong commits as the scorer's does; loss on the open slots only
 ZOOMN = int(os.environ.get("BTC_ZOOM", "0") or 0)    # 2 (or 1) = log p(type) = log p(op) + log p(type | op), op atoms (BR's BT_ZOOM);
 ZOOM, ZOOM3 = ZOOMN >= 1, ZOOMN >= 3                 # 3 = op -> op x kind_a -> type (the chain rule, ledger 11-08)
 NOP, PARENT, LEVMAX = BR.NOP, BR.PARENT, BR.LEVMAX
@@ -177,6 +181,18 @@ def confidence(bt, atoms, lt, lp, c, pc_, vps):
     return (c == STOP).where(pc_, pc_ * ca * cb)
 
 
+def sabotage(rng, progs, gt, committed):
+    """(SAB) the notebook's corrupted copy: each committed non-STOP step, with its problem's rate ~ U(0, 2 SAB) (capped at 1), becomes a
+    random OTHER step type (never STOP) and carries that type's op over its gold operands -> (progs, types); the gold stays untouched"""
+    B = gt.shape[0]; rate = np.minimum(rng.random(B) * 2 * SAB, 1.0)
+    hit = committed & (gt != STOP) & (rng.random((B, K)) < rate[:, None])
+    typ = gt.copy(); out = [list(p) for p in progs]
+    for b, k in zip(*np.nonzero(hit)):
+        j = int(rng.integers(0, STOP - 1)); j += j >= gt[b, k]                                   # uniform over the STOP - 1 others
+        typ[b, k] = j; out[b][k] = (BR.TYPES[j][0], *progs[b][k][1:])
+    return out, typ
+
+
 def commit_stamps(rng, committed, cyc):
     """(B, K) T6 stamps: a committed slot = the breath it was committed in (a random commit order on the scorer's schedule, never after
     the current breath's predecessor), an open slot = the current breath"""
@@ -209,6 +225,7 @@ class Trainer:
         for p in self.params: p.requires_grad = True
         self.opt = AdamW(self.params, lr=lr, b1=0.9, b2=0.999, eps=1e-8, weight_decay=WD); self.jits = {}; self.cjits = {}
         self.srng = np.random.default_rng(10_007 + BR.SEED)          # the commit-order draws (own stream: the masks stay BTC's)
+        self.sabrng = np.random.default_rng(20_011 + BR.SEED)        # (SAB) the corruption draws (own stream: SAB=0 stays bit-identical)
 
     def _conf(self, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau):
         """pass 1 (no grad): the model's own confidence per slot, as the scorer computes it"""
@@ -251,7 +268,8 @@ class Trainer:
         cyc = np.clip(np.floor(NCYC * (1 - rr[:, 0])), 0, NCYC - 1).astype(np.int64)
         Lb = max(64, int(math.ceil((L - K) / BUCKET) * BUCKET))
         P = port_batch(t, E, its, Lb); B = P["B"]
-        nb = BR.notebook(E, L, progs, ~masked, gt, np.zeros((B, K), np.float32) if SELFCOND else np.ones((B, K), np.float32))
+        nprogs, ntyp = sabotage(self.sabrng, progs, gt, ~masked) if SAB else (progs, gt)
+        nb = BR.notebook(E, L, nprogs, ~masked, ntyp, np.zeros((B, K), np.float32) if SELFCOND else np.ones((B, K), np.float32))
         H_ = host_io(self.bt, P, nb, commit_stamps(self.srng, ~masked, cyc) if STAMP else cyc); V = valid_masks(P, B)
         ta, tp = self.bt.layout.angles(P["tf"], (B, Lb))
         tau = np.array([self.bt.c.tau(int(c)) for c in cyc], np.float32)
@@ -382,7 +400,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, bind=BIND, bindrel=bool(BSKIP), slotk=SLOTK, zoom=ZOOMN, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, bind=BIND, bindrel=bool(BSKIP), sab=SAB, slotk=SLOTK, zoom=ZOOMN, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
