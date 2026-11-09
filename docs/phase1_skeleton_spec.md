@@ -57514,3 +57514,28 @@ QUERIES" -- and the MLP's second role (Bryce 11-08 brainstorm): the per-position
   form would be ZOOM3 with the middle level shared (ZOOM: FIT FAIL). The novel axis is the SKELETON (2362/3978), so the residual levels
   that could defeat the cross join are problem-level (NCM's coarse level = few positions = the plan, residuals = the steps). Held for
   Bryce's call on the grain before building.
+
+### 2026-11-09 07:30 -- TAU1T + BINDT + BREL READ: both fit levers CLAIMED on two seeds; neither transfers; BREL refutes the absolute-position hypothesis
+*Serves: "clean binding and unbinding" + "the SQL cross join is the nemesis".* Artifacts `.cache/gsm_tau1t_verdict.txt`,
+`.cache/gsm_bindt_verdict.txt`, `.cache/gsm_brel_verdict.txt` (+ the CJ npz files; seen / TEST-U recomputed off the npz at 07:30).
+
+| arm (5k) | ORIG step | TEST | TEST seen | TEST-U | CJ |
+|---|---|---|---|---|---|
+| E0S s0 | 0.4858 | 0.1380 | 0.2048 | 0.0923 | +0.0782 |
+| E0S s1 | 0.5057 | 0.1481 | 0.2166 | 0.1012 | +0.0782 (0.07818 vs 0.07817: a coincidence, strata differ; checked) |
+| TAU1 s0 / s1 | 0.5591 / 0.6204 | 0.1360 / 0.1458 | 0.2092 / 0.2197 | 0.0859 / 0.0953 | +0.1168 / +0.0983 |
+| BIND s0 / s1 | 0.6446 / 0.6211 | 0.1267 / 0.1244 | 0.1757 / 0.1906 | 0.0931 / 0.0792 | +0.0711 / +0.0849 |
+| BREL s0 | 0.5814 | 0.1111 | 0.1597 | 0.0779 | +0.0415 |
+
+- **FIT-TAU1 TWIN PASS** (+0.0733 / +0.1147) and **CJ-TAU1 NAMED** (+0.0386 / +0.0201: s1 clears by 0.0001): both predicted. CLAIMED:
+  the constant temperature is a fit lever that leans on seen skeletons; TEST-U d -0.0064 / -0.0059 (same sign, under the bar).
+- **FIT-BIND TWIN PASS** (+0.1589 / +0.1154) and **CF-BIND TWIN PASS** (CFNUM +0.1651 / +0.1124, CFNAME +0.1495 / +0.1193): both
+  predicted. CLAIMED: multiplicative binding is the fit lever and the fit survives renaming and renumbering. Unbarred, consistent on
+  both seeds (twin rule struck 10-30, banked directly): TEST falls (-0.0113 / -0.0236) through TEST SEEN (-0.029 / -0.026); CJ flat.
+- **BREL:** FIT-BREL PASS (+0.0956: predicted), **SEEN-BREL FAIL** (-0.0160 vs BIND: the coin flip lost), UNSEEN-BREL FAIL (-0.0152:
+  predicted). Dropping the slow gears from binding costs fit (0.6446 -> 0.5814), seen (-> 0.1597) and TEST-U (-> 0.0779) at once.
+  **The absolute-position hypothesis is refuted for this form** (one seed, but every column moves against it): the slow gears help
+  binding; they are not why TEST seen falls. BREL closes; default BIND (empty skip) stands.
+- **Reading:** two independent fit levers (sharper temperature, multiplicative binding), both twinned, both leave TEST-U flat or down.
+  Sharper matching buys fit on the problems' own layouts and nothing on new skeletons. The TEST wall is not the match mechanism; it is
+  the cross join at the SKELETON grain -- the grain the residual-levels critique (02:49) names. Still held for Bryce's call on the grain.
