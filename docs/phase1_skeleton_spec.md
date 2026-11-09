@@ -57472,3 +57472,29 @@ QUERIES" -- and the MLP's second role (Bryce 11-08 brainstorm): the per-position
   **Bars:** FIT-TAU1 TWIN: ORIG step (TAU1 - E0) >= +0.050 on BOTH seeds. **CJ-TAU1:** named if CJ (TAU1 - E0) >= +0.020 with the same
   sign on both seeds. TEST-U d per seed descriptive.
   **PREDICTIONS:** FIT-TAU1 TWIN PASS; CJ-TAU1 NAMED (TAU1 leans more on seen skeletons).
+
+### 2026-11-09 02:40 -- BIND READ: binding is THE fit lever (FIT PASS +0.159 / +0.183, predicted FAIL: wrong); TEST-U unmoved
+*Serves: "clean binding and unbinding" + "the SQL cross join is the nemesis".* Artifact `.cache/gsm_bind_verdict.txt` (+ the CJ npz files).
+
+| arm (5k s0) | ORIG step | op | type | ptr | CFNUM | CFNAME | TEST | TEST seen | TEST-U | CJ |
+|---|---|---|---|---|---|---|---|---|---|---|
+| E0S | 0.4858 | 0.661 | 0.521 | 0.606 | 0.4317 | 0.3959 | 0.1380 | 0.2048 | 0.0923 | +0.0782 |
+| BIND | 0.6446 | 0.796 | 0.673 | 0.733 | 0.5968 | 0.5454 | 0.1267 | 0.1757 | 0.0931 | +0.0711 |
+| BINDP | 0.6684 | 0.803 | 0.693 | 0.753 | 0.5746 | 0.5348 | 0.1254 | 0.1807 | 0.0876 | +0.0841 |
+| (TAU1) | 0.5591 | 0.737 | 0.592 | 0.671 | 0.4962 | 0.4461 | 0.1360 | 0.2092 | 0.0859 | +0.1168 |
+
+- **FIT-BIND PASS** (+0.1589), **FIT-BINDP PASS** (+0.1826) -- predicted FAIL (+0.02..0.04): WRONG, and by the most of any prediction
+  this campaign (the audit ranked form 5 fifth; it is first). **UNSEEN-BIND FAIL** (+0.0008), **UNSEEN-BINDP FAIL** (-0.0047): predicted.
+  **CJ-BIND** -0.0070, **CJ-BINDP** +0.0059: none named (predicted "rises, not named": the rise did not happen).
+- **Reading:** multiplicative binding closes most of the 5k fit gap to BR (BR 5k ORIG 0.703; BTC 0.486 -> 0.645 / 0.668) and lifts the CF
+  splits as much (CFNUM +0.165, CFNAME +0.150: descriptive, one seed) -- the counterfactual fixture is the honest train=test grade, so
+  this is fit that survives renaming and renumbering. It is NOT a template lean (CJ flat, unlike TAU1). But it does not transfer:
+  TEST-U is flat and TEST SEEN FALLS (0.2048 -> 0.1757 / 0.1807), so TEST falls -0.011 / -0.013 (not named, < 0.020).
+- **Hypothesis for the seen drop (unclaimed, one seed):** the cross road's t9 factor carries the ABSOLUTE position (the slow gears 7-9)
+  beside the offset gears; binding content to absolute position makes position-specific content features that the CF splits keep
+  (CF edits names / numbers, never sentence layout) but TEST's new layouts break. The next form reads it: bind on the offset gears only.
+- **BINDT PINNED (word: standing BTC word):** BIND at 5k **s1** (BT_SAVE, CJ-probed) vs TAU1T's E0S s1; chain `.cache/run_bindt.sh`
+  waits for TAU1T; verdict `scripts/gsm_bindt_verdict.py`. **Bars:** FIT-BIND TWIN: ORIG (BIND - E0) >= +0.050 on BOTH seeds.
+  **CF-BIND TWIN:** CFNUM and CFNAME (BIND - E0) >= +0.020 on BOTH seeds. TEST / TEST-U / CJ d descriptive.
+  **PREDICTIONS:** FIT-BIND TWIN PASS; CF-BIND TWIN PASS.
+- **Unlocked by this read:** residual Tree levels (Bryce's word, gated on BIND reading) -- built next, pinned before any run.
