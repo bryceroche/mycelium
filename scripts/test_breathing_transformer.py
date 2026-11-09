@@ -1,7 +1,7 @@
 """test_breathing_transformer.py -- the spec of the official BT (ledger 2026-11-07 "THE TIERED BT ARCHITECTURE"), checked mechanically.
 CPU, tiny dims, no data. Run: DEV=CPU .venv/bin/python3 scripts/test_breathing_transformer.py
 """
-import os, re, sys, tempfile
+import math, os, re, sys, tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 import numpy as np
@@ -431,5 +431,22 @@ for wa, nbl in (("every", 2), ("last", 2)):
     bw._charts = spy; iow, _ = inputs(bw); bw.breath(iow, 0)
 check("the Tree is consulted only where the query squeezes: waist_at 'last' reads charts in the last block only",
       calls.count("every") == 5 and calls.count("last") == 3, f"every {calls.count('every')} / last {calls.count('last')}")
+
+# -- the FIT-SPEED forms (ledger 11-08 audit) --
+rq = (BTM.RoadSpec("pa", "slot", "token", 1, (("t9",),), residual=False, d_head=CFG["d_model"]),
+      BTM.RoadSpec("pu", "slot", "token", 1, (("t9",),), residual=False, d_head=CFG["d_model"], q_scale=1.0))
+bq = mk(roads=rq, n_partitions=0, id_gain_init=0.0); Rq = bq.blocks[0].roads; Rq["pu"].q, Rq["pu"].k = Rq["pa"].q, Rq["pa"].k
+ioq, _ = inputs(bq); ioq.valid["pa"] = ioq.valid["pu"] = ioq.valid["cross"]; oq = bq.breath(ioq, 0, tau=1.0)["logp"]
+vq_ = ioq.valid["cross"].numpy()[:, None]; fa = oq["pa"].numpy() - oq["pa"].numpy().max(-1, keepdims=True); fu = oq["pu"].numpy() - oq["pu"].numpy().max(-1, keepdims=True)
+check("RoadSpec.q_scale=1.0: the unscaled dot product (= the default's logits x sqrt(d_head), same weights)",
+      np.allclose(np.exp(oq["pu"].numpy()).sum(-1), 1, atol=1e-4) and np.isfinite(fu).all()
+      and np.allclose(*[np.where(vq_, f_ - np.where(vq_, f_, 0).sum(-1, keepdims=True) / vq_.sum(-1, keepdims=True), 0) * w_
+                        for f_, w_ in ((fu, 1.0), (fa, math.sqrt(CFG["d_model"])))], atol=1e-2))
+NA_, G_ = 5, 2; bz = mk(n_atoms=NA_, n_coarse=G_); par_ = np.zeros((G_, NA_), np.float32); par_[[0, 0, 1, 1, 1], np.arange(NA_)] = 1
+zz_ = Tensor.randn(B, K, CFG["d_waist"]); at_ = Tensor.randn(NA_, CFG["d_waist"]); co_ = Tensor.randn(G_, CFG["d_waist"])
+lz = bz.silhouette_zoom_logp(zz_, at_, co_, Tensor(par_), 1.0).numpy(); pz = np.exp(lz)
+pg = pz @ par_.T; lc_ = bz.silhouette_logp(zz_, co_, 1.0).numpy()
+check("ZOOM: log p(type) = log p(op) + log p(type | op) -- a distribution whose op marginal is the coarse classifier",
+      np.allclose(pz.sum(-1), 1, atol=1e-4) and np.allclose(pg, np.exp(lc_), atol=1e-4))
 
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

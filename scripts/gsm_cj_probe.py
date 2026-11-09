@@ -45,7 +45,7 @@ def main():
         sd = safe_load(f".cache/gsmb_btc_{ARM}.safetensors"); own = bt.state_dict()
         assert set(sd) == set(own), f"key mismatch: {sorted(set(sd) ^ set(own))[:8]}"           # eval loads hard-error on mismatch
         for k, v in own.items(): v.assign(sd[k].to(v.device)).realize()
-        atoms = BTC.Atoms(BR.NT, BTC.DB, BR.NCAP); atoms.C = np.load(f".cache/gsmb_btc_{ARM}_atoms.npy")
+        atoms = BTC.Atoms(BTC.NA, BTC.DB, BR.NCAP); atoms.C = np.load(f".cache/gsmb_btc_{ARM}_atoms.npy")
         r = BTC.score(bt, atoms, its, states, tree); banked = json.load(open(f".cache/gsmb_btc_{ARM}.json"))["TEST_step_all"]
     else:
         import torch

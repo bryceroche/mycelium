@@ -107,6 +107,7 @@ class RoadSpec:
     d_head: int = 0                            # this road's head width (0 = BTConfig.d_head; e.g. one full-width pointer head)
     share_q: str = None                        # roads naming the same group share ONE query projection (the shared pointer: per operand)
     share_k: str = None                        # ... ONE key projection (the shared pointer: per key kind)
+    q_scale: float = None                      # the query's scale before q . k (None = 1/sqrt(d_head); 1.0 = the unscaled dot product)
 
     def runs(self, b):
         return self.breaths is None or b in self.breaths
@@ -146,6 +147,7 @@ class BTConfig:
     skip_factors: tuple = ("token_id", "slot_id", "t6", "t9", "table", "level")   # the IDs the U-Net skip carries (beam: bookkeeping)
     soft_belief: bool = False                  # enter_slots reads a soft type belief (the soft notebook) for uncommitted slots
     n_atoms: int = 0                           # the Tree atoms the notebook commits slots to (0 = no atom entry)
+    n_coarse: int = 0                          # ZOOM: coarse atoms (each fine atom's parent) -> silhouette_zoom_logp (0 = flat only)
     n_breaths: int = 6
     blocks_per_breath: int = 1                 # blocks inside one breath (distinct weights); breaths reuse them
     factors: tuple = field(default_factory=default_factors)
@@ -320,7 +322,7 @@ class Road:
         coords, cent (H, C, dc) the partitions' centroids, ok (H, C) live charts, kc (B, H, Lk) int each key's chart)."""
         c, S, H, Dh, P = self.c, self.spec, self.spec.n_heads, self.Dh, self.L.P
         B, Lq, Lk = u.shape[0], u.shape[1], hk.shape[1]
-        q = self.q(u).reshape(B, Lq, H, Dh).transpose(1, 2) * (1 / math.sqrt(Dh))
+        q = self.q(u).reshape(B, Lq, H, Dh).transpose(1, 2) * (1 / math.sqrt(Dh) if S.q_scale is None else S.q_scale)
         k = self.k(self.lnk(hk)).reshape(B, Lk, self.kH, Dh).transpose(1, 2)                      # (B, H or 1, Lk, Dh)
         if c.query_turn == "learned":
             a = (qa.unsqueeze(2) + self.turn(u).reshape(B, Lq, H, P)).transpose(1, 2)              # the query rotates; the key never does
@@ -411,6 +413,7 @@ class BreathingTransformer:
         pool = {}                                                                    # projections shared across blocks / roads
         self.blocks = [Block(c, self.layout, i == c.blocks_per_breath - 1, pool) for i in range(c.blocks_per_breath)]   # shared by EVERY breath
         self.sil_scale = Tensor.zeros(1).contiguous()                               # the silhouette classifier's learned scale (log)
+        if c.n_coarse: self.sil_scale_c = Tensor.zeros(1).contiguous()              # (ZOOM) the coarse classifier's learned scale (log)
         self.mask_slot = Tensor.zeros(c.d_model).contiguous()                       # an uncommitted slot's entry
         self.cert = nn.Linear(c.d_cert, c.d_model)
         if c.n_partitions:
@@ -522,6 +525,16 @@ class BreathingTransformer:
         """The silhouette classified against the Tree's atoms (GRAVITY form: softmax over -distance / tau). z (..., d_waist)."""
         d = -((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp()
         return _over_tau(d, tau).log_softmax(-1)
+
+    def silhouette_zoom_logp(self, z, atoms, coarse, parent, tau):
+        """ZOOM (coarse-to-fine): log p(type) = log p(parent) + log p(type | parent). coarse (G, d_waist) the coarse atoms; parent
+        (G, A) float one-hot, parent[g, a] = 1 iff atom a's parent is g. Each level is GRAVITY over -distance / tau."""
+        assert self.c.n_coarse, "BTConfig.n_coarse is 0"
+        df = _over_tau(-((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp(), tau)
+        dc = _over_tau(-((z.unsqueeze(-2) - coarse) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale_c.exp(), tau)
+        grp = parent.cast(dtypes.bool)                                                              # (G, A)
+        lse = grp.where(df.unsqueeze(-2), -1e9).logsumexp(-1)                                       # (..., G) per parent
+        return dc.log_softmax(-1) @ parent + df - lse @ parent                                      # each atom reads its parent's row
 
     CONSTANTS = ("sel", "_own_t", "_skip_sel")              # realized constant buffers (never trained, never saved)
 

@@ -57364,3 +57364,37 @@ looked for NOSS_s0.pt); fixed to route by which weights exist, re-scored on the 
   FIT-SPEED census struck). The road does buy CF robustness at 18k (CFNUM -0.080, CFNAME -0.073 without it).
 - **Closes:** slot-self as the template road / the fitting lever. The cross-join line stays open: the template lives on the text side,
   so the next form attacks the text -> structure read (the cross road / the reader's states), with TEST-U as the metric.
+
+### 2026-11-08 18:18 -- THE SIDE-BY-SIDE AUDIT (BR = the old reader, BT4RB8's flags; BTC = gsm_btc + the BT class) + FS PINNED
+*Bryce: "word given for side by side audit of old reader against BTC. tackling the SQL Cross join is our #1 priority after we sort out
+the BTC". Serves: the BTC as THE reader for every tier (11-07 class ruling) -- it must fit at least as fast as the form it replaces.*
+- **Where the 5k gap lives (artifacts, ORIG):** op 0.864 (BT4RB8_5k) vs 0.661 (E0) **-0.20** | type 0.739 vs 0.521 **-0.22** | ptr 0.722 vs
+  0.606 -0.12. The type decision is the slow part; pointers trail it.
+- **Identical (read line by line):** masked-diffusion schedule (mask rate, at-least-one, cycle imitation), type CE on masked slots,
+  pointer CE (the multi-valid logsumexp, averaged over masked supervised slots), teacher cond = the gold type, grad clip 1.0, AdamW lr
+  3e-4 wd 0.01, batch, Welford atoms (capped), the scorer (BR.score drives both), the executor write-back.
+- **Different (ranked by the gap's location):**
+  1. **ZOOM absent in BTC.** BT4RB8 runs BT_ZOOM=1: log p(type) = log p(op) + log p(type | op) with Welford op atoms -- the op gets its
+     own coarse classifier and gradient. BTC classifies flat over 37 atoms. (BT3N: clock + zoom carried 0.45 of BT3's gain.)
+  2. **Temperature on every logit.** BTC divides every road's scores, the pointers and the silhouette by tau(breath) 2.0 -> 0.5; the
+     reader always runs at tau(0) = 2.0. BR has no breath temperature (SDPA's 1/sqrt(d_head) only; the silhouette has a learned scale,
+     which BR drove DOWN to exp(-0.75) = 0.47 while BTC drove its up to exp(1.16) = 3.18).
+  3. **Pointer logit scale.** BR: lt = q . kt unscaled (D = 512). BTC: one 512-wide head, q / sqrt(512), then / tau: ~23-45x flatter
+     at init. The q weights sit at the same scale in both trained models (0.035 vs 0.030 mean |w|): no compensation in the projection.
+  4. **Slot identity in content.** BR adds a learned slot embedding + level embedding to every slot row; BTC's open slots enter as ONE
+     shared mask vector and differ only by phase ID tags (the waist's skip + the id match).
+  5. **Position x content.** BR rotates the content q and k by the clock angles (multiplicative: relative position modulates the content
+     match); BTC adds a separate id match Re(e^{iq} e^{-ik}) x gain to the content dot product (additive: no content-conditioned position).
+  6. **One joint softmax** over [tokens ; slots] (BR) vs split slot-self + cross roads (BTC) -- Bryce's uncertain lever.
+  Also: BR's zoom has a pointer half (an unsure type opens its op's kinds) -- not ported.
+- **Built (defaults bit-identical: BTC2_s0 re-scored TEST 0.1295 |d| 0.0000; spec 73/73):** `RoadSpec.q_scale`, `BTConfig.n_coarse` +
+  `silhouette_zoom_logp` (spec: a distribution whose op marginal is the coarse classifier); gsm_btc `BTC_TAU` (constant temperature),
+  `BTC_PSCALE=1` (pointer q_scale 1.0), `BTC_SLOTK=1` (slot + level one-hots through the cert Linear = BR's embeddings), `BTC_ZOOM=1`
+  (op atoms ride the atoms buffer). Params: SLOTK +9,728; ZOOM +1. Forms 5 and 6 need a build each; held until the screen reads.
+- **FS PINNED (word: Bryce's standing "invest time into the BTC whenever you see fit"):** 5,000 steps, seed 0, BT_SAVE=1 (so CJ / TEST-U
+  read), frozen worktree `mycelium-runs/fs`, chain `.cache/run_fs.sh`: **E0S** (BTC2 defaults, saved: must equal E0's 5k line --
+  determinism) | **TAU1** BTC_TAU=1 | **ZOOM** | **PSCALE** | **SLOTK**. Verdict `scripts/gsm_fs_verdict.py`.
+- **Bars:** **FIT-x:** ORIG step_all - E0 (0.4858) >= +0.050 -> a fit lever (a seed twin before any claim). Beside: ORIG op / type / ptr,
+  TEST step, TEST-U and CJ vs E0S, CF splits.
+- **PREDICTIONS:** FIT-ZOOM PASS (+0.05..0.10: the gap is the type decision); FIT-TAU1 FAIL (+0.02..0.05); FIT-PSCALE FAIL (ptr up, step
+  ORIG < +0.05); FIT-SLOTK FAIL.
