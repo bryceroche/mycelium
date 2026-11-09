@@ -479,4 +479,8 @@ M_ = BTM._bind_map(bb_.layout.selector((("t9", "token_id"),)), np.array([bb_.lay
 t9a, t9b = bb_.layout.slices["t9"]
 check("bind turns content by CLOCK planes only (the word-hash id stays additive)",
       M_.sum(-1)[0, t9a:t9b].sum() == 4 and M_[0, slice(*bb_.layout.slices["token_id"])].sum() == 0)
+pf_ = bb_.layout.plane_fields(); clk_ = np.array([bb_.layout.factors[i].kind == "clock" for i in bb_.layout.owner()])
+M2_ = BTM._bind_map(bb_.layout.selector((("t9",),)), clk_ & ~np.isin(pf_, ("pos",)), 8)
+check("bind_skip ('pos',): content turns by the T9 offset gears only, never the absolute position",
+      M2_[0][pf_ == "pos"].sum() == 0 and M2_[0][pf_ == "off"].sum() == 8)
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

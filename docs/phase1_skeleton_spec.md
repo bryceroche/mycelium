@@ -57498,3 +57498,19 @@ QUERIES" -- and the MLP's second role (Bryce 11-08 brainstorm): the per-position
   **CF-BIND TWIN:** CFNUM and CFNAME (BIND - E0) >= +0.020 on BOTH seeds. TEST / TEST-U / CJ d descriptive.
   **PREDICTIONS:** FIT-BIND TWIN PASS; CF-BIND TWIN PASS.
 - **Unlocked by this read:** residual Tree levels (Bryce's word, gated on BIND reading) -- built next, pinned before any run.
+
+### 2026-11-09 02:49 -- BREL BUILT + PINNED: bind on the T9 offset gears only (the seen-drop hypothesis)
+*Serves: "clean binding and unbinding" + the T9 clock "tracks address and order" (the spatial rotor = the offset gears, Bryce 11-04).*
+- **Built:** `RoadSpec.bind_skip` (gear fields that never turn content; `KeyLayout.plane_fields()`); gsm_btc `BTC_BINDREL=1` -> bind_skip
+  ('pos',) on every bound road (the T9 slow absolute-position gears 7-9 stay in the additive id match only). Spec 80/80 (offset planes
+  turn, pos planes never); default BIND unchanged (empty skip); CPU smoke runs.
+- **PINNED (word: standing BTC word):** BREL = BTC_BIND=1 BTC_BINDREL=1, 5k s0, BT_SAVE, CJ-probed; frozen worktree `mycelium-runs/brel`;
+  chain `.cache/run_brel.sh` waits for BINDT; verdict `scripts/gsm_brel_verdict.py`.
+- **Bars:** **SEEN-BREL:** TEST seen step_all - BIND's 0.1757 >= +0.020 (the seen drop was absolute-position binding). **FIT-BREL:**
+  ORIG - E0 0.4858 >= +0.050 (binding's fit survives without absolute position). **UNSEEN-BREL:** TEST-U - BIND's 0.0931 >= +0.020.
+- **PREDICTIONS:** FIT-BREL PASS; SEEN-BREL PASS (a coin flip: the hypothesis is one seed's reading); UNSEEN-BREL FAIL.
+- **Residual Tree levels (word given, now unlocked) -- a critique before the build:** at the TYPE grain nothing is unseen (census: 0/3978
+  TEST steps of an unseen type), so shared residual codes over op / kind_a / kind_b cannot show compositional transfer on TEST-U; the
+  form would be ZOOM3 with the middle level shared (ZOOM: FIT FAIL). The novel axis is the SKELETON (2362/3978), so the residual levels
+  that could defeat the cross join are problem-level (NCM's coarse level = few positions = the plan, residuals = the steps). Held for
+  Bryce's call on the grain before building.

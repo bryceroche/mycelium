@@ -111,6 +111,7 @@ class RoadSpec:
     share_k: str = None                        # ... ONE key projection (the shared pointer: per key kind)
     q_scale: float = None                      # the query's scale before q . k (None = 1/sqrt(d_head); 1.0 = the unscaled dot product)
     bind: bool = False                         # MULTIPLICATIVE BINDING: the content q / k rotate by the head's matched CLOCK angles
+    bind_skip: tuple = ()                      # gear fields that never turn content (e.g. ('pos',): bind on the T9 offset gears only)
 
     def runs(self, b):
         return self.breaths is None or b in self.breaths
@@ -229,6 +230,13 @@ class KeyLayout:
         for f in self.factors:
             if f.kind == "id": self._alpha[f.name] = np.array([math.sqrt(p) % 1.0 for p in (next(pr) for _ in range(f.planes))])
 
+    def plane_fields(self):
+        """(P,) the gear field of every plane (an id factor's planes carry its field)"""
+        out = []
+        for f in self.factors:
+            out += [fl for fl, sp in f.gears for _ in sp] if f.kind == "clock" else [f.field] * f.planes
+        return np.array(out)
+
     def owner(self):
         """(P,) the factor index of every plane (the disjointness, as data)"""
         own = np.full(self.P, -1)
@@ -333,7 +341,8 @@ class Road:
         self.gain = Tensor.full((H, len(layout.factors)), c.id_gain_init).contiguous()
         self.sel = Tensor(layout.selector(spec.match)).realize()      # (H, F, P) constant, realized once
         if spec.bind: self.bmap = Tensor(_bind_map(layout.selector(spec.match),
-                                                           np.array([layout.factors[i].kind == "clock" for i in layout.owner()]), Dh // 2)).realize()   # (H, P, Dh/2) constant
+                                                           np.array([layout.factors[i].kind == "clock" for i in layout.owner()])
+                                                           & ~np.isin(layout.plane_fields(), spec.bind_skip), Dh // 2)).realize()   # (H, P, Dh/2) constant
         if spec.residual:
             self.v = get(tie and ("v", tie), lambda: nn.Linear(c.d_model, self.kH * Dh))
             self.o = get(tie and ("o", tie), lambda: nn.Linear(H * Dh, c.d_model))
