@@ -57447,3 +57447,28 @@ QUERIES" -- and the MLP's second role (Bryce 11-08 brainstorm): the per-position
   off the log).
 - **Gate:** built and pinned after the BIND verdict banks. Its read is TEST-U (an unseen combination of a seen parent + a seen
   correction), with bars pinned before the run.
+
+### 2026-11-08 23:31 -- FS READ: the TEMPERATURE is the fit lever (FIT-TAU1 PASS, predicted FAIL: wrong); it buys fit, not transfer
+*Serves: the BTC must fit like BR before the cross-join rung ("the SQL cross join is the nemesis").* Artifact `.cache/gsm_fs_verdict.txt`.
+
+| arm | ORIG step | op | type | ptr | CFNUM | CFNAME | TEST | TEST-U | CJ |
+|---|---|---|---|---|---|---|---|---|---|
+| E0 / E0S | 0.4858 | 0.661 | 0.521 | 0.606 | 0.4317 | 0.3959 | 0.1380 | 0.0923 | +0.0782 |
+| TAU1 | 0.5591 | 0.737 | 0.592 | 0.671 | 0.4962 | 0.4461 | 0.1360 | 0.0859 | +0.1168 |
+| ZOOM | 0.5158 | 0.700 | 0.549 | 0.608 | 0.4608 | 0.4233 | 0.1453 | 0.0965 | +0.0821 |
+| PSCALE | 0.1918 | 0.352 | 0.243 | 0.379 | 0.1770 | 0.1552 | 0.0804 | 0.0614 | +0.0356 |
+| SLOTK | 0.5227 | 0.699 | 0.557 | 0.621 | 0.4677 | 0.4182 | 0.1408 | 0.0953 | +0.0800 |
+
+- **Determinism: E0S = E0 EQUAL.** **FIT-TAU1 PASS** (+0.0733; predicted FAIL: wrong). **FIT-ZOOM FAIL** (+0.0300; predicted PASS:
+  wrong). **FIT-PSCALE FAIL** (-0.2940: collapse; predicted FAIL). **FIT-SLOTK FAIL** (+0.0370; predicted FAIL).
+- **Reading:** a constant tau 1 fits ORIG +0.073 and both CF splits (+0.065 / +0.050) but TEST is flat (-0.0020), TEST-U falls
+  (-0.0064) and CJ rises (+0.0386, just under the 0.040 naming size): the hot schedule (2.0 -> 0.5) costs FIT, not transfer. BR runs
+  at tau 1 everywhere, and BR has the larger CJ (+0.125 / +0.090) -- the temperature may account for both BR's fit lead and its template
+  lean (a hypothesis; one seed). So "make the BTC fit like BR" is NOT the same goal as "make the BTC transfer": the fit gap was partly a
+  memorization gap. The unscaled pointer (PSCALE) is a collapse under the tau division (BR never divides by tau).
+- **ZOOM3 stays parked** (gated on FIT-ZOOM). TAU1 is a fit lever on one seed only: a twin before any claim.
+- **TAU1T PINNED (word: Bryce's standing BTC word):** E0S + TAU1 at 5k **s1**, BT_SAVE=1, CJ-probed; frozen worktree `mycelium-runs/bind`
+  (c647d081: BTC_TAU present); chain `.cache/run_tau1t.sh` waits for BIND; verdict `scripts/gsm_tau1t_verdict.py`.
+  **Bars:** FIT-TAU1 TWIN: ORIG step (TAU1 - E0) >= +0.050 on BOTH seeds. **CJ-TAU1:** named if CJ (TAU1 - E0) >= +0.020 with the same
+  sign on both seeds. TEST-U d per seed descriptive.
+  **PREDICTIONS:** FIT-TAU1 TWIN PASS; CJ-TAU1 NAMED (TAU1 leans more on seen skeletons).
