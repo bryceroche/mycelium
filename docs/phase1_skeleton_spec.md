@@ -57539,3 +57539,29 @@ QUERIES" -- and the MLP's second role (Bryce 11-08 brainstorm): the per-position
 - **Reading:** two independent fit levers (sharper temperature, multiplicative binding), both twinned, both leave TEST-U flat or down.
   Sharper matching buys fit on the problems' own layouts and nothing on new skeletons. The TEST wall is not the match mechanism; it is
   the cross join at the SKELETON grain -- the grain the residual-levels critique (02:49) names. Still held for Bryce's call on the grain.
+
+### 2026-11-09 12:46 -- MACRO GRAIN CENSUS (zero-model) + THE PLAN HEADROOM READ PINNED
+*Serves: "the SQL cross join is the nemesis" + "abstract reasoning = zooming out on the Tree DB" (Bryce 11-09: NCM's sabotage, nested
+dropout, minimal history, residual codes at the macro level; "phase binding and message passing are key").*
+- **Census (TRAIN gold programs vs TEST, 3978 TEST steps):** TEST steps in problems whose X no TRAIN problem has --
+  type sequence (skeleton) 2362 (0.594; 2836 distinct in TRAIN) | type multiset 2012 (0.506) | type set 1311 (0.330) | op sequence 989
+  (0.249; 1313 distinct) | op multiset 206 (0.052; 388 distinct) | op set 0 (15 distinct) | length 0. Reading: one plan code per seen
+  skeleton IS the cross join (2836 codes); the coarse levels are covered (op multiset 95%, op sequence 75%), so a coarse-to-fine plan
+  generates at grains TRAIN has seen and leaves the novelty to the residuals.
+- **PLAN HEADROOM READ (zero-train; eval of banked weights):** BIND_BIND_s0 and BINDT_BIND_s1 scored on TEST with the GOLD type at every
+  slot (BT_ORACLE=1 = a perfect plan + its kind residuals), `scripts/gsm_oracle_headroom.py` -> .cache/gsm_hr_{ARM}.npz.
+  **Bar HEADROOM-PLAN:** oracle TEST-U - the arm's own TEST-U (0.0931 / 0.0792): NAMED (the plan level has the room) if >= +0.100 on
+  both seeds; if < +0.050 on both, a plan organ cannot carry TEST-U alone (the pointers are the wall) and the macro build is re-scoped
+  before any run. **PREDICTION:** NAMED (oracle TEST-U ~0.25-0.35).
+
+### 2026-11-09 12:51 -- PLAN HEADROOM READ: NAMED on both seeds (+0.216 / +0.210; predicted NAMED)
+Artifacts `.cache/hr_BIND_BIND_s0.log`, `.cache/hr_BINDT_BIND_s1.log` (+ .cache/gsm_hr_{ARM}.npz).
+
+| arm (gold type at every slot) | TEST step_all | seen | TEST-U | own TEST-U | d | ans |
+|---|---|---|---|---|---|---|
+| BIND_BIND_s0 | 0.3439 | 0.3954 | 0.3086 | 0.0931 | **+0.2155** | 0.1502 |
+| BINDT_BIND_s1 | 0.3391 | 0.4127 | 0.2887 | 0.0792 | **+0.2095** | 0.1571 |
+
+- **HEADROOM-PLAN NAMED** (>= +0.100 on both seeds). A perfect plan triples TEST-U: the plan level has the room, so the macro build goes
+  ahead. Both walls are visible: under the perfect plan the pointers still miss ~70% of unseen-skeleton steps (and ~60% of seen) -- the
+  plan is the bigger single lever, not the only one.
