@@ -57398,3 +57398,16 @@ the BTC". Serves: the BTC as THE reader for every tier (11-07 class ruling) -- i
   TEST step, TEST-U and CJ vs E0S, CF splits.
 - **PREDICTIONS:** FIT-ZOOM PASS (+0.05..0.10: the gap is the type decision); FIT-TAU1 FAIL (+0.02..0.05); FIT-PSCALE FAIL (ptr up, step
   ORIG < +0.05); FIT-SLOTK FAIL.
+
+### 2026-11-08 19:06 -- ZOOM3 BUILT (Bryce: "I LOVE the zoom feature and wonder if we want more than two step zoom, 3,4..?"); not pinned
+*Serves: "abstract reasoning = zooming out on the Tree" + "reading breaths walk coarse-to-fine; zoom in the BT".*
+- **The Tree question answered (read off the code):** the old reader and BTC take the Tree through the SAME inputs (RB8 states, the
+  rb8 role feats -- `rolef_name()` asserts the pair -- and tree gender); neither GSM path has per-(tier, head) partitions (BTC3 brings
+  them). The one Tree-shaped difference is the zoom's two-level atom tree (5 op atoms over 37 types) vs BTC's flat 37.
+- **The third level is the type's own factorization:** op (5) -> op x kind_a (13) -> type (37) = p(op) p(kind_a | op) p(kind_b | op, kind_a):
+  the chain rule, exact (no expressivity lost) and CONDITIONAL (unlike BT8's independent factors, whose joint lost conditioning).
+  Deeper levels need real groups; past the type's factors they should come from the Tree's own coarse-to-fine levels (BIRCH), not by hand.
+- **Built:** `BTConfig.n_coarse2` + `silhouette_zoom_logp(..., coarse2, parent2)` (spec 74/74: a distribution; one grandparent over
+  everything = the two-level zoom); gsm_btc `BTC_ZOOM=3` (atoms buffer: types | op x kind_a | ops; each silhouette feeds all three).
+  Params: ZOOM 12,037,282, ZOOM3 12,037,283. CPU smoke runs a real GSM step.
+- **Gate:** ZOOM3 vs ZOOM is pinned only if FIT-ZOOM passes in FS (an arm against the 2-level form, same seed, weights saved).

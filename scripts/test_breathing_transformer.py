@@ -449,4 +449,9 @@ pg = pz @ par_.T; lc_ = bz.silhouette_logp(zz_, co_, 1.0).numpy()
 check("ZOOM: log p(type) = log p(op) + log p(type | op) -- a distribution whose op marginal is the coarse classifier",
       np.allclose(pz.sum(-1), 1, atol=1e-4) and np.allclose(pg, np.exp(lc_), atol=1e-4))
 
+p2_ = np.zeros((1, G_), np.float32); p2_[0] = 1; bz3 = mk(n_atoms=NA_, n_coarse=G_, n_coarse2=1)
+c2_ = Tensor.randn(1, CFG["d_waist"]); bz3.sil_scale_c = bz.sil_scale_c; bz3.sil_scale = bz.sil_scale
+lz3 = bz3.silhouette_zoom_logp(zz_, at_, co_, Tensor(par_), 1.0, c2_, Tensor(p2_)).numpy()
+check("ZOOM3: three levels by the chain rule -- a distribution; one grandparent over everything = the two-level zoom",
+      np.allclose(np.exp(lz3).sum(-1), 1, atol=1e-4) and np.allclose(lz3, lz, atol=1e-4))
 print(f"\n{sum(OK)}/{len(OK)} PASS"); sys.exit(0 if all(OK) else 1)

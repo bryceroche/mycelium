@@ -148,6 +148,7 @@ class BTConfig:
     soft_belief: bool = False                  # enter_slots reads a soft type belief (the soft notebook) for uncommitted slots
     n_atoms: int = 0                           # the Tree atoms the notebook commits slots to (0 = no atom entry)
     n_coarse: int = 0                          # ZOOM: coarse atoms (each fine atom's parent) -> silhouette_zoom_logp (0 = flat only)
+    n_coarse2: int = 0                         # ZOOM3: a third, coarser level above n_coarse (0 = two levels)
     n_breaths: int = 6
     blocks_per_breath: int = 1                 # blocks inside one breath (distinct weights); breaths reuse them
     factors: tuple = field(default_factory=default_factors)
@@ -414,6 +415,7 @@ class BreathingTransformer:
         self.blocks = [Block(c, self.layout, i == c.blocks_per_breath - 1, pool) for i in range(c.blocks_per_breath)]   # shared by EVERY breath
         self.sil_scale = Tensor.zeros(1).contiguous()                               # the silhouette classifier's learned scale (log)
         if c.n_coarse: self.sil_scale_c = Tensor.zeros(1).contiguous()              # (ZOOM) the coarse classifier's learned scale (log)
+        if c.n_coarse2: self.sil_scale_c2 = Tensor.zeros(1).contiguous()            # (ZOOM3) the coarsest level's learned scale (log)
         self.mask_slot = Tensor.zeros(c.d_model).contiguous()                       # an uncommitted slot's entry
         self.cert = nn.Linear(c.d_cert, c.d_model)
         if c.n_partitions:
@@ -526,15 +528,17 @@ class BreathingTransformer:
         d = -((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp()
         return _over_tau(d, tau).log_softmax(-1)
 
-    def silhouette_zoom_logp(self, z, atoms, coarse, parent, tau):
-        """ZOOM (coarse-to-fine): log p(type) = log p(parent) + log p(type | parent). coarse (G, d_waist) the coarse atoms; parent
-        (G, A) float one-hot, parent[g, a] = 1 iff atom a's parent is g. Each level is GRAVITY over -distance / tau."""
-        assert self.c.n_coarse, "BTConfig.n_coarse is 0"
-        df = _over_tau(-((z.unsqueeze(-2) - atoms) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale.exp(), tau)
-        dc = _over_tau(-((z.unsqueeze(-2) - coarse) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * self.sil_scale_c.exp(), tau)
-        grp = parent.cast(dtypes.bool)                                                              # (G, A)
-        lse = grp.where(df.unsqueeze(-2), -1e9).logsumexp(-1)                                       # (..., G) per parent
-        return dc.log_softmax(-1) @ parent + df - lse @ parent                                      # each atom reads its parent's row
+    def silhouette_zoom_logp(self, z, atoms, coarse, parent, tau, coarse2=None, parent2=None):
+        """ZOOM (coarse-to-fine, the chain rule): log p(type) = log p(parent) + log p(type | parent); with coarse2 / parent2 (ZOOM3)
+        log p(parent) itself = log p(grandparent) + log p(parent | grandparent). coarse (G, d_waist) the coarse atoms; parent (G, A)
+        float one-hot, parent[g, a] = 1 iff atom a's parent is g (parent2 (G2, G) likewise). Each level is GRAVITY over -distance / tau."""
+        assert self.c.n_coarse and (coarse2 is None or self.c.n_coarse2), "BTConfig.n_coarse / n_coarse2 is 0"
+        def grav(a, sc): return _over_tau(-((z.unsqueeze(-2) - a) ** 2).sum(-1) * (1 / math.sqrt(self.c.d_waist)) * sc.exp(), tau)
+        def cond(d, par):                                                                          # log p(child | its parent)
+            return d - par.cast(dtypes.bool).where(d.unsqueeze(-2), -1e9).logsumexp(-1) @ par
+        dc = grav(coarse, self.sil_scale_c)
+        lc = dc.log_softmax(-1) if coarse2 is None else grav(coarse2, self.sil_scale_c2).log_softmax(-1) @ parent2 + cond(dc, parent2)
+        return lc @ parent + cond(grav(atoms, self.sil_scale), parent)                             # each atom reads its parent's row
 
     CONSTANTS = ("sel", "_own_t", "_skip_sel")              # realized constant buffers (never trained, never saved)
 

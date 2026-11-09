@@ -61,11 +61,19 @@ TOKID = os.environ.get("BTC_TOKID", "1") == "1"   # token_self matches on token_
 TAU1 = os.environ.get("BTC_TAU", "")                 # a constant temperature (e.g. 1: no logit / tau anywhere, as BR) | "" = 2.0 -> 0.5
 PSCALE = os.environ.get("BTC_PSCALE", "0") == "1"    # pointer q . k unscaled (BR's lt = q . kt; BTC2: / sqrt(512))
 SLOTK = os.environ.get("BTC_SLOTK", "0") == "1"      # each slot's learned identity + level embedding in its CONTENT (BR's slotk + lev)
-ZOOM = os.environ.get("BTC_ZOOM", "0") == "1"        # log p(type) = log p(op) + log p(type | op), coarse atoms per op (BR's BT_ZOOM)
+ZOOMN = int(os.environ.get("BTC_ZOOM", "0") or 0)    # 2 (or 1) = log p(type) = log p(op) + log p(type | op), op atoms (BR's BT_ZOOM);
+ZOOM, ZOOM3 = ZOOMN >= 1, ZOOMN >= 3                 # 3 = op -> op x kind_a -> type (the chain rule, ledger 11-08)
 NOP, PARENT, LEVMAX = BR.NOP, BR.PARENT, BR.LEVMAX
-NA = NT + (NOP if ZOOM else 0)                       # the atoms' rows: the fine types (+ the coarse ops under ZOOM)
+MID = np.array([BR.GD.OPS.index(o) * 3 + KINDS.index(a) for o, a, _ in BR.TYPES] + [len(BR.GD.OPS) * 3])  # (ZOOM3) type -> (op, kind a)
+NMID = len(BR.GD.OPS) * 3 + 1 if ZOOM3 else 0                                                            # + stop
+MIDP = np.array([m // 3 for m in range(len(BR.GD.OPS) * 3)] + [NOP - 1])                                # (op, kind a) -> op
+NA = NT + (NMID if ZOOM3 else 0) + (NOP if ZOOM else 0)   # the atoms' rows: fine types | (ZOOM3) op x kind a | (ZOOM) ops
 _PAR = np.zeros((NOP, NT), np.float32); _PAR[PARENT, np.arange(NT)] = 1
+if ZOOM3:
+    _PAR = np.zeros((NMID, NT), np.float32); _PAR[MID, np.arange(NT)] = 1
+    _PAR2 = np.zeros((NOP, NMID), np.float32); _PAR2[MIDP, np.arange(NMID)] = 1
 _PART = Tensor(_PAR).realize() if ZOOM else None      # (ZOOM) the parent one-hot, realized once (a constant inside the JIT)
+_PART2 = Tensor(_PAR2).realize() if ZOOM3 else None
 _SCHED = np.array([min(c for c in range(NCYC) if math.ceil(K * (c + 1) / NCYC) > j) for j in range(K)])   # the scorer: rank j commits at
 
 
@@ -77,7 +85,7 @@ def config(d_in, d_aux):
         BTM.RoadSpec(n, "slot", {"t": "token", "s": "slot", "c": "const"}[n[2]], 1,
                      ((("t9",) if n[2] == "t" else ("slot_id", "level") if n[2] == "s" else ()),), residual=False, d_head=D,
                      share_q=n[1] if PTRSHARE else None, share_k=n[2] if PTRSHARE else None, q_scale=1.0 if PSCALE else None) for n in PTR)
-    return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF + ((K + LEVMAX + 1) if SLOTK else 0), n_atoms=NT, n_coarse=NOP if ZOOM else 0,
+    return BTM.BTConfig(tier="gsm-step", d_in=d_in, d_aux=d_aux, d_model=D, d_waist=DB, d_head=D // NH, d_cert=3 + BR.NUF + ((K + LEVMAX + 1) if SLOTK else 0), n_atoms=NT, n_coarse=(NMID if ZOOM3 else NOP) if ZOOM else 0, n_coarse2=NOP if ZOOM3 else 0,
                         **(dict(tau_kind="constant", tau_first=float(TAU1)) if TAU1 else {}),
                         n_breaths=NCYC, blocks_per_breath=NBLK, factors=f, roads=roads, d_mark=1, n_const=NC,
                         dropout=DROP, waist_at=WAIST, tie_layers=TIE, query_turn=TURN, shared_kv=MQA)
@@ -137,7 +145,8 @@ def valid_masks(P, B):
 # ---- the network forward (pure tinygrad; shared by the trainer's JIT and the scorer) ------------------------------------------------
 def forward(bt, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts, vss, vcr, vpt, vps, vpc, tau, cond=None):
     """-> (type logp (B, K, NT), z (B, K, DB), {road: logp (B, K, Lk)}, cond used, p(cond))"""
-    coarse = atoms[NT:] if ZOOM else None; atoms = atoms[:NT] if ZOOM else atoms                  # (ZOOM) the op atoms ride the same buffer
+    coarse = atoms[NT:NT + NMID] if ZOOM3 else atoms[NT:] if ZOOM else None                         # (ZOOM) the coarse atoms ride the
+    coarse2 = atoms[NT + NMID:] if ZOOM3 else None; atoms = atoms[:NT] if ZOOM else atoms             # same buffer (ZOOM3: mid, then ops)
     ht = bt.enter_tokens(x, aux)
     io = BTM.BreathIO(h={"token": ht}, angles={"token": ta}, presence={"token": tp}, valid={"token_self": vts})
     ht = bt.breath(io, 0, roads=("token_self",))["h"]["token"]                                    # THE READER (once per problem)
@@ -145,7 +154,7 @@ def forward(bt, atoms, x, aux, ta, tp, sa, sp, mt, ms, com, atom, rad, cert, vts
     io = BTM.BreathIO(h={"token": ht, "slot": hs}, angles={"token": ta, "slot": sa}, presence={"token": tp, "slot": sp},
                       valid={"slot_self": vss, "cross": vcr}, marks={"token": mt, "slot": ms})
     oa = bt.breath(io, None, roads=("slot_self", "cross"), tau=tau)                               # call A
-    lt = (bt.silhouette_zoom_logp(oa["z"]["slot"], atoms, coarse, _PART, tau) if ZOOM
+    lt = (bt.silhouette_zoom_logp(oa["z"]["slot"], atoms, coarse, _PART, tau, coarse2, _PART2) if ZOOM
           else bt.silhouette_logp(oa["z"]["slot"], atoms, tau))
     c = lt.argmax(-1) if cond is None else cond
     pc_ = (lt.exp() * c.one_hot(NT).cast(dtypes.float)).sum(-1)                                  # the radius: p(the decided type)
@@ -267,7 +276,8 @@ class Atoms:
 
     def update(self, z, typ, mask):
         zz, tt = z[mask], typ[mask]
-        if ZOOM: zz, tt = np.concatenate([zz, zz]), np.concatenate([tt, NT + PARENT[tt]])          # each silhouette also feeds its op's atom
+        if ZOOM3: zz, tt = np.concatenate([zz, zz, zz]), np.concatenate([tt, NT + MID[tt], NT + NMID + PARENT[tt]])   # + its (op, a)
+        elif ZOOM: zz, tt = np.concatenate([zz, zz]), np.concatenate([tt, NT + PARENT[tt]])        # each silhouette also feeds its op's atom
         cnt = np.bincount(tt, minlength=len(self.n)).astype(np.float32); sm = np.zeros_like(self.C); np.add.at(sm, tt, zz)
         nn_ = self.n + cnt; u = cnt > 0
         self.C[u] += (sm[u] - cnt[u, None] * self.C[u]) / nn_[u, None]; self.n = np.minimum(nn_, self.cap)
@@ -369,7 +379,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
-        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, slotk=SLOTK, zoom=ZOOM, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
+        out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, slotk=SLOTK, zoom=ZOOMN, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
                    **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
