@@ -57349,3 +57349,18 @@ slots only through the slot pointers (by address). Alternative: the CJ gap is te
 - **Next form (named, not pinned): the FIT-SPEED census** -- what BT4RB8 has that every BTC form lacks (candidates: BR's single joint
   slot road vs the split slot-self + cross roads; the selfcond/stamp training contract; the port's bucketed lengths). NOSS (running,
   14:28 relaunch after a worktree .cache-link fix) cuts one of these.
+
+### 2026-11-08 17:12 -- NOSS READ: the slot-self road is NOT the template road (NOSS-ROAD FAIL, NOSS-UNSEEN FAIL; both predicted)
+*Read off `.cache/gsm_noss_verdict.txt`. Training done 17:09; the chain's CJ step failed (the probe routed arms by a "BTC" tag prefix and
+looked for NOSS_s0.pt); fixed to route by which weights exist, re-scored on the GPU: VALID |d| 0.0000.*
+| arm (18k, s0) | TEST step | seen | TEST-U | CJ | ORIG | CFNUM | CFNAME | params |
+|---|---|---|---|---|---|---|---|---|
+| BTC2_s0 | 0.1295 | 0.1869 | 0.0902 | +0.0646 | 0.8848 | 0.7732 | 0.7029 | 12.04M |
+| NOSS_s0 | 0.1254 | 0.1869 | 0.0834 | +0.0682 | 0.8446 | 0.6935 | 0.6304 | 9.60M |
+- **NOSS-ROAD: CJ +0.0682 vs bar +0.0246 -> FAIL. NOSS-UNSEEN: -0.0068 -> FAIL.** Seen-skeleton steps are identical (0.1869) with the
+  road cut: the template is not carried slot-to-slot. It is read off the TEXT (seen-skeleton problems read like TRAIN) or carried by the
+  slot pointers -- the alternative the pin named.
+- **Fit speed:** ORIG step at 5k 0.505 (NOSS) vs 0.497 (BTC2): the slot-self road is not the 5k fitting gap either (one candidate of the
+  FIT-SPEED census struck). The road does buy CF robustness at 18k (CFNUM -0.080, CFNAME -0.073 without it).
+- **Closes:** slot-self as the template road / the fitting lever. The cross-join line stays open: the template lives on the text side,
+  so the next form attacks the text -> structure read (the cross road / the reader's states), with TEST-U as the metric.

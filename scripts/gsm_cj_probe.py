@@ -14,12 +14,13 @@ Arm (CJ_ARM): BT4RB8_s{0,1} (torch, .pt, BT4RB8's flags) | BTC2_s{0,1} (tinygrad
 import json, os, sys
 
 ARM = os.environ["CJ_ARM"]
-if ARM.startswith("BT4RB8"):
+TG = os.path.exists(f".cache/gsmb_btc_{ARM}.safetensors")                   # a gsm_btc arm (tinygrad weights) vs a BR arm (.pt)
+if not TG and ARM.startswith("BT4RB8"):
     for k_, v_ in dict(BT_D="512", BT_NH="8", BT_DB="64", BT_CYCLOCK="1", BT_ZOOM="1", BT_ROLE="1", BT_T6OFF="1",
                        RD_STATES="gsmb_rb8_states.npy", BT_ROLEF="gsmb_role_feats_rb8.npy").items():
         os.environ[k_] = v_                                                     # BT4RB8's own flags (as gsm_reader_ptr_read.py)
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__))); sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-if ARM.startswith("BTC"):
+if TG:
     import gsm_btc as BTC
     BR = BTC.BR
 else:
@@ -37,7 +38,7 @@ def main():
     Dt, states = BR.TR.load(); tree = BR.TR.load_tree(); BR.RF = np.load(BR.GD.V1.C(BR.rolef_name()), mmap_mode="r")
     seen = {skeleton(it) for it in Dt["TRAIN"]}
     its = Dt["TEST"]
-    if ARM.startswith("BTC"):
+    if TG:
         from tinygrad.nn.state import safe_load
         t0_, E0 = BR.batch(Dt["TRAIN"][:2], states, tree, np.random.default_rng(0)); P0 = BTC.port_batch(t0_, E0, Dt["TRAIN"][:2], 64)
         bt = BTC.BTM.BreathingTransformer(BTC.config(P0["x"].shape[-1], P0["aux"].shape[-1]))
