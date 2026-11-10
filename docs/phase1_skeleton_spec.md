@@ -57696,3 +57696,25 @@ evidence only biases: the vote is soft, no proof crosses).
   greedy ans >= +0.020. **VERIFIER-NAMED** (descriptive): BEST@16 - VOTE step >= 0.10 (what a certifier of discovered structure could buy).
 - **PREDICTIONS:** VOTE FAIL on both arms (16 draws of a confident model vote back to greedy), VOTE-U FAIL, ANS FAIL (lean; answers
   need every step), VERIFIER NAMED on both (draws are diverse where the model is unsure, and TEST is where it is unsure).
+
+### 2026-11-10 12:50 -- SAMPLE READ: the vote FAILS every bar on both arms; VERIFIER NAMED on MACRO (+0.141), not on BIND (+0.072)
+Artifacts `.cache/sample_verdict.log`, `.cache/gsm_sample_{BIND_BIND_s0,MACRO_s0}.{txt,npz}`. VALID: greedy re-scores reproduce
+the banked TEST step exactly (0.1267, 0.1403).
+
+| arm, tau | one draw | VOTE step (d) | VOTE TEST-U (d) | ANS-VOTE (d) | BEST@16 step | BEST@16 TEST-U | BEST@16 ans | best - vote |
+|---|---|---|---|---|---|---|---|---|
+| BIND 1.0 | 0.1198 | 0.1277 (+0.0010) | 0.0940 (+0.0008) | 0.0336 (+0.0020) | 0.1993 | 0.1550 | 0.1067 | +0.0716 |
+| BIND 0.5 | 0.1243 | 0.1252 (-0.0015) | 0.0919 (-0.0013) | 0.0316 (+0.0000) | 0.1669 | 0.1283 | 0.0623 | +0.0417 |
+| MACRO 1.0 | 0.1255 | 0.1430 (+0.0028) | 0.1143 (+0.0072) | 0.0208 (-0.0079) | 0.2841 | 0.2460 | 0.1354 | +0.1410 |
+| MACRO 0.5 | 0.1332 | 0.1413 (+0.0010) | 0.1088 (+0.0017) | 0.0227 (-0.0059) | 0.2338 | 0.1998 | 0.0860 | +0.0925 |
+(greedy: BIND TEST-U 0.0931 ans 0.0316; MACRO TEST-U 0.1071 ans 0.0287)
+
+- **VOTE / VOTE-U / ANS FAIL on both arms** (all predicted). **VERIFIER NAMED on MACRO** (+0.1410), **none named on BIND** (+0.0716):
+  the prediction "named on both" is half wrong.
+- **Reading:** majority voting buys nothing -- the draws' mode is the greedy pick. But the RIGHT step is often in the cloud: MACRO's
+  BEST@16 TEST-U (0.2460) is 2.3x its greedy and within 0.06 of the perfect-type-plan ceiling read 11-09 (BIND 0.3086); BEST@16 answers
+  are 4.7x greedy (0.1354 vs 0.0287). The op plan makes the cloud DIVERSE where BIND's is narrow (best@16 0.284 vs 0.199 at tau 1.0) --
+  a plan level is what turns sampling into search. The bottleneck is SELECTION without the key: a certifier of discovered structure
+  (CORE_THEORIES' open question) is worth up to +0.14 step / +0.11 answers on this arm. (Best@N uses the key: headroom, never a claim.)
+- **Next form named (not pinned):** keyless selection over the MACRO draws -- rank by the solver's certificates (every step executes,
+  integer, non-negative; the cert already in the notebook) and the draw's own log-likelihood; then a pinned read against greedy.
