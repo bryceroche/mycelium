@@ -57652,3 +57652,31 @@ Artifacts `.cache/macro_verdict.log` (+ `gsm_cj_MACRO{,0}_s0.npz`, `gsmb_btc_MAC
   pinned: the fit at matched loss (MACRO to ~10k, or BIND read at its 2.5-3k checkpoint for a matched-fit TEST comparison -- zero-GPU if the
   per-1k json exists, else a re-score needs saved weights); a one-breath plan (the type head keeps five); learned residual codes + nested
   dropout (word given as a later form).
+
+### 2026-11-10 11:11 -- HOP CENSUS PINNED (zero GPU; word given: "for your choice"): do the pointers under a PERFECT plan miss more on deeper hops?
+**Serves:** "phase binding and message passing are key" (Bryce 11-09) + Graph multi-hop (Bryce 11-10: "monte carlo pi estimate, MLIR,
+Graph multi hop, and white noise"); CORE_THEORIES "discover the structure, then solve over it" (the pointers ARE the discovered graph).
+- **Frame:** the banked oracle-plan reads `.cache/gsm_hr_{BIND_BIND_s0,BINDT_BIND_s1}.npz` (gold type at every slot; per-step `ptr`).
+  Hop depth of a gold step = 1 if no operand references a prior step, else 1 + max depth of the referenced steps. Read on TEST-U steps:
+  ptr accuracy at depth 1 / 2 / >=3, STRATIFIED by step index k (CJ weights w_k = n_a n_b / (n_a + n_b)) so position is not depth.
+  Also by operand kind (a step with a prior-step reference vs tokens/constants only), same stratification.
+- **HOP-NAMED** if the k-stratified (depth >= 3) - (depth 1) ptr difference is <= -0.10 on BOTH arms (descriptive; no claim beyond the
+  read). **REF-NAMED** likewise for (has a step reference) - (tokens only) <= -0.10.
+- **PREDICTION:** HOP NAMED (lean, ~60%): six breaths of one-hop message passing should starve the deep steps; REF NAMED (~65%).
+
+### 2026-11-10 11:12 -- HOP CENSUS READ: none named, and the sign is REVERSED -- deeper steps point BETTER; the pointer wall is text grounding
+Artifact `.cache/gsm_hop_census.txt` (script `scripts/gsm_hop_census.py`).
+
+| arm (oracle plan, TEST-U) | d1 (n 772) | d2 (n 576) | d3+ (n 1014) | step-ref | tokens-only | HOP d3+ - d1 given k | REF given k |
+|---|---|---|---|---|---|---|---|
+| BIND_BIND_s0 | 0.286 | 0.359 | 0.297 | 0.319 | 0.286 | +0.1606 | +0.1352 |
+| BINDT_BIND_s1 | 0.266 | 0.347 | 0.273 | 0.300 | 0.266 | +0.1254 | +0.1401 |
+
+- **HOP-NAMED: none named; REF-NAMED: none named** -- both predictions (lean NAMED) WRONG, and not by a near miss: the k-stratified
+  differences are +0.13 to +0.16 the OTHER way on both arms (seen skeletons agree: +0.08 / +0.27, +0.17 / +0.25).
+- **Reading:** at a fixed step position, a step whose operand is a prior step's result is pointed to MORE reliably than one whose
+  operands are all text tokens. The pointer wall under a perfect plan is **grounding a step in the text** (which number in the problem),
+  not carrying a result across hops. Six breaths of message passing are not what starves the pointers. (The raw d3+ dip is position:
+  deep steps sit late, and late steps are harder.) A step's ptr is all-operands-correct, so a step-ref step still carries a token
+  operand in most cases -- an operand-level split is the sharper read if this line is pursued.
+- Consequence for the 11-10 plan: the multi-hop form is deprioritised; the token-pointer (grounding) wall is named as the pointer target.
