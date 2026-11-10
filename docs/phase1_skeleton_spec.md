@@ -57767,3 +57767,48 @@ a discovered structure the slot metric cannot see). Re-score MACRO_s0 (same draw
 `scripts/gsm_order_audit.py` (zero GPU): among SEL's answer-right picks, the share NOT slot-aligned (some step_all miss), split into
 re-ordered gold steps (same multiset of op + operands, slot refs blind) vs another route. **ALT-NAMED** (descriptive) if >= 0.50 of SEL's
 answer-right picks are misaligned. PREDICTION: NAMED (~65%), mostly other routes, not pure re-orders.
+
+### 2026-11-10 14:14 -- STEPMEM READ PINNED (zero GPU; word given 11-10): a pure step-grain memory, keyed locally
+**Serves:** Bryce 11-10 ("overfit the microscopic step level with the Tree DB; do not memorize the whole problem skeleton -- SQL cross
+join; build on the fly phase binding"); CORE_THEORIES "memory leaves the MLP for the Tree" + "the SQL cross join is the nemesis"; the
+HOP census's grounding wall. No model: the question is whether the STEP grain, keyed only on local wording, carries the op.
+- **Entry per TRAIN gold step:** KEY = TF-IDF bag of words of its ANCHOR sentences (sentences of its token operands; none -> the question
+  sentence), numerals -> <num>, names -> <name> (local by construction, the role tier's contract: blind to other sentences, numbers,
+  names); VALUE = the op. TEST query: 1-NN among TRAIN entries with the same gold operand kinds (anchored: gold grounding given).
+- **RECALL** (TRAIN self-query, own entry in the memory): PASS if >= 0.99 ("if we saw it again it gets it right"; misses = key
+  collisions). **MEM-U NAMED** (descriptive) if TEST-U MEM - PRIOR (majority op for the kinds) >= +0.050.
+- **PREDICTIONS:** RECALL FAIL (lean: same sentence anchors different ops within a problem -- the key is not a step's whole identity);
+  MEM-U NAMED (~60%); MEM on TEST-U within 0.03 of TEST seen (no skeleton in the key -> no cross join -> no CJ gap).
+
+### 2026-11-10 14:15 -- STEPMEM READ: RECALL FAIL (0.9329), MEM-U none named (-0.0224) -- a sentence bag of words carries NO op beyond the kinds
+Artifact `.cache/gsm_stepmem.txt`. 20,938 TRAIN step entries (14,300 distinct keys) vs 2,836 skeletons.
+| | MEM | PRIOR (kinds) | d |
+|---|---|---|---|
+| TEST-U (2362) | 0.4348 | 0.4572 | -0.0224 |
+| TEST seen (1616) | 0.4678 | 0.4901 | -0.0223 |
+| no text anchor (714) | 0.5266 | 0.5910 | |
+| anchored (3264) | 0.4311 | 0.4442 | |
+- RECALL FAIL (predicted): 6.7% of TRAIN steps share a key with a step of another op -- a sentence is not a step's identity (one sentence
+  anchors several steps). MEM-U none named (predicted NAMED: wrong); the memory is BELOW the kinds prior everywhere. TEST-U within 0.03
+  of seen: missed by 0.003 (0.0330) -- and the prior shows the same gap, so it is composition (length), not memory.
+- **The form closes (sentence BoW, 1-NN); the line (step-grain Tree memory, local keys) stays open.** The op lives in the relation
+  words AT the operands ("each", "more than", "left"), which a sentence bag dilutes. Next form pinned below.
+
+### 2026-11-10 14:15 -- STEPMEM2 PINNED (zero GPU): the WINDOW key -- the words at each operand, position-tagged
+Same read, KEY = the words within +-3 of each token operand, tagged by side and offset ("a-1:each", "b+2:more"), numerals/names masked
+as before; steps with no token operand keep the question sentence. Same bars: RECALL >= 0.99; MEM-U NAMED if TEST-U MEM - PRIOR >=
++0.050. PREDICTION: RECALL FAIL (~0.97), MEM-U NAMED (~55%).
+
+### 2026-11-10 14:16 -- STEPMEM2 READ: MEM-U none named (+0.0474, under +0.050 by 0.003); RECALL FAIL (0.9582); the window carries the op where it anchors
+Artifact `.cache/gsm_stepmem_w3.txt` (the sentence read reproduced exactly first).
+| | MEM | PRIOR | d |
+|---|---|---|---|
+| TEST-U (2362) | 0.5047 | 0.4572 | +0.0474 |
+| TEST seen (1616) | 0.5656 | 0.4901 | +0.0755 |
+| anchored (3264) | 0.5294 | 0.4442 | +0.0852 |
+| no text anchor (714; sentence key) | 0.5294 | 0.5910 | -0.0616 |
+- Bars read as pinned: MEM-U none named (predicted NAMED: lost by 0.0026), RECALL FAIL (predicted). Reading: the words AT the operands
+  carry the op (+0.085 over the kinds where a step has a text anchor; the sentence bag gave -0.013 there); steps with no anchor have no
+  local evidence of their own -- their op lives in the question / the chain, i.e. in the LINKS, which is phase binding's job, not the
+  memory's. 4.2% of TRAIN steps still collide (one window, two ops): the key needs the slot's relation to its operands, not more words.
+  Seen exceeds unseen by 0.061 even with no skeleton in the key: part of the CJ gap is local wording that TEST-U problems use less often.
