@@ -57627,3 +57627,28 @@ Artifacts `.cache/gsm_sab_verdict.txt` (+ CJ npz), `.cache/macro_MACRO.log`.
   never again zero a whole run silently). The tinygrad AMD fault itself (the where/logsumexp form in a large fused backward) is logged
   as a quirk, not chased further. My miss: the MACRO1 smoke checked that it RAN, not that it LEARNED.
 - **MACRO1 RELAUNCHED under its 15:0x pin unchanged** (same arms, bars, predictions), worktree `mycelium-runs/macro2`.
+
+### 2026-11-09 23:12 -- MACRO1 READ: the op plan FAILS all three bars; TEST step_op rises (+0.041); sabotage guards the plan (SAB-ATTR NAMED +0.0233)
+Artifacts `.cache/macro_verdict.log` (+ `gsm_cj_MACRO{,0}_s0.npz`, `gsmb_btc_MACRO{,0}_s0.json`), worktree `mycelium-runs/macro2`.
+
+| arm (BIND, 5k s0) | ORIG | op | type | CFNUM | CFNAME | TEST | TEST op | type | ptr | seen | TEST-U | CJ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| BIND_BIND | 0.6446 | 0.796 | 0.673 | 0.5968 | 0.5454 | 0.1267 | 0.461 | 0.288 | 0.180 | 0.1757 | 0.0931 | +0.0711 |
+| MACRO (SAB .25, SABOP .5) | 0.4683 | 0.773 | 0.551 | 0.4234 | 0.3980 | 0.1403 | 0.502 | 0.318 | 0.187 | 0.1887 | 0.1071 | +0.0767 |
+| MACRO0 (no sabotage) | 0.3609 | 0.575 | 0.418 | 0.3409 | 0.3229 | 0.1290 | 0.450 | 0.283 | 0.176 | 0.1949 | 0.0838 | +0.0666 |
+
+- **UNSEEN-MACRO FAIL** (+0.0140), **TEST-MACRO FAIL** (+0.0136), **KEEP-MACRO FAIL** (-0.1763). MACRO0: UNSEEN FAIL (-0.0093), TEST FAIL
+  (+0.0023), KEEP FAIL (-0.2837). **SAB-ATTR NAMED** (TEST-U MACRO - MACRO0 = +0.0233).
+- **Predictions:** UNSEEN FAIL hit, TEST FAIL hit, **KEEP PASS missed** (the fit fell 0.176), MACRO0 <= MACRO on TEST-U hit, TEST step_op
+  rises over 0.461 hit for MACRO (0.502) and **missed for MACRO0** (0.450).
+- **Reading (descriptive, no claim):** (1) the fit is SLOWER, not capped: MACRO's loss at 5k (1.645) is BIND's at ~2.5k, ORIG still
+  climbing +0.08 per 1k (in-training scorer); the plan costs the type head two of six breaths and adds a loss. (2) The TEST curve differs in
+  shape: MACRO's in-training TEST step sat at 0.146-0.150 from 3k on, over BIND's 0.126-0.134 at every checkpoint, while its ORIG was below
+  BIND's -- more transfer per unit of fit, not yet a bar. (3) **Sabotage is load-bearing at the PLAN level** where it was dead at the type
+  level (SAB read): without it the clean-trained plan is read back from the model's own ops at test and ORIG op falls 0.773 -> 0.575; the
+  exposure gap is real one floor up. (4) Types are still the wall (TEST type 0.318 vs the oracle-plan ceiling read 11-09: a perfect TYPE
+  plan lifts TEST-U +0.21; an op plan is a much weaker plan).
+- **The form closes (5k, two-breath op plan); the line (the macro plan, phase-bound message passing) stays open.** Next forms named, none
+  pinned: the fit at matched loss (MACRO to ~10k, or BIND read at its 2.5-3k checkpoint for a matched-fit TEST comparison -- zero-GPU if the
+  per-1k json exists, else a re-score needs saved weights); a one-breath plan (the type head keeps five); learned residual codes + nested
+  dropout (word given as a later form).
