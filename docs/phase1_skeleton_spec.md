@@ -57680,3 +57680,19 @@ Artifact `.cache/gsm_hop_census.txt` (script `scripts/gsm_hop_census.py`).
   deep steps sit late, and late steps are harder.) A step's ptr is all-operands-correct, so a step-ref step still carries a token
   operand in most cases -- an operand-level split is the sharper read if this line is pursued.
 - Consequence for the 11-10 plan: the multi-hop form is deprioritised; the token-pointer (grounding) wall is named as the pointer target.
+
+### 2026-11-10 11:13 -- SAMPLE READ PINNED (inference on banked weights; word given "for your choice"): white noise + Monte Carlo vote
+**Serves:** Bryce 11-10 ("monte carlo pi estimate ... white noise"); CORE_THEORIES "Beam search across top choices" + "discover the
+structure, then solve over it" (many discovered structures, one chosen); §9 Search row (beam mass / top-k) and the bridge rule (soft
+evidence only biases: the vote is soft, no proof crosses).
+- **Build:** `BR.score(..., noise=(tau, rng))`: every commit choice (MACRO plan op, type, both pointers) = argmax(logit / tau + Gumbel), a
+  draw from the model's own distribution; the commit order follows the drawn choices' probabilities. noise=None is the greedy scorer,
+  unchanged (the greedy re-score is the VALID gate). The scorer now also returns per-step (op, ptr a, ptr b) and per-problem values.
+- **Read** (`scripts/gsm_sample_read.py`): arms BIND_BIND_s0 (BTC_BIND=1) and MACRO_s0 (BTC_BIND=1 BTC_MACRO=1); TEST, N = 16 draws
+  (rng 1000+i) at tau 1.0 (barred) and 0.5 (descriptive). VOTE = per-step majority (op, ptr a, ptr b), ties to the first drawn;
+  ANS-VOTE = per-problem majority executed value; BEST@16 = any draw right (uses the key: headroom only, never a claim).
+- **VALID:** greedy TEST step_all within 0.003 of the banked value, else VOID.
+- **Bars (tau 1.0, each arm):** **VOTE-x:** VOTE TEST step - greedy >= +0.020. **VOTE-U-x:** same on TEST-U. **ANS-x:** ANS-VOTE TEST ans -
+  greedy ans >= +0.020. **VERIFIER-NAMED** (descriptive): BEST@16 - VOTE step >= 0.10 (what a certifier of discovered structure could buy).
+- **PREDICTIONS:** VOTE FAIL on both arms (16 draws of a confident model vote back to greedy), VOTE-U FAIL, ANS FAIL (lean; answers
+  need every step), VERIFIER NAMED on both (draws are diverse where the model is unsure, and TEST is where it is unsure).

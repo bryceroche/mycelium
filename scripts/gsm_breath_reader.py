@@ -523,10 +523,14 @@ def seal_decide(net, its, progs, com, logit, pa, pb, dec):
     return np.where(step, 9 * lop.argmax(-1) + st_, STOP), np.exp(lps + np.where(step, lop.max(-1), 0)).astype(np.float32)
 
 
-def score(net, its, states, tree, seed=0):
+def score(net, its, states, tree, seed=0, noise=None):
+    """noise = (tau, rng): (ledger 11-10 SAMPLE) every commit choice (plan op, type, pointers) is argmax(logit / tau + Gumbel), a draw
+    from the model's own distribution at tau; the commit ORDER follows the drawn choices' probabilities. None = the greedy scorer."""
     import torch
+    gum = (lambda a: a) if noise is None else (lambda a: a / noise[0] - np.log(-np.log(noise[1].uniform(1e-12, 1.0, a.shape))))
     res = dict(ans=[], prog=[], step_op=[], step_ptr=[], step_all=[], first_all=[], type_ok=[], num_for_slot=[], commit_cycle=[])
     if SEAL: res["op_gold"] = []                                                             # (SEAL) the head's op on the GOLD operands
+    res["pred"], res["val"] = [], []                                                         # (11-10 SAMPLE) the vote's inputs
     with torch.no_grad():
         for s0 in range(0, len(its), 128):
             part = its[s0:s0 + 128]
@@ -548,16 +552,16 @@ def score(net, its, states, tree, seed=0):
                 logit, pa, pb, _, p = net.breath(t, xq, nb, torch.as_tensor(gt0) if ORACLE else None, torch.full((B,), c), sp)
                 if SOFT and c + 1 < NCYC: sp = (logit / TAU(torch.full((B,), c + 1))[:, None, None]).softmax(-1)   # next cycle reads it
                 if MACRO_PLAN and c < MACRO_PLAN:                                                # THE PLAN: commit ops
-                    po = p.numpy() @ _PAR1H; oy, oc = po.argmax(-1), po.max(-1); target = math.ceil(K * (c + 1) / MACRO_PLAN)
+                    po = p.numpy() @ _PAR1H; oy = gum(np.log(np.maximum(po, 1e-30))).argmax(-1); oc = np.take_along_axis(po, oy[..., None], -1)[..., 0]; target = math.ceil(K * (c + 1) / MACRO_PLAN)
                     for b in range(B):
                         for k in [k for k in np.argsort(-oc[b]) if not opk[b, k]][:max(target - opk[b].sum(), 0)]:
                             opk[b, k] = True; opid[b, k] = oy[b, k]; orad[b, k] = oc[b, k]; cyc[b, k] = c
                     continue
-                ty = gt0 if ORACLE else logit.argmax(-1).numpy()
-                pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if ORACLE else p.max(-1).values.numpy()
+                ty = gt0 if ORACLE else gum(logit.numpy()).argmax(-1)
+                pt = p.gather(-1, torch.as_tensor(ty)[..., None])[..., 0].numpy() if (ORACLE or noise is not None) else p.max(-1).values.numpy()
                 if SEAL: ty, pt = seal_decide(net, part, progs, com, logit, pa, pb, dec)
-                ia, ib = pa.argmax(-1).numpy(), pb.argmax(-1).numpy()
-                ca = pa.softmax(-1).max(-1).values.numpy(); cb = pb.softmax(-1).max(-1).values.numpy()
+                ia, ib = gum(pa.numpy()).argmax(-1), gum(pb.numpy()).argmax(-1)
+                ca = np.take_along_axis(pa.softmax(-1).numpy(), ia[..., None], -1)[..., 0]; cb = np.take_along_axis(pb.softmax(-1).numpy(), ib[..., None], -1)[..., 0]
                 conf = np.where(ty == STOP, pt, pt * ca * cb)                                     # the radius of each proposal
                 target = math.ceil(K * (c + 1 - MACRO_PLAN) / (NCYC - MACRO_PLAN))
                 for b in range(B):
@@ -580,12 +584,13 @@ def score(net, its, states, tree, seed=0):
                     if st[0] == ".": break
                     prog.append(st)
                 v = GD.execute(prog, it["vals"] + [None] * (L - len(it["vals"])))
-                res["ans"].append(v is not None and GD.V1.near(v, it["final"]))
+                res["ans"].append(v is not None and GD.V1.near(v, it["final"])); res["val"].append(v)
                 mm = e["m"]; okall = len(prog) == mm
                 for k in range(mm):
                     o = progs[b][k][0] == gprogs[b][k][0]
                     ptk = bool(t["va"][b, k, IA[b, k]] and t["vb"][b, k, IB[b, k]])
                     res["step_op"].append(o); res["step_ptr"].append(ptk); res["step_all"].append(o and ptk)
+                    res["pred"].append((progs[b][k][0], int(IA[b, k]), int(IB[b, k])))
                     res["type_ok"].append(typ[b, k] == gt[b, k]); res["commit_cycle"].append(int(cyc[b, k]))
                     if SEAL: res["op_gold"].append(GD.OPS[og[b, k]] == gprogs[b][k][0])
                     okall &= o and ptk
@@ -594,7 +599,7 @@ def score(net, its, states, tree, seed=0):
                         Vb = V[b, k].numpy()
                         if Vb[L:L + K].any() and not Vb[:L].any(): res["num_for_slot"].append(bool(I[b, k] < L))
                 res["prog"].append(bool(okall))
-    return {k: np.asarray(v) for k, v in res.items()}
+    return {k: (v if k in ("pred", "val") else np.asarray(v)) for k, v in res.items()}
 
 
 if __name__ == "__main__":
@@ -617,7 +622,7 @@ if __name__ == "__main__":
     if os.environ.get("BT_SAVE") == "1": torch.save(net.state_dict(), f".cache/gsmb_breath_{TAG}.pt")
     net.eval(); R = {k: score(net, Dt[k], states, tree) for k in SPLITS}
     out = dict(tag=TAG, arm="BT", seed=SEED, d=D, params=npar, steps=STEPS, curve=curve, oracle=ORACLE, load=LOAD,
-               **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
+               **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m not in ("commit_cycle", "pred", "val")},
                **{f"{k}_commit_share": np.bincount(v["commit_cycle"][v["commit_cycle"] >= 0], minlength=NCYC).tolist() for k, v in R.items()},
                **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()},
                atoms_C=net.C.tolist(), atoms_n=net.Cn.tolist())

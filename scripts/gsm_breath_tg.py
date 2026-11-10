@@ -526,7 +526,7 @@ if __name__ == "__main__":
         if os.environ.get("BT_SAVE") == "1": torch.save(tn.state_dict(), f".cache/gsmb_breath_{TAG}.pt")
         tn.eval(); R_ = {k: BR.score(tn, Dt[k], states, tree) for k in BR.SPLITS}   # gsm_breath_reader's FINAL block, verbatim in effect
         out = dict(tag=TAG, arm="BT", seed=SEED, d=D, params=npar, steps=STEPS, curve=curve, oracle=False, load="", engine="tinygrad",
-                   **{f"{k}_{m}": float(v[m].mean()) for k, v in R_.items() for m in v if m != "commit_cycle"},
+                   **{f"{k}_{m}": float(v[m].mean()) for k, v in R_.items() for m in v if m not in ("commit_cycle", "pred", "val")},
                    **{f"{k}_commit_share": np.bincount(v["commit_cycle"][v["commit_cycle"] >= 0], minlength=NCYC).tolist() for k, v in R_.items()},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R_.items()},
                    atoms_C=tn.C.tolist(), atoms_n=tn.Cn.tolist())

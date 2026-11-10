@@ -416,9 +416,9 @@ def symmetry(bt, atoms, its, states, tree):
                 spread=float(max(np.ptp(zz[b, :m[b]], 0).max() for b in range(B))))
 
 
-def score(bt, atoms, its, states, tree):
+def score(bt, atoms, its, states, tree, noise=None):
     """BR.score (its schedule loop, executor, gold and metric definitions) on the facade"""
-    return BR.score(Facade(bt, atoms.tensor(), its), its, states, tree, seed=0)
+    return BR.score(Facade(bt, atoms.tensor(), its), its, states, tree, seed=0, noise=noise)
 
 
 if __name__ == "__main__":
@@ -459,7 +459,7 @@ if __name__ == "__main__":
             safe_save(bt.state_dict(), f".cache/gsmb_btc_{TAG}.safetensors"); np.save(f".cache/gsmb_btc_{TAG}_atoms.npy", atoms.C)
         R = {k: score(bt, atoms, Dt[k], states, tree) for k in BR.SPLITS}
         out = dict(tag=TAG, arm="BTC", selfcond=SELFCOND, stamp=STAMP, wd=WD, dropout=DROP, blocks=NBLK, tokid=TOKID, slotself=SLOTSELF, tau1=TAU1, pscale=PSCALE, bind=BIND, bindrel=bool(BSKIP), sab=SAB, macro=MACRO, sabop=SABOP, slotk=SLOTK, zoom=ZOOMN, waist_at=WAIST, d_waist=DB, funnel=FUNNEL, stack=os.environ.get("BTC_STACK"), tie=TIE, turn=TURN, mqa=MQA, ptrshare=PTRSHARE, seed=SEED, d=D, params=npar, steps=steps, curve=curve, engine="tinygrad",
-                   **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m != "commit_cycle"},
+                   **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m not in ("commit_cycle", "pred", "val")},
                    **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()})
         json.dump(out, open(f".cache/gsmb_btc_{TAG}.json", "w"))
         print(f"[btc] {TAG} FINAL " + " | ".join(f"{k} ans {v['ans'].mean():.3f} step {v['step_all'].mean():.3f} op {v['step_op'].mean():.3f} "
