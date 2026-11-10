@@ -57604,3 +57604,26 @@ code bound by phase) + Bryce 11-09 "phase binding and message passing are key".*
   **SAB-ATTR:** TEST-U (MACRO - MACRO0) named if >= 0.020 in size (descriptive).
 - **PREDICTIONS:** MACRO: UNSEEN FAIL (a coin flip leaning FAIL: ZOOM's op-then-type split failed fit, and the type now gets four breaths,
   not six), TEST FAIL, KEEP PASS; MACRO0 at or below MACRO on TEST-U; TEST step_op rises over BIND's 0.461 in both.
+
+### 2026-11-09 19:32 -- SAB READ: the sabotage trick FAILS on TEST at both rates (SAB50 TEST predicted PASS: wrong); MACRO1 run VOID (a NaN bug), fixed, relaunched
+Artifacts `.cache/gsm_sab_verdict.txt` (+ CJ npz), `.cache/macro_MACRO.log`.
+
+| arm (BIND, 5k s0) | ORIG | type | CFNUM | CFNAME | TEST | TEST type | seen | TEST-U | CJ |
+|---|---|---|---|---|---|---|---|---|---|
+| BIND (clean notebook) | 0.6446 | 0.673 | 0.5968 | 0.5454 | 0.1267 | 0.288 | 0.1757 | 0.0931 | +0.0711 |
+| SAB25 | 0.6215 | 0.651 | 0.5734 | 0.5143 | 0.1307 | 0.296 | 0.1739 | 0.1012 | +0.0497 |
+| SAB50 | 0.6468 | 0.672 | 0.5973 | 0.5336 | 0.1259 | 0.289 | 0.1844 | 0.0859 | +0.0861 |
+
+- **TEST-SAB25 FAIL** (+0.0040), **UNSEEN-SAB25 FAIL** (+0.0081), KEEP PASS (-0.0231): as predicted. **TEST-SAB50 FAIL** (-0.0008; predicted
+  PASS: wrong), UNSEEN-SAB50 FAIL (-0.0072), KEEP PASS (+0.0022). Reading: a corrupted training notebook neither costs the fit nor buys
+  TEST -- the gap between the gold notebook and the model's own commits is not the TEST wall (it agrees with BT6 11-02: the wall is type
+  recognition, not commit timing). The sabotage form closes on the single-level notebook; it stays in MACRO1, where it guards the PLAN.
+- **MACRO1 VOID (both arms; the chain stopped at 18:1x in MACRO0):** loss flat at 8.79 from step 1000, z spread 0.003, TEST step 0.001 --
+  no update ever landed. **Cause (found, GPU only):** the op loss as logsumexp over a where(mask, lt, sentinel) gave a NON-FINITE gradient in
+  one (1,)-shaped parameter inside the full fused training graph on AMD (finite on CPU at batch 8 and full batch; finite on AMD for the op
+  term in isolation; the sentinel at -1e9 or -1e4 alike), so the where-gated NaN guard zeroed every update for 5k steps. **Fix:** log p(op)
+  = log(exp(lt) @ parent^T) (the exact marginal; equal to 1e-7 on the probe batch); the full step's grad norm is finite on AMD and the
+  smoke loss falls 8.13 -> 5.44 in 60 steps. **Root guard:** the trainer now raises after 50 consecutive non-finite steps (the NaN gate can
+  never again zero a whole run silently). The tinygrad AMD fault itself (the where/logsumexp form in a large fused backward) is logged
+  as a quirk, not chased further. My miss: the MACRO1 smoke checked that it RAN, not that it LEARNED.
+- **MACRO1 RELAUNCHED under its 15:0x pin unchanged** (same arms, bars, predictions), worktree `mycelium-runs/macro2`.

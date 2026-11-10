@@ -272,7 +272,7 @@ class Trainer:
             lo = (ce * mk).sum() / mk.sum().maximum(1)
             if MACRO:   # the plan rows: -log p(gold op) = -logsumexp over its types (the op is the type marginal)
                 mko, gop = mx
-                lop = (_MPAR.cast(dtypes.bool).where(lt.unsqueeze(-2), -1e9)).logsumexp(-1)                # (B, K, NOP)
+                lop = (lt.exp() @ _MPAR.T).maximum(1e-30).log()                                          # (B, K, NOP) log p(op)
                 ceo = -(lop * gop.one_hot(NOP).cast(dtypes.float)).sum(-1)
                 lo = lo + (ceo * mko).sum() / mko.sum().maximum(1)
             aw = am / am.sum().maximum(1)
@@ -289,9 +289,9 @@ class Trainer:
             for p in self.params:                                                                   # a param the loss never reaches
                 if p.grad is None: p.grad = p.zeros_like()                                          # (waist_at=end: the token waist)
             zz = z.detach().reshape(-1, z.shape[-1]).contiguous()
-            Tensor.realize(lo, zz, *[p.grad for p in gp])                                       # the silhouettes BEFORE the update
+            Tensor.realize(lo, zz, fin, *[p.grad for p in gp])                                  # the silhouettes BEFORE the update
             self.opt.step()
-            return lo.realize(), zz
+            return lo.realize(), zz, fin.realize()
 
     def step(self, its, states, tree, rng, atoms):
         t, E = BR.batch(its, states, tree, rng); L = t["pad"].shape[1]
@@ -336,7 +336,9 @@ class Trainer:
         if MACRO: args += [(masked & plan[:, None]).astype(np.float32), PARENT[gt].astype(np.int32)]
         args = [a if isinstance(a, Tensor) else Tensor(np.ascontiguousarray(a)) for a in args]
         if Lb not in self.jits: self.jits[Lb] = TinyJit(self._step)
-        lo, zz = self.jits[Lb](*args)
+        lo, zz, fin = self.jits[Lb](*args)
+        self.bad = 0 if bool(fin.numpy()) else getattr(self, "bad", 0) + 1                    # the NaN gate zeroes a step's update;
+        if self.bad >= 50: raise RuntimeError("50 consecutive non-finite steps: the NaN gate is zeroing every update")   # never silently
         return float(lo.numpy()), zz.numpy().reshape(B, K, -1), gt, masked
 
 
