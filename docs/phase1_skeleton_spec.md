@@ -57718,3 +57718,18 @@ the banked TEST step exactly (0.1267, 0.1403).
   (CORE_THEORIES' open question) is worth up to +0.14 step / +0.11 answers on this arm. (Best@N uses the key: headroom, never a claim.)
 - **Next form named (not pinned):** keyless selection over the MACRO draws -- rank by the solver's certificates (every step executes,
   integer, non-negative; the cert already in the notebook) and the draw's own log-likelihood; then a pinned read against greedy.
+
+### 2026-11-10 12:51 -- SELECT READ PINNED (inference on banked weights; under the "for your choice" word): keyless selection among the draws
+**Serves:** CORE_THEORIES "discover the structure, then solve over it" -- its open question, *what certifies a discovered structure
+without the key* -- and the ALTERNATION ruling (the solver's certificates choose; the key never does); MLIR's per-level verifier (Bryce 11-10).
+- **Pool per problem:** the greedy pass + the SAMPLE read's 16 draws at tau 1.0 (same rng seeds -> the same draws).
+- **Keyless judges:** FCERT (executes; final value a non-negative integer), CERT (share of steps whose executor certificate holds:
+  executed, integer, non-negative -- the cert the notebook already carries), COVER (share of the problem's text numbers consumed: aimed at
+  the grounding wall the HOP census named), LL (sum of log commit radii). **SEL** = argmax (FCERT, CERT, COVER, LL) lexicographic, ties
+  to greedy. Descriptive: LL only, (FCERT, CERT, LL), (COVER, LL). Script `scripts/gsm_select_read.py`.
+- **VALID:** greedy re-score within 0.003 of banked; draws' mean step within 0.001 of the SAMPLE read's one-draw mean (MACRO 0.1255,
+  BIND 0.1198); else VOID.
+- **Bars (each arm, SEL):** **SEL-x:** TEST step - greedy >= +0.020. **SEL-U-x:** TEST-U - greedy >= +0.020. **SEL-ANS-x:** TEST ans -
+  greedy >= +0.020.
+- **PREDICTIONS:** MACRO: SEL PASS (lean ~55%: the pool holds +0.14 and COVER aims straight at grounding), SEL-U PASS (~50%), SEL-ANS PASS
+  (~60%: FCERT filters answers directly); BIND: all three FAIL (its pool holds half as much).

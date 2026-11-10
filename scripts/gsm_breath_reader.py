@@ -530,7 +530,7 @@ def score(net, its, states, tree, seed=0, noise=None):
     gum = (lambda a: a) if noise is None else (lambda a: a / noise[0] - np.log(-np.log(noise[1].uniform(1e-12, 1.0, a.shape))))
     res = dict(ans=[], prog=[], step_op=[], step_ptr=[], step_all=[], first_all=[], type_ok=[], num_for_slot=[], commit_cycle=[])
     if SEAL: res["op_gold"] = []                                                             # (SEAL) the head's op on the GOLD operands
-    res["pred"], res["val"] = [], []                                                         # (11-10 SAMPLE) the vote's inputs
+    res["pred"], res["val"], res["progp"], res["ll"] = [], [], [], []                         # (11-10 SAMPLE / SELECT) the vote's inputs
     with torch.no_grad():
         for s0 in range(0, len(its), 128):
             part = its[s0:s0 + 128]
@@ -584,7 +584,8 @@ def score(net, its, states, tree, seed=0, noise=None):
                     if st[0] == ".": break
                     prog.append(st)
                 v = GD.execute(prog, it["vals"] + [None] * (L - len(it["vals"])))
-                res["ans"].append(v is not None and GD.V1.near(v, it["final"])); res["val"].append(v)
+                res["ans"].append(v is not None and GD.V1.near(v, it["final"])); res["val"].append(v); res["progp"].append(prog)
+                res["ll"].append(float(np.log(np.maximum(rad[b], 1e-30)).sum()))   # the draw's log-likelihood: sum of log commit radii (type x pointers)
                 mm = e["m"]; okall = len(prog) == mm
                 for k in range(mm):
                     o = progs[b][k][0] == gprogs[b][k][0]
@@ -599,7 +600,7 @@ def score(net, its, states, tree, seed=0, noise=None):
                         Vb = V[b, k].numpy()
                         if Vb[L:L + K].any() and not Vb[:L].any(): res["num_for_slot"].append(bool(I[b, k] < L))
                 res["prog"].append(bool(okall))
-    return {k: (v if k in ("pred", "val") else np.asarray(v)) for k, v in res.items()}
+    return {k: (v if k in ("pred", "val", "progp", "ll") else np.asarray(v)) for k, v in res.items()}
 
 
 if __name__ == "__main__":
@@ -622,7 +623,7 @@ if __name__ == "__main__":
     if os.environ.get("BT_SAVE") == "1": torch.save(net.state_dict(), f".cache/gsmb_breath_{TAG}.pt")
     net.eval(); R = {k: score(net, Dt[k], states, tree) for k in SPLITS}
     out = dict(tag=TAG, arm="BT", seed=SEED, d=D, params=npar, steps=STEPS, curve=curve, oracle=ORACLE, load=LOAD,
-               **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m not in ("commit_cycle", "pred", "val")},
+               **{f"{k}_{m}": float(v[m].mean()) for k, v in R.items() for m in v if m not in ("commit_cycle", "pred", "val", "progp", "ll")},
                **{f"{k}_commit_share": np.bincount(v["commit_cycle"][v["commit_cycle"] >= 0], minlength=NCYC).tolist() for k, v in R.items()},
                **{f"{k}_per": [int(x) for x in v["ans"]] for k, v in R.items()},
                atoms_C=net.C.tolist(), atoms_n=net.Cn.tolist())
