@@ -67,4 +67,6 @@ for name, keys in RULES.items():
     out.append(f"  {name}: step {st.mean():.4f} ({st.mean() - S[0].mean():+.4f}) TEST-U {st[~sn].mean():.4f} "
                f"({st[~sn].mean() - S[0][~sn].mean():+.4f}) ans {an.mean():.4f} ({an.mean() - A[0].mean():+.4f}) | greedy kept {np.mean(pick == 0):.3f}")
 np.savez(f".cache/gsm_select_{ARM}.npz", **sv)
+if os.environ.get("SR_PROGS") == "1":   # (11-10 order audit) every candidate's program, for the slot-order audit
+    json.dump([[r["progp"][j] for j in range(len(its))] for r in rs], open(f".cache/gsm_select_{ARM}_progs.json", "w"))
 txt = "\n".join(out); print(txt, flush=True); open(f".cache/gsm_select_{ARM}.txt", "w").write(txt + "\n")

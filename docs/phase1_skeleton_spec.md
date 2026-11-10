@@ -57760,3 +57760,10 @@ draws' mean step 0.1255 / 0.1198 = the SAMPLE read's (the same draws).
 - **Next forms named (not pinned):** (1) the slot-order audit above (zero GPU, on the saved npz + one re-score); (2) a stronger keyless
   judge -- the CSP solver's consistency across draws (agreement of intermediate values, not just the final) / a learned verifier
   trained on TRAIN draws graded by the key (the key gates training data: allowed); (3) MACRO to 10k only if (2) needs a sharper pool.
+
+### 2026-11-10 13:46 -- ORDER AUDIT PINNED (word given 11-10: "word given" for 1 then 2): is the SELECT step loss slot misalignment?
+**Serves:** the SELECT read's open reading; CORE_THEORIES "discover the structure, then solve over it" (a right answer by another route is
+a discovered structure the slot metric cannot see). Re-score MACRO_s0 (same draws; SR_PROGS=1 saves every candidate's program), then
+`scripts/gsm_order_audit.py` (zero GPU): among SEL's answer-right picks, the share NOT slot-aligned (some step_all miss), split into
+re-ordered gold steps (same multiset of op + operands, slot refs blind) vs another route. **ALT-NAMED** (descriptive) if >= 0.50 of SEL's
+answer-right picks are misaligned. PREDICTION: NAMED (~65%), mostly other routes, not pure re-orders.
