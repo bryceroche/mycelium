@@ -57733,3 +57733,30 @@ without the key* -- and the ALTERNATION ruling (the solver's certificates choose
   greedy >= +0.020.
 - **PREDICTIONS:** MACRO: SEL PASS (lean ~55%: the pool holds +0.14 and COVER aims straight at grounding), SEL-U PASS (~50%), SEL-ANS PASS
   (~60%: FCERT filters answers directly); BIND: all three FAIL (its pool holds half as much).
+
+### 2026-11-10 13:41 -- SELECT READ: keyless selection buys ANSWERS, costs STEPS -- SEL-ANS PASS on MACRO (+0.0208, at the bar); step bars FAIL
+Artifacts `.cache/select_verdict.log`, `.cache/gsm_select_{MACRO_s0,BIND_BIND_s0}.{txt,npz}`. VALID: greedy 0.1403 / 0.1267 exact;
+draws' mean step 0.1255 / 0.1198 = the SAMPLE read's (the same draws).
+
+| arm | rule | step (d) | TEST-U (d) | ans (d) | greedy kept |
+|---|---|---|---|---|---|
+| MACRO | **SEL** | 0.1335 (-0.0068) | 0.0948 (-0.0123) | 0.0494 (**+0.0208**) | 0.160 |
+| MACRO | LL | 0.1408 (+0.0005) | 0.1046 (-0.0025) | 0.0326 (+0.0040) | 0.363 |
+| MACRO | CERT+LL | 0.1337 (-0.0065) | 0.0965 (-0.0106) | 0.0395 (+0.0109) | 0.262 |
+| MACRO | COVER+LL | 0.1383 (-0.0020) | 0.1025 (-0.0047) | 0.0405 (+0.0119) | 0.228 |
+| BIND | **SEL** | 0.1214 (-0.0053) | 0.0821 (-0.0110) | 0.0455 (+0.0138) | 0.315 |
+| BIND | LL | 0.1295 (+0.0028) | 0.0953 (+0.0021) | 0.0306 (-0.0010) | 0.514 |
+(BEST@17: MACRO step 0.2848 ans 0.1374; BIND step 0.1996 ans 0.1067. Greedy FCERT 0.742 / 0.756, draws 0.731 / 0.747.)
+
+- **MACRO: SEL-x FAIL (-0.0068), SEL-U FAIL (-0.0123), SEL-ANS PASS (+0.0208; at the bar, one seed; BIND agrees in sign, +0.0138).**
+  **BIND: all three FAIL** (predicted). Predictions on MACRO: step PASS wrong, TEST-U PASS wrong, ANS PASS right.
+- **Reading:** the certificates choose programs whose ANSWER is more often right (MACRO ans 0.029 -> 0.049, 1.7x) while their slot-aligned
+  STEPS score lower -- the step metric grades each slot against the gold slot, so a draw that reaches the answer by another order or
+  route loses step credit (named, not yet audited: count, among SEL's answer-right picks, how many differ from gold step order). The
+  likelihood alone chooses ~greedy. The judges are weak discriminators (FCERT barely separates greedy from draws: 0.742 vs 0.731), and the
+  pool holds far more (BEST@17 ans 0.137 vs SEL 0.049): selection captures ~1/5 of the answer headroom.
+- **Claim (THE NUMBER law, at the bar on one seed):** keyless certificate selection over MACRO's draws lifts TEST answers +0.0208. A seed
+  twin (MACRO_s1 needs training) or a larger pool would firm it; it is banked as the bar reads.
+- **Next forms named (not pinned):** (1) the slot-order audit above (zero GPU, on the saved npz + one re-score); (2) a stronger keyless
+  judge -- the CSP solver's consistency across draws (agreement of intermediate values, not just the final) / a learned verifier
+  trained on TRAIN draws graded by the key (the key gates training data: allowed); (3) MACRO to 10k only if (2) needs a sharper pool.
