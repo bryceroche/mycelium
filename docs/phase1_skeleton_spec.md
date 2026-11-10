@@ -57812,3 +57812,11 @@ Artifact `.cache/gsm_stepmem_w3.txt` (the sentence read reproduced exactly first
   local evidence of their own -- their op lives in the question / the chain, i.e. in the LINKS, which is phase binding's job, not the
   memory's. 4.2% of TRAIN steps still collide (one window, two ops): the key needs the slot's relation to its operands, not more words.
   Seen exceeds unseen by 0.061 even with no skeleton in the key: part of the CJ gap is local wording that TEST-U problems use less often.
+
+### 2026-11-10 14:16 -- ORDER AUDIT READ: ALT NAMED -- 40 of SEL's 50 answer-right picks are slot-misaligned (0.800); 34 other routes, 6 re-orders
+Artifact `.cache/gsm_order_audit_MACRO_s0.txt`; the re-score reproduced SEL's picks exactly (SAME_PICKS).
+- Predicted NAMED, mostly other routes: right. The SELECT step loss is the slot metric, not worse programs: a certified right answer
+  reached another way scores as step misses. Caveat (named): at n = 50 some "other routes" may be right by coincidence (an integer that
+  happens to match); the audit cannot tell a valid alternative derivation from a lucky one without the solver checking each step's
+  meaning. Consequence: selection reads are graded on ANSWERS (keyless certificate + key at the end), and step_all stays the metric for
+  slot-aligned training reads only.
