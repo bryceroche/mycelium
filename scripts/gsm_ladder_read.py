@@ -30,7 +30,7 @@ for sp in ("TRAIN", "TEST"):
     for it, q in zip(D[sp], Q[sp]):
         it["imp0"] = _pos[q]; it["ch"] = [m.span() for m in GD.TOK.finditer(q)]; it["q"] = q; assert len(it["ch"]) == len(it["toks"])
 SRC = os.environ.get("LADDER_STATES", "full"); PARENT = os.environ.get("LADDER_PARENT", "geo")   # (ledger 11-10 LOCAL/ROLE)
-LOCALF = os.environ.get("LADDER_LOCALF", ".cache/gsmb_local_rb8.npy"); DIAL = os.environ.get("LADDER_DIAL") == "1"; LTXT = []; LIDX = {}
+LOCALF = os.environ.get("LADDER_LOCALF", ".cache/gsmb_local_rb8.npy"); DIAL = os.environ.get("LADDER_DIAL") == "1"; NOVEL = os.environ.get("LADDER_NOVEL") == "1"; LTXT = []; LIDX = {}
 if SRC == "local":
     LV = np.load(LOCALF); LIDX = {t: i for i, t in enumerate(json.load(open(LOCALF + ".json"))["texts"])}
 
@@ -112,11 +112,12 @@ def read(T, keys, kinds, nodes):
     for r, (k, kd) in enumerate(zip(keys, kinds)):
         cnt = [T[0].get((k, kd))] + [T[lv].get((int(nodes[lv - 1][r]), kd)) for lv in range(1, L - 1)] + [T[-1].get(kd)]
         p = np.ones(len(OPS)) / len(OPS); alone = None; par = None
+        hit = cnt[0] is not None and cnt[0].sum() > 0   # (NOVEL) the query's exact key recurs: memorize, never climb
         for lv in range(L - 1, -1, -1):
             c = cnt[lv]
             if c is not None and c.sum() > 0:
                 alone = int(c.argmax())
-                if lv < L - 1 and GATE and c.max() / c.sum() < GATE: lvl[lv].append(alone); continue   # (GATED) a split node: climb
+                if lv < L - 1 and GATE and not (NOVEL and hit) and c.max() / c.sum() < GATE: lvl[lv].append(alone); continue   # (GATED) a split node: climb
                 if lv < L - 1 and DIAL and conf(c) < conf(par): lvl[lv].append(alone); continue   # (DIAL) the parent is surer: climb
                 p = (c + KAPPA * p) / (c.sum() + KAPPA)
             if c is not None and c.sum() > 0: par = c
@@ -134,10 +135,10 @@ def run(Z_tr, tag):
     return dict(tag=tag, U=acc(lad, u), S=acc(lad, ~u), ALL=acc(lad, np.ones_like(u)), REC=float((rl == ytr).mean()), census=cen)
 
 
-OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
+OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
-out = [f"LADDER [states {SRC}, parents {PARENT}, gate {GATE}, dial {DIAL}, localf {LOCALF}, kseed {KSEED}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
+out = [f"LADDER [states {SRC}, parents {PARENT}, gate {GATE}, dial {DIAL}, novel {NOVEL}, localf {LOCALF}, kseed {KSEED}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
 for r in (R, P):
     out.append(f"  {r['tag']:12s}: TEST-U {r['U']:.4f} | seen {r['S']:.4f} | all {r['ALL']:.4f} | RECALL {r['REC']:.4f}")
     out.append("    census (each level alone; TEST-U / seen): " + " | ".join(f"{n} {a:.4f}/{b:.4f}" for n, (a, b) in zip(names, r["census"])))

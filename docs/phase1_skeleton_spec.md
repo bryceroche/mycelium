@@ -58053,3 +58053,31 @@ Artifact `.cache/gsm_ladder_local_role_dial.txt`. TEST-U 0.5521 (ungated 0.5428,
   the dial abstracts AWAY the memorization the north star asks for ("overfit the facts to the Tree"). The unseen gain is capped at
   ~+0.01 by both gates: the parents' extra knowledge is about that big. A dial that keeps RECALL must leave exact leaf hits alone
   (a hit on a seen key = memorize; a miss = climb), i.e. the climb should be decided by whether the QUERY recurs, not by node size.
+
+### 2026-11-11 07:58 -- NOVEL + LIVE TREE PINNED (Bryce: "word given for your choice")
+**(1) NOVEL** (zero GPU; `LADDER_NOVEL=1 LADDER_GATE=0.5`, local states, role parents). Theory: overfit the Tree, generalize the
+reader; the bridge's confidence dial. The climb is decided by the QUERY: an exact leaf hit (the key recurs in TRAIN) descends ungated
+(memorize); a miss climbs past split nodes (gate 0.5). **NOVEL-x:** TEST-U - ungated (0.5428) >= +0.020 AND RECALL >= 0.92 (no
+memorization lost). PREDICTION: FAIL (~65%: TEST-U keys rarely hit, so it reads ~ gate 0.5's +0.010; seen and RECALL restored).
+**(2) LIVE TREE (LT8)** -- GPU training, fires after LBAND frees the GPU; built + CPU-smoked first. Theory lines: "every data point
+updates the running Welford stats"; MHA searches the Tree by KNN; overfit the Tree, regularize the reader; gradient never through the
+table. RB8 + a FOURTH road at breath 4 (the breath with no static level): a live table of M = 4096 nodes in the STUDENT's key space.
+  READ (differentiable in the query only): q = state @ w_tq (64-d); soft attention over the node keys (detached), values = node means
+  of the teacher's PCA-256 coordinates (detached) -> @ w_lt into the state. Gradient reaches w_tq and the state, NEVER the table.
+  WRITE (between steps, no gradient): each real token's q (detached) is assigned to its nearest node; keys and values update by
+  Welford running means with a forgetting floor (count capped at 1024: keys must track the drifting query space); dead nodes
+  (no write in 2000 steps) restart at a random current q. Read-before-write: a batch never reads its own writes.
+  Leak audit: ~5M tokens/epoch over 4096 nodes -> a token's own past contribution <= 1/1024 of its node.
+  Same config as RB8 (seed 0, 30k, BEAM=2). Then the RB8 wild pipeline (export, frozen CLK3_241 read, paired vs RB8 seed 0).
+- **LT-W:** wild fac-exact LT8 - RB8 (paired) >= +0.020 (THE NUMBER). **LT-USE** (the mandatory-road census, reported): the read's
+  share of the breath-4 state norm, pre/post projection; and the drop when the live read is severed at eval.
+- PREDICTION: LT-W FAIL (~70%: RB8's static rows already carry the teacher's average context; the live read must add PER-PROBLEM
+  context through a contextual key -- possible, untested).
+
+### 2026-11-11 07:58 -- NOVEL READ: NOVEL-x FAIL (+0.0080; RECALL 0.9218 kept) -- the climb's ceiling is ~+0.01 whichever way it is dialed
+Artifact `.cache/gsm_ladder_local_role_gate0.5_novel.txt`. TEST-U 0.5508, seen 0.6176, RECALL 0.9218 (restored: DIAL's 0.64 was the
+singleton climb); placebo 0.4323. Prediction FAIL: right.
+- **Reading:** query novelty fixes RECALL but not SEEN-skeleton TEST (0.6176 vs 0.6306): TEST steps on seen skeletons rarely hit an
+  exact leaf either, so they climb too. Three gates (fixed, per-node confidence, per-query novelty) all land at +0.008..+0.010: the
+  role parents hold ~+0.01 of knowledge the fine nodes lack. The climb form closes; the knowledge in the parents is the limit, not the
+  rule that reaches them. Better parents (or better leaves) are where the next gain must come from.
