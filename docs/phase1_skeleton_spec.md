@@ -57820,3 +57820,24 @@ Artifact `.cache/gsm_order_audit_MACRO_s0.txt`; the re-score reproduced SEL's pi
   happens to match); the audit cannot tell a valid alternative derivation from a lucky one without the solver checking each step's
   meaning. Consequence: selection reads are graded on ANSWERS (keyless certificate + key at the end), and step_all stays the metric for
   slot-aligned training reads only.
+
+### 2026-11-10 16:18 -- SPAN READ PINNED (zero model, zero GPU): JSD spans as the step memory's key
+**Serves:** Bryce 11-10 ("should the volatile keys include span_id? ... panama hats ... Jensen Shannon divergence"); CORE_THEORIES "MHA
+reads the problem and compresses it into composite keys"; the grounding wall (HOP census) and the window key's 4.2% collisions (STEPMEM2).
+- **Segmenter:** c(a) = JSD(P(next | a), P(next)) on TRAIN text (masked numerals/names; successor smoothed 0.9/0.1 toward the
+  unigram); boundary after token i when c(w_i) < the TRAIN median, always at punctuation and sentence ends. **Key:** the span holding each
+  operand + the span after it, side-tagged; no-anchor steps keep the question sentence. **Placebo:** random boundaries at the JSD rate.
+  Script `scripts/gsm_span_read.py`.
+- **Bars:** **SPAN-x:** TEST-U MEM - 0.5047 (the window key) >= +0.020. **SPAN-PLACEBO:** JSD - placebo >= +0.020 (attribution before
+  the claim). **RECALL** >= 0.99.
+- **PREDICTIONS:** SPAN-x FAIL (lean: the +-3 window already holds most of a quantity phrase), SPAN-PLACEBO PASS (~55%), RECALL FAIL.
+
+### 2026-11-10 16:19 -- SPAN READ: all FAIL -- JSD spans lose to the +-3 window (-0.0339) and barely beat random spans (+0.0131)
+Artifact `.cache/gsm_span.txt`. JSD spans: RECALL 0.8308, TEST-U MEM 0.4708 (prior 0.4572); placebo: RECALL 0.9100, MEM 0.4577.
+SPAN-x FAIL (predicted), SPAN-PLACEBO FAIL (predicted PASS: wrong), RECALL FAIL (predicted).
+- **Why (the demo shows it):** spans average 1.64 tokens and cut quantity phrases apart ("lay <num> | eggs | per day") -- the coherence of
+  a token is judged from its LEFT side alone, and <num> predicts nothing about its successor, so a boundary falls after every numeral:
+  the exact place a step's meaning lives. Successor-only JSD at the median closes; the span line stays open.
+- **Next forms named:** (1) two-sided JSD (a boundary where the left and right context distributions diverge, numerals bound to
+  their unit by construction); (2) IMPULSE: perturb one token in the reader, read every other token's state change -- the coupling matrix's
+  blocks are spans (uses the reader, not corpus counts; it sees "panama hats" in context); (3) MRI-style phase coherence across breaths.
