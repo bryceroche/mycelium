@@ -57841,3 +57841,30 @@ SPAN-x FAIL (predicted), SPAN-PLACEBO FAIL (predicted PASS: wrong), RECALL FAIL 
 - **Next forms named:** (1) two-sided JSD (a boundary where the left and right context distributions diverge, numerals bound to
   their unit by construction); (2) IMPULSE: perturb one token in the reader, read every other token's state change -- the coupling matrix's
   blocks are spans (uses the reader, not corpus counts; it sees "panama hats" in context); (3) MRI-style phase coherence across breaths.
+
+### 2026-11-10 16:25 -- THE MEMORY LINE (Bryce 11-10, word given): genericized spans and single steps go INTO the Tree; the skeleton linking them never does
+Bryce: "we will memorize genericized spans into the Tree DB but not the skeleton linking them into a factor graph -- that is the cross
+join." Built form: the Tree holds NODES (span content, numerals/names masked) and SINGLE EDGES (one step = one factor: op over two
+operand roles); the GRAPH (which span feeds which step, the chain, span_id / slot_id / T6 / T9 / beam id) is bound per problem by phase
+binding, never stored, and checked by the solver's certificates. Two-step motifs (the recursion charter's macros) sit at the cross join's
+first layer: held out of the Tree until a read admits them.
+
+### 2026-11-10 16:25 -- STEP VERIFIER READ PINNED (zero GPU, no training): the step memory judges each step; the solver judges the links
+**Serves:** the memory line above; CORE_THEORIES' open question (certify a discovered structure without the key); the SELECT read.
+Pool = SELECT's MACRO_s0 candidates (greedy + 16 draws, saved programs). SUPPORT(step) = max TF-IDF cosine of its +-3 operand-window key
+(STEPMEM2) to TRAIN gold steps with the same (op, kinds); program = mean over anchored steps. **VER** = argmax (FCERT, CERT, SUPPORT, LL);
+VER-ONLY = (SUPPORT, LL). Graded on answers. Script `scripts/gsm_verifier_read.py`.
+- **Bar:** **VER-x:** VER ans - SEL ans (0.0494) >= +0.020. Descriptive: support of answer-right vs wrong candidates; VER-ONLY.
+- **PREDICTION:** VER-x FAIL (lean ~60%: TF-IDF support is a coarse judge, and the certificates already took the easy wins); support
+  higher on answer-right candidates (~75%).
+
+### 2026-11-10 16:26 -- STEP VERIFIER READ: VER-x FAIL (-0.0069 vs SEL); the memory SEPARATES right from wrong candidates (support 0.457 vs 0.377) but does not select
+Artifact `.cache/gsm_verifier.txt`. VER ans 0.0425 (greedy 0.0287, SEL 0.0494, BEST@17 0.1374); unseen-skeleton ans 0.0281 (SEL
+0.0238); VER-ONLY 0.0306. Both predictions right (VER-x FAIL; support higher on answer-right candidates).
+- **Reading:** step-grain memory carries a real verdict signal (+0.081 mean support for answer-right candidates) with no skeleton in it,
+  but as an argmax it picks well-supported WRONG programs about as often as it finds right ones: support rewards familiar local wording,
+  and a wrong op over the right span still looks familiar. **Design flaw named (mine):** VER replaced SEL's COVER judge with SUPPORT
+  instead of adding it, so VER vs SEL is not a clean attribution of the memory. VER on unseen skeletons edges SEL (+0.0043; n tiny).
+- **The form closes (TF-IDF support, argmax); the line (the Tree as step judge) stays open.** Next forms named: SUPPORT as a margin
+  (this op's best match minus the best match of any OTHER op over the same window -- the memory voting for the op, not for familiarity),
+  added to SEL's judges rather than replacing COVER; then span keys from the impulse read.
