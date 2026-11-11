@@ -41,12 +41,28 @@ for a, c in big.items():
 med = float(np.median([coh.get(w, 0.0) for it in D["TRAIN"] for w in words(it) if w not in PUN]))
 
 
+SRC = os.environ.get("SPAN_SRC", "jsd")   # (ledger 11-10) jsd | impulse (the reader's word coupling, distill_reader.py --impulse)
+if SRC == "impulse":
+    import gsm_trunk_states as GTS
+    _, Q = GTS.texts(); IMP = np.load(".cache/gsmb_impulse_rb8.npy"); _tx = json.load(open(".cache/gsmb_impulse_rb8.npy.json"))["texts"]
+    _st = np.cumsum([0] + [len(GD.tokenize(q, set())[0]) for q in _tx]); _pos = {q: int(_st[i]) for i, q in enumerate(_tx)}
+    assert _st[-1] == len(IMP), (_st[-1], len(IMP))
+    for sp in ("TRAIN", "TEST"):
+        for it, q in zip(D[sp], Q[sp]): it["imp0"] = _pos[q]
+
+    def cpl(it, i):   # coupling of words i, i+1: the mean of the two cross responses
+        s0 = it["imp0"]; return (IMP[s0 + i, 0] + IMP[s0 + i + 1, 1]) / 2
+    med = float(np.median([cpl(it, i) for it in D["TRAIN"] for w in [words(it)] for i in range(len(w) - 1)
+                           if not (w[i] in PUN or w[i + 1] in PUN or it["sid"][i] != it["sid"][i + 1])]))
+
+
 def bounds(it, rng=None, rate=None):
     w = words(it); sid = it["sid"]
     b = [True] * len(w)
     for i in range(len(w) - 1):
         if w[i] in PUN or w[i + 1] in PUN or sid[i] != sid[i + 1]: b[i] = True
         elif rng is not None: b[i] = rng.random() < rate
+        elif SRC == "impulse": b[i] = cpl(it, i) < med
         else: b[i] = coh.get(w[i], 0.0) < med
     return b                                                     # b[i]: a boundary after token i
 
@@ -90,19 +106,19 @@ def read(make):
 nb = [b for it in D["TRAIN"] for b in bounds(it)]; rate_free = None
 # the placebo's rate = the JSD boundary rate on non-forced positions
 forced = [w[i] in PUN or w[i + 1] in PUN or it["sid"][i] != it["sid"][i + 1] for it in D["TRAIN"] for w in [words(it)] for i in range(len(w) - 1)]
-jb = [coh.get(words(it)[i], 0.0) < med for it in D["TRAIN"] for i in range(len(words(it)) - 1)]
+jb = [(cpl(it, i) if SRC == "impulse" else coh.get(words(it)[i], 0.0)) < med for it in D["TRAIN"] for i in range(len(words(it)) - 1)]
 rate = float(np.mean([b for b, f in zip(jb, forced) if not f]))
 rng = np.random.default_rng(0)
 J = read(lambda it: spans(it, bounds(it)))
 P = read(lambda it: spans(it, bounds(it, rng, rate)))
 ex = D["TEST"][0]; sp = spans(ex, bounds(ex)); w = words(ex)
 demo = " | ".join(" ".join(x for x, s in zip(w, sp) if s == k) for k in range(max(sp) + 1))[:400]
-out = [f"JSD segmenter: median coherence {med:.4f} bits; free-boundary rate {rate:.3f}; mean span len "
+out = [f"{SRC.upper()} segmenter: median coherence {med:.4f} bits; free-boundary rate {rate:.3f}; mean span len "
        f"{np.mean([np.bincount(spans(it, bounds(it))).mean() for it in D['TEST']]):.2f} tokens",
        f"  demo: {demo}",
-       f"  JSD spans : RECALL {J[0]:.4f} | TEST-U MEM {J[1]:.4f} (prior {J[2]:.4f}, d {J[1] - J[2]:+.4f}) | seen MEM {J[3]:.4f}",
+       f"  {SRC.upper()} spans : RECALL {J[0]:.4f} | TEST-U MEM {J[1]:.4f} (prior {J[2]:.4f}, d {J[1] - J[2]:+.4f}) | seen MEM {J[3]:.4f}",
        f"  PLACEBO   : RECALL {P[0]:.4f} | TEST-U MEM {P[1]:.4f} (d {P[1] - P[2]:+.4f}) | seen MEM {P[3]:.4f}",
        f"  window +-3 (STEPMEM2, banked): RECALL 0.9582 | TEST-U MEM 0.5047",
-       f"SPAN-x (JSD - window >= +0.020): {J[1] - 0.5047:+.4f} -> {'PASS' if J[1] - 0.5047 >= 0.020 else 'FAIL'} | "
-       f"SPAN-PLACEBO (JSD - placebo >= +0.020): {J[1] - P[1]:+.4f} -> {'PASS' if J[1] - P[1] >= 0.020 else 'FAIL'} | RECALL >= 0.99 -> {'PASS' if J[0] >= 0.99 else 'FAIL'}"]
-txt = "\n".join(out); print(txt); open(".cache/gsm_span.txt", "w").write(txt + "\n")
+       f"SPAN-x (spans - window >= +0.020): {J[1] - 0.5047:+.4f} -> {'PASS' if J[1] - 0.5047 >= 0.020 else 'FAIL'} | "
+       f"SPAN-PLACEBO (spans - placebo >= +0.020): {J[1] - P[1]:+.4f} -> {'PASS' if J[1] - P[1] >= 0.020 else 'FAIL'} | RECALL >= 0.99 -> {'PASS' if J[0] >= 0.99 else 'FAIL'}"]
+txt = "\n".join(out); print(txt); open(f".cache/gsm_span{'' if SRC == 'jsd' else '_' + SRC}.txt", "w").write(txt + "\n")
