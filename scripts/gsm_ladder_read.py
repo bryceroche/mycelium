@@ -26,7 +26,12 @@ _, Q = GTS.texts(); IMP = np.load(".cache/gsmb_impulse_rb8.npy"); _tx = json.loa
 _st = np.cumsum([0] + [len(GD.tokenize(q, set())[0]) for q in _tx]); _pos = {q: int(_st[i]) for i, q in enumerate(_tx)}
 assert _st[-1] == len(IMP)
 for sp in ("TRAIN", "TEST"):
-    for it, q in zip(D[sp], Q[sp]): it["imp0"] = _pos[q]
+    for it, q in zip(D[sp], Q[sp]):
+        it["imp0"] = _pos[q]; it["ch"] = [m.span() for m in GD.TOK.finditer(q)]; it["q"] = q; assert len(it["ch"]) == len(it["toks"])
+SRC = os.environ.get("LADDER_STATES", "full"); PARENT = os.environ.get("LADDER_PARENT", "geo")   # (ledger 11-10 LOCAL/ROLE)
+LOCALF = ".cache/gsmb_local_rb8.npy"; LTXT = []; LIDX = {}
+if SRC == "local":
+    LV = np.load(LOCALF); LIDX = {t: i for i, t in enumerate(json.load(open(LOCALF + ".json"))["texts"])}
 
 
 def words(it): return ["<num>" if v is not None else ("<name>" if n else w) for w, v, n in zip(it["toks"], it["vals"], it["isn"])]
@@ -53,13 +58,18 @@ def steps(it):
             pos = [[j for j in range(len(w)) if sid[j] == last], []]; key = "q: " + " ".join(w[j] for j in pos[0])
         v = []
         for P in pos:
-            x = np.asarray(ST[it["st0"] + np.array(P, int)], np.float32).mean(0) if P else np.zeros(ST.shape[1], np.float32)
+            txt = it["q"][it["ch"][min(P)][0]:it["ch"][max(P)][1]] if P else None   # the key's exact substring (local form)
+            if txt is not None: LTXT.append(txt)
+            if SRC == "local": x = LV[LIDX[txt]].astype(np.float32) if P else np.zeros(LV.shape[1], np.float32)
+            else: x = np.asarray(ST[it["st0"] + np.array(P, int)], np.float32).mean(0) if P else np.zeros(ST.shape[1], np.float32)
             v.append(x / (np.linalg.norm(x) + 1e-6))
         res.append((key, (SK.first_kind(A), SK.first_kind(B)), OI[o], np.concatenate(v)))
     return res
 
 
 tr = [s for it in D["TRAIN"] for s in steps(it)]; te = [s for it in D["TEST"] for s in steps(it)]
+if os.environ.get("LADDER_DUMP") == "1":   # the local texts for distill_reader.py --local
+    LT = sorted(set(LTXT)); json.dump(dict(texts=LT), open(".cache/gsm_ladder_local_texts.json", "w")); print(f"[ladder] {len(LT)} local texts"); sys.exit(0)
 u = np.concatenate([[SK.skeleton(it) not in seen] * min(len(it["prog"]), K) for it in D["TEST"]]).astype(bool)
 assert len(u) == len(te)
 Xtr = np.stack([s[3] for s in tr]); Xte = np.stack([s[3] for s in te]); ytr = np.array([s[2] for s in tr]); yte = np.array([s[2] for s in te])
@@ -71,8 +81,11 @@ print(f"[ladder] {len(tr)} TRAIN steps, {len(te)} TEST steps (TEST-U {u.sum()}),
 def build(Z):
     """nested levels on TRAIN vectors Z -> (assign fn, train node ids per level L1..L3)"""
     km = MiniBatchKMeans(KS[0], random_state=0, n_init=3, batch_size=4096).fit(Z); c1 = km.labels_
-    maps = [np.arange(KS[0])]
-    for k in KS[1:]: maps.append(AgglomerativeClustering(k, linkage="ward").fit(km.cluster_centers_).labels_)
+    maps = [np.arange(KS[0])]; C = km.cluster_centers_
+    if PARENT == "role":   # (ROLE) parents in an op-discriminant space: spans that FEED THE SAME OP group together
+        from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+        C = LinearDiscriminantAnalysis().fit(Z, ytr).transform(C)
+    for k in KS[1:]: maps.append(AgglomerativeClustering(k, linkage="ward").fit(C).labels_)
     def assign(X): l1 = km.predict(X); return [m[l1] for m in maps]
     return assign, [m[c1] for m in maps]
 
@@ -112,9 +125,10 @@ def run(Z_tr, tag):
     return dict(tag=tag, U=acc(lad, u), S=acc(lad, ~u), ALL=acc(lad, np.ones_like(u)), REC=float((rl == ytr).mean()), census=cen)
 
 
+OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
-out = [f"LADDER: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
+out = [f"LADDER [states {SRC}, parents {PARENT}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
 for r in (R, P):
     out.append(f"  {r['tag']:12s}: TEST-U {r['U']:.4f} | seen {r['S']:.4f} | all {r['ALL']:.4f} | RECALL {r['REC']:.4f}")
     out.append("    census (each level alone; TEST-U / seen): " + " | ".join(f"{n} {a:.4f}/{b:.4f}" for n, (a, b) in zip(names, r["census"])))
@@ -123,7 +137,7 @@ out.append(f"  window +-3 (STEPMEM2, banked): TEST-U 0.5047")
 out.append(f"LADDER-x (TEST-U - 0.5047 >= +0.020): {R['U'] - WINDOW:+.4f} -> {'PASS' if R['U'] - WINDOW >= 0.020 else 'FAIL'} | "
            f"TREE-PLACEBO (ladder - placebo >= +0.020): {R['U'] - P['U']:+.4f} -> {'PASS' if R['U'] - P['U'] >= 0.020 else 'FAIL'} | "
            f"CROSSOVER (best seen = L0 {names[bs]}, best TEST-U coarser {names[bu]}): {'PASS' if bs == 0 and bu > 0 else 'FAIL'}")
-txt = "\n".join(out); print(txt); open(".cache/gsm_ladder.txt", "w").write(txt + "\n")
+txt = "\n".join(out); print(txt); open(OUTF, "w").write(txt + "\n")
 
 if os.environ.get("LADDER_DIAG") == "1":   # (unbarred attribution, ledger 11-10) is it the states or the ladder? flat 1-NN on the same vectors
     Zn = Ztr / np.linalg.norm(Ztr, axis=1, keepdims=True); Qn = Zte / np.linalg.norm(Zte, axis=1, keepdims=True)
@@ -131,4 +145,4 @@ if os.environ.get("LADDER_DIAG") == "1":   # (unbarred attribution, ledger 11-10
     for i, kd in enumerate(kd_tr): byk[kd].append(i)
     pr = np.array([ytr[byk[kd]][int((Zn[byk[kd]] @ q).argmax())] if kd in byk else -1 for q, kd in zip(Qn, kd_te)])
     d = f"DIAG flat 1-NN on the same state vectors (no ladder): TEST-U {float((pr[u] == yte[u]).mean()):.4f} | seen {float((pr[~u] == yte[~u]).mean()):.4f}"
-    print(d); open(".cache/gsm_ladder.txt", "a").write(d + "\n")
+    print(d); open(OUTF, "a").write(d + "\n")

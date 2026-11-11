@@ -21,6 +21,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     ap = argparse.ArgumentParser()
     ap.add_argument("--export", default=""); ap.add_argument("--src", default=""); ap.add_argument("--out", default="")
     ap.add_argument("--padzero", default=""); ap.add_argument("--gsm", default=""); ap.add_argument("--table", default="")
+    ap.add_argument("--local", default="")   # (ledger 11-10 LOCAL ladder) texts json -> mean token output per text, each run ALONE
     ap.add_argument("--impulse", default="")   # (ledger 11-10 IMPULSE) per-word coupling of the GSM TRAIN+TEST texts
     args = ap.parse_args()
     assert os.environ.get("DEV") in ("PCI+AMD", "CPU"), "DEV=PCI+AMD (never bare AMD) or CPU"
@@ -56,7 +57,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
     TRAIN_JSONL, TRAIN_SPLIT = ".cache/form_mix_pm35c.jsonl", "formpm35cBP"
     CKPT, META = f".cache/distill_reader_{TAG}.safetensors", f".cache/distill_reader_{TAG}.json"
-    if (args.export or args.gsm or args.table or args.impulse) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
+    if (args.export or args.gsm or args.table or args.impulse or args.local) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
     EPS = 1e-5
     PROF = bool(int(os.environ.get("DR_PROF", "0")))
 
@@ -76,7 +77,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         assert args.out; padzero(args.padzero, args.out); sys.exit(0)
 
     TABLE = os.environ.get("DR_TABLE", "")   # THE STUDENT'S OWN TABLE (ledger 10-31, Llama retired): folded + pruned, Llama's file never opened
-    if TABLE and (args.export or args.gsm or args.impulse):
+    if TABLE and (args.export or args.gsm or args.impulse or args.local):
         _t = np.load(TABLE); EMB = np.zeros((int(_t["V"]), int(_t["rows"].shape[1])), np.float16); EMB[_t["keep"]] = _t["rows"]
         for _j, _i in enumerate(_t["oov_ids"]):
             EMB[_i] = EMB[_t["pieces"][_t["piece_ptr"][_j]:_t["piece_ptr"][_j + 1]]].astype(np.float32).mean(0).astype(np.float16)
@@ -326,6 +327,30 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
                 if i > 0: out[s0 + i, 1] = R[i - 1, i]
             if ti % 200 == 0: print(f"[impulse] {ti}/{len(uniq)} ({time.time() - t0:.0f}s)", flush=True)
         np.save(args.impulse, out); print(f"[impulse] {len(uniq)} texts, {int(start[-1])} words -> {args.impulse} ({CKPT})", flush=True); sys.exit(0)
+
+    if args.local:   # (ledger 11-10 LOCAL ladder) each text through the reader ALONE: no context = a local key by construction
+        from tokenizers import Tokenizer
+        from phase1_algebra_head import sent_indices
+        out_p = ".cache/gsmb_local_rb8.npy"
+        assert os.path.exists(CKPT) and not os.path.exists(out_p), f"need {CKPT}; refusing to overwrite {out_p}"
+        texts = json.load(open(args.local))["texts"]; tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
+        ld = safe_load(CKPT); p = owned({k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld})
+        IB = 8; out = None; t0 = time.time()
+        for b0 in range(0, len(texts), IB):
+            rows = texts[b0:b0 + IB]; ids = np.zeros((IB, T_ALG), np.int32); m = np.zeros((IB, T_ALG), np.float32); sent = np.zeros((IB, T_ALG), np.int8)
+            for r, q in enumerate(rows):
+                e = tok.encode(q); n = min(len(e.ids), T_ALG); ids[r, :n] = e.ids[:n]; m[r, :n] = 1
+                sent[r] = sent_indices(q, e.offsets[:n], m[r]).astype(np.int8)
+            for r in range(len(rows), IB): ids[r], m[r], sent[r] = ids[0], m[0], sent[0]
+            db = rb_rows(ids, m) if RB else np.zeros((IB, T_ALG, DBP), np.float16)
+            xin = (Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None)
+            rc = tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(sent, m)) if T6 else None
+            o = forward(p, *xin, rc).realize().numpy(); assert np.isfinite(o).all()
+            if out is None: out = np.zeros((len(texts), o.shape[-1]), np.float32)
+            for r in range(len(rows)): out[b0 + r] = (o[r, 1:] * m[r, 1:, None]).sum(0) / m[r, 1:].sum()   # BOS excluded
+            if b0 % 2000 == 0: print(f"[local] {b0}/{len(texts)} ({time.time() - t0:.0f}s)", flush=True)
+        np.save(out_p, out); json.dump(dict(texts=texts), open(out_p + ".json", "w"))
+        print(f"[local] {len(texts)} texts -> {out_p} ({CKPT})", flush=True); sys.exit(0)
 
     # ---- train ------------------------------------------------------------------------------------------------------
     LK = os.environ.get("DR_LK") == "1"   # (ledger 11-02 LK0) read a trained MBR ckpt: the per-token best-breath ceiling

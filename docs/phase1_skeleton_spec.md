@@ -57973,3 +57973,16 @@ Artifact `.cache/gsm_ladder.txt` (reproduced bit-identically on a second run). 2
 - **Caveat (custody of locality):** the RB8 states are full-attention, so a span's vector carries its whole problem's context -- the
   key is NOT local by construction; part of the gain may be skeleton seeping in through context. Next form named: the same ladder on a
   LOCAL-mask state (the key-forming road's contract), and parents by role (op-conditioned) rather than by k-means geometry.
+
+### 2026-11-10 20:42 -- LOCAL + ROLE LADDERS PINNED (Bryce: word given). Theory lines: local-only mask on the key-forming road; tiers = invariance contracts (the role tier); abstract reasoning = zooming out on the Tree DB
+- **LOCAL states** (inference on the banked RB8 reader, `distill_reader.py --local`): each key's text -- the operand's span + the next
+  span, the exact substring of the problem; the question sentence for operand-free steps -- is run through the reader ALONE (nothing
+  else of its problem in view), its token outputs averaged. Local by construction: no context, no skeleton.
+- **ROLE parents** (`LADDER_PARENT=role`): L1 unchanged (k-means 2048, geometry); L2/L3 = Ward over the L1 centroids projected into
+  an op-discriminant space (LDA fit on TRAIN steps against their ops) -- parents group spans that FEED THE SAME OP, not spans that look
+  alike. Same leaves, kappa, placebo (shuffled vectors through the same build).
+- **Bars:** **LOCAL-x:** local+geometry TEST-U >= 0.5247 (the window + 0.020). **LEAK** (named / none named): full - local (geometry)
+  >= +0.020 = context carries gain. **ROLE-x:** role - geometry >= +0.020 on TEST-U on BOTH state sources. **CROSSOVER-R:** with role
+  parents the best single level on TEST-U is L2 or L3 (either source).
+- **PREDICTIONS:** LOCAL-x PASS (~55%), LEAK named (~45%), ROLE-x FAIL (~65%: kappa 0.5 lets parents speak only on sparse nodes),
+  CROSSOVER-R FAIL (~60%).
