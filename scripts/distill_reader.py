@@ -21,6 +21,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     ap = argparse.ArgumentParser()
     ap.add_argument("--export", default=""); ap.add_argument("--src", default=""); ap.add_argument("--out", default="")
     ap.add_argument("--padzero", default=""); ap.add_argument("--gsm", default=""); ap.add_argument("--table", default="")
+    ap.add_argument("--mri", default="")   # (ledger 11-11 MRI) per-word spin coherence with the next word across breaths
     ap.add_argument("--local", default="")   # (ledger 11-10 LOCAL ladder) texts json -> mean token output per text, each run ALONE
     ap.add_argument("--impulse", default="")   # (ledger 11-10 IMPULSE) per-word coupling of the GSM TRAIN+TEST texts
     args = ap.parse_args()
@@ -57,7 +58,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
     TRAIN_JSONL, TRAIN_SPLIT = ".cache/form_mix_pm35c.jsonl", "formpm35cBP"
     CKPT, META = f".cache/distill_reader_{TAG}.safetensors", f".cache/distill_reader_{TAG}.json"
-    if (args.export or args.gsm or args.table or args.impulse or args.local) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
+    if (args.export or args.gsm or args.table or args.impulse or args.local or args.mri) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
     EPS = 1e-5
     PROF = bool(int(os.environ.get("DR_PROF", "0")))
 
@@ -77,7 +78,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         assert args.out; padzero(args.padzero, args.out); sys.exit(0)
 
     TABLE = os.environ.get("DR_TABLE", "")   # THE STUDENT'S OWN TABLE (ledger 10-31, Llama retired): folded + pruned, Llama's file never opened
-    if TABLE and (args.export or args.gsm or args.impulse or args.local):
+    if TABLE and (args.export or args.gsm or args.impulse or args.local or args.mri):
         _t = np.load(TABLE); EMB = np.zeros((int(_t["V"]), int(_t["rows"].shape[1])), np.float16); EMB[_t["keep"]] = _t["rows"]
         for _j, _i in enumerate(_t["oov_ids"]):
             EMB[_i] = EMB[_t["pieces"][_t["piece_ptr"][_j]:_t["piece_ptr"][_j + 1]]].astype(np.float32).mean(0).astype(np.float16)
@@ -133,7 +134,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     def init_params(mean_out):
         rng = np.random.default_rng(RSEED)
         nrm = lambda *s: Tensor(rng.normal(0, 1 / math.sqrt(s[0]), s).astype(np.float32), dtype=dtypes.float).contiguous()
-        p = {"w_in": nrm(H_TRUNK, D), **({"w_db": nrm(DBP, D)} if DBIN and not RB else {}), **({f"w_db{l}": nrm(DBP, D) for l in range(3)} if RB else {}), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
+        p = {"w_in": nrm(H_TRUNK, D), **({"w_db": nrm(DBP, D)} if DBIN and not RB else {}), **({f"w_db{l}": nrm(DBP, D) for l in range(3)} if RB else {}), **({"w_tq": nrm(D, LTQ), "w_lt": nrm(DBP, D)} if LT else {}), "fnorm": Tensor.ones(D, dtype=dtypes.float).contiguous(),
              "w_out": nrm(D, H_TRUNK), "b_out": Tensor(mean_out.astype(np.float32), dtype=dtypes.float).contiguous()}
         for i in range(NL):
             p[f"an{i}"] = Tensor.ones(D, dtype=dtypes.float).contiguous(); p[f"fn{i}"] = Tensor.ones(D, dtype=dtypes.float).contiguous()
@@ -165,6 +166,10 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         for br in range(max(BR, 1)):
           if RB and br < 3:   # (ledger 11-03 RB8) this breath reads one level deeper in the Tree
             x = x + db[:, :, br * DBP:(br + 1) * DBP].cast(dtypes.float) @ p[f"w_db{br}"]
+          if LT and br == 3:   # (ledger 11-11 LT8) THE LIVE TREE: soft KNN over the table; grad reaches the query only, never the table
+            q_lt = x @ p["w_tq"]; _LTQ[0] = q_lt
+            a_lt = ((q_lt @ LT_K.T) * (1 / math.sqrt(LTQ))).clip(-1e4, 1e4).softmax(-1)
+            x = x + (a_lt @ LT_V) @ p["w_lt"]
           if BR:   # the coarse-to-fine clock: quiet planes read cos 1 / sin 0
             kc, ks = rc[0] * BRM[br] + (1 - BRM[br]), rc[1] * BRM[br]
           for i in range(NL):
@@ -206,6 +211,37 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         if BAND:   # (LBAND) the band: |i - j| > BAND is sealed (field after L layers x breaths applications = +-BAND x L x BR)
             ii = np.arange(tm.shape[1]); am = am + np.where(np.abs(ii[:, None] - ii[None, :]) > BAND, -1e4, 0.0).astype(np.float32)[None, None]
         return Tensor(am, dtype=dtypes.float)
+
+
+    LT = os.environ.get("DR_LT") == "1"; LTQ, LTM, LTCAP, LTDEAD = 64, 4096, 1024, 2000   # (ledger 11-11 LT8) the live Tree
+    _LTQ = [None]
+    if LT:
+        assert RB and BR == 4, "LT8 = RB8 + a live read at breath 4"
+        LT_PATH = CKPT.replace(".safetensors", "_lt.npz")
+        _lz = np.load(LT_PATH) if os.path.exists(LT_PATH) else None
+        LT_K = Tensor(_lz["K"] if _lz is not None else np.random.default_rng(RSEED + 7).normal(0, 1, (LTM, LTQ)).astype(np.float32), dtype=dtypes.float).contiguous().realize()
+        LT_V = Tensor(_lz["V"] if _lz is not None else np.zeros((LTM, DBP), np.float32), dtype=dtypes.float).contiguous().realize()
+        LT_N = _lz["N"] if _lz is not None else np.zeros(LTM, np.float64); LT_LAST = np.zeros(LTM, np.int64)
+        LT_KH, LT_VH = LT_K.numpy().copy(), LT_V.numpy().copy()
+
+
+        def lt_write(q, tgt, tm, step, rng):
+            """Welford running means (count capped at LTCAP) of the batch's queries (keys) and teacher PCA rows (values), no gradient"""
+            m = tm.reshape(-1) > 0; qq = q.reshape(-1, LTQ)[m].astype(np.float32)
+            z = ((tgt.reshape(-1, tgt.shape[-1])[m].astype(np.float32) - RB_MU) @ RB_U) * RB_SCALE
+            if step == 0:   # birth: every node at a sampled live query
+                j = rng.choice(len(qq), LTM, replace=len(qq) < LTM); LT_KH[:] = qq[j]; LT_VH[:] = z[j]; LT_N[:] = 1; LT_LAST[:] = 0
+            else:
+                d = (qq * qq).sum(1)[:, None] - 2 * qq @ LT_KH.T + (LT_KH * LT_KH).sum(1)[None]; a = d.argmin(1)
+                c = np.bincount(a, minlength=LTM).astype(np.float64); hit = c > 0
+                sq = np.zeros_like(LT_KH); np.add.at(sq, a, qq); sz = np.zeros_like(LT_VH); np.add.at(sz, a, z)
+                den = (np.minimum(LT_N, LTCAP) + c)[hit, None]
+                LT_KH[hit] += (sq[hit] - c[hit, None] * LT_KH[hit]) / den; LT_VH[hit] += (sz[hit] - c[hit, None] * LT_VH[hit]) / den
+                LT_N[hit] = np.minimum(LT_N[hit] + c[hit], LTCAP); LT_LAST[hit] = step
+                dead = np.nonzero(step - LT_LAST > LTDEAD)[0]
+                if len(dead):   # restart: a dead node is reborn at a random current query
+                    j = rng.choice(len(qq), len(dead)); LT_KH[dead] = qq[j]; LT_VH[dead] = z[j]; LT_N[dead] = 1; LT_LAST[dead] = step
+            LT_K.assign(Tensor(LT_KH, dtype=dtypes.float)).realize(); LT_V.assign(Tensor(LT_VH, dtype=dtypes.float)).realize()
 
 
     def owned(p):
@@ -334,6 +370,41 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
             if ti % 200 == 0: print(f"[impulse] {ti}/{len(uniq)} ({time.time() - t0:.0f}s)", flush=True)
         np.save(args.impulse, out); print(f"[impulse] {len(uniq)} texts, {int(start[-1])} words -> {args.impulse} ({CKPT})", flush=True); sys.exit(0)
 
+    if args.mri:   # (ledger 11-11 MRI, Bryce: "magnetic resonance imaging") spins = each word's layer-0 KEY on the attention's complex planes
+        # (head dims j, j + HD/2 -- the planes the T9 clock turns; the key BEFORE the clock = the clock unbound by its conjugate: the spin
+        # echo), read off every breath's output. Coherence(i, i+1) = radius-weighted mean over planes of |mean over breaths e^{i dphi}|,
+        # dphi = angle(z_{i+1} conj(z_i)): neighbours whose relative phase holds across the breaths precess as one tissue.
+        # -> args.mri (float32 [n_words], coherence with the NEXT word, 0 at a text's end; the impulse layout: TRAIN + TEST texts)
+        import gsm_bench_data as GD, gsm_trunk_states as GTS
+        from tokenizers import Tokenizer
+        from phase1_algebra_head import sent_indices
+        assert BR and os.path.exists(CKPT) and not os.path.exists(args.mri), f"need a breathing {CKPT}; refusing to overwrite {args.mri}"
+        Dt, Q = GTS.texts(); tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
+        uniq = list(dict.fromkeys(q for sp in ("TRAIN", "TEST") for q in Q[sp]))
+        assert uniq == json.load(open(".cache/gsmb_impulse_rb8.npy.json"))["texts"], "the MRI layout must equal the impulse layout"
+        enc = [tok.encode(q) for q in uniq]; al = [GTS.align(q, e.offsets, len(e.ids)) for q, e in zip(uniq, enc)]
+        start = np.cumsum([0] + [len(a) for a in al]); out = np.zeros(int(start[-1]), np.float32)
+        ld = safe_load(CKPT); p = owned({k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld})
+        IB = 8; t0 = time.time()
+        for b0 in range(0, len(uniq), IB):
+            rows = list(range(b0, min(b0 + IB, len(uniq)))); ids = np.zeros((IB, T_ALG), np.int32); m = np.zeros((IB, T_ALG), np.float32); sent = np.zeros((IB, T_ALG), np.int8)
+            for r, ti in enumerate(rows):
+                n = len(enc[ti].ids); ids[r, :n] = enc[ti].ids; m[r, :n] = 1; sent[r] = sent_indices(uniq[ti], enc[ti].offsets, m[r]).astype(np.int8)
+            for r in range(len(rows), IB): ids[r], m[r], sent[r] = ids[0], m[0], sent[0]
+            db = rb_rows(ids, m) if RB else np.zeros((IB, T_ALG, DBP), np.float16)
+            rc = tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(sent, m))
+            xs = body(p, Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None, rc, every=True)
+            ks = np.stack([(_rms_norm(x, p["an0"], EPS) @ p["wk0"]).realize().numpy() for x in xs])     # (BR, IB, T, D)
+            ks = ks.reshape(BR, IB, T_ALG, NH, HD); z = ks[..., :HD // 2] + 1j * ks[..., HD // 2:]     # (BR, IB, T, NH, HD/2) spins
+            for r, ti in enumerate(rows):
+                zw = z[:, r, al[ti]]                                                                     # (BR, W, NH, HD/2)
+                if zw.shape[1] < 2: continue
+                e = zw[:, 1:] * np.conj(zw[:, :-1]); rad = np.abs(e)                                     # the conjugate unbind of the neighbour
+                coh = np.abs((e / (rad + 1e-12)).mean(0)); w = rad.mean(0)                               # (W-1, NH, HD/2)
+                out[start[ti]:start[ti] + len(al[ti]) - 1] = (coh * w).sum((-1, -2)) / (w.sum((-1, -2)) + 1e-12)
+            if b0 % 800 == 0: print(f"[mri] {b0}/{len(uniq)} ({time.time() - t0:.0f}s)", flush=True)
+        np.save(args.mri, out); print(f"[mri] {len(uniq)} texts, {int(start[-1])} words -> {args.mri} ({CKPT})", flush=True); sys.exit(0)
+
     if args.local:   # (ledger 11-10 LOCAL ladder) each text through the reader ALONE: no context = a local key by construction
         from tokenizers import Tokenizer
         from phase1_algebra_head import sent_indices
@@ -461,6 +532,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
             for t in params:
                 t.grad = t.grad * ok
             opt.step()
+            if LT: return loss.realize(), mse.realize(), _LTQ[0].detach().realize()
             return loss.realize(), mse.realize()
 
 
@@ -532,7 +604,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
               f"(bar >= +0.010) -> {'PASS' if per[-1] - orc >= 0.010 else 'FAIL'} | best-breath share {best.tolist()}", flush=True); sys.exit(0)
     threading.Thread(target=loader, daemon=True).start()
     VB = [va_idx[i:i + BATCH] for i in range(0, len(va_idx) - BATCH + 1, BATCH)]
-    t0 = time.time(); hist = []
+    t0 = time.time(); hist = []; lt_rng = np.random.default_rng(100 + RSEED)
     for step in range(STEPS):
         ta = time.time(); bi, bm, bt, *bd = Q.get(); tb = time.time()
         if GSM: bd, gb = bd[:1], bd[1:]
@@ -544,6 +616,8 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
             xs += [Tensor(gx, dtype=dtypes.half), addmask(gm), Tensor(gtm, dtype=dtypes.float), Tensor(gtg, dtype=dtypes.half), Tensor(gdb, dtype=dtypes.half)]
         xs = [x.contiguous().realize() for x in xs]; tc = time.time()
         if GSM: loss, mse, gloss, gmse = train_g(*xs)
+        elif LT:
+            loss, mse, ltq = train_step(*xs); lt_write(ltq.numpy(), bt, bm, step, lt_rng)   # read-before-write: the step read the old table
         else: loss, mse = train_step(*xs)
         if PROF:
             loss.numpy(); print(f"[prof] step {step}: queue wait {tb - ta:.3f}s, inputs {tc - tb:.3f}s, train_step {time.time() - tc:.3f}s", flush=True)
@@ -575,7 +649,16 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         dlt = np.concatenate(dlt, 1); census = [dict(breath=k + 2, q10=float(np.quantile(d, .1)), q50=float(np.median(d)), q90=float(np.quantile(d, .9)),
                                                       q99=float(np.quantile(d, .99)), below01=float((d < 0.01).mean())) for k, d in enumerate(dlt)]
         for c in census: print(f"[distill] DELTA breath {c['breath']}: rel change q10 {c['q10']:.4f} q50 {c['q50']:.4f} q90 {c['q90']:.4f} q99 {c['q99']:.4f} | share < 0.01 {c['below01']:.3f}", flush=True)
+    lt_meta = {}
+    if LT:   # LT-USE (the mandatory-road census): the live read's share of the breath-4 state, and val mse with the read severed
+        np.savez(LT_PATH, K=LT_KH, V=LT_VH, N=LT_N); vm = []
+        for sev in (False, True):
+            if sev: LT_V.assign(Tensor(np.zeros_like(LT_VH), dtype=dtypes.float)).realize()
+            vm.append(float(np.mean([float(eval_step(*batch_of(b))[1].numpy()) for b in VB])))
+        LT_V.assign(Tensor(LT_VH, dtype=dtypes.float)).realize()
+        lt_meta = dict(lt_val_mse=vm[0], lt_sever_mse=vm[1], lt_live_nodes=int((LT_N >= 1).sum()), lt_full_nodes=int((LT_N >= LTCAP).sum()))
+        print(f"[distill] LT-USE val mse {vm[0]:.4f} | severed {vm[1]:.4f} (removal cost {vm[1] - vm[0]:+.4f}) | nodes live {lt_meta['lt_live_nodes']} full {lt_meta['lt_full_nodes']}", flush=True)
     safe_save({k: v.realize() for k, v in p.items()}, CKPT)
     json.dump(dict(tag=TAG, D=D, layers=NL, breaths=BR, breath_val_mse=brv, delta_census=census, ff=FF, db=DBIN, t6=T6, gsm=GSM, warm=WARM, steps=STEPS, batch=BATCH, lr=LR, params=n_par, teacher=TRAIN_SPLIT,
-                   var_t=var_t, hist=hist, seconds=time.time() - t0), open(META, "w"), indent=1)
+                   var_t=var_t, hist=hist, seconds=time.time() - t0, **lt_meta), open(META, "w"), indent=1)
     print(f"[distill] saved {CKPT} in {time.time() - t0:.0f}s", flush=True)

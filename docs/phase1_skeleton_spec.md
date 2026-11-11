@@ -58081,3 +58081,19 @@ singleton climb); placebo 0.4323. Prediction FAIL: right.
   exact leaf either, so they climb too. Three gates (fixed, per-node confidence, per-query novelty) all land at +0.008..+0.010: the
   role parents hold ~+0.01 of knowledge the fine nodes lack. The climb form closes; the knowledge in the parents is the limit, not the
   rule that reaches them. Better parents (or better leaves) are where the next gain must come from.
+
+### 2026-11-11 08:09 -- MRI LEAVES PINNED (Bryce: "word given for your choice if you think it would add value"); LT8 smoke PASS and queued
+Theory lines: complex planes / clean bind-unbind (the conjugate as the spin echo); tiers' spans as Tree leaves; the fingerpost
+(independent witnesses). **MRI detector** (`distill_reader.py --mri`, the banked RB8 reader, one pass per text, inference only): spins
+= each word's layer-0 KEY on the attention's complex planes (head dims j, j + HD/2 -- the planes the T9 clock turns; the key before the
+clock = the clock unbound by its conjugate), read off each of the 4 breaths' outputs. Coherence(i, i+1) = radius-weighted mean over
+planes of |mean over breaths of e^{i dphi}|, dphi = angle(z_{i+1} conj z_i): neighbours whose relative phase HOLDS across breaths are one
+tissue (T2). Boundaries at the coherence's LOCAL MINIMA (the IMPULSE2 rule); forced cuts unchanged.
+- Leaves: **MRI** (MRI minima) and **AGREE** (a cut only where impulse AND MRI both cut: the fingerpost). Each through the LOCAL
+  ladder (key texts run alone through RB8, geometry parents), k seeds 0 and 1, vs impulse leaves (0.5432 / 0.5474).
+- **Bars:** **MRI-x:** MRI ladder - impulse ladder >= +0.020 (mean over both k seeds, both > 0). **AGREE-x:** same for AGREE. Mean
+  span length reported (the IMPULSE2 lesson: longer = more specific).
+- **PREDICTIONS:** MRI-x FAIL (~70%: the climb rules showed the leaves are not the limit), AGREE-x FAIL (~70%: fewer cuts = longer,
+  more specific leaves).
+- **LT8 CPU smoke** (3 steps, batch 4): trains, the table writes (N > 1 on 99 nodes after 2 writes), LT-USE census runs, no
+  non-finite. Removal cost at 3 steps is meaningless (-0.014). Queued after MRI on the GPU lock.

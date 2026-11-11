@@ -30,13 +30,21 @@ for sp in ("TRAIN", "TEST"):
     for it, q in zip(D[sp], Q[sp]):
         it["imp0"] = _pos[q]; it["ch"] = [m.span() for m in GD.TOK.finditer(q)]; it["q"] = q; assert len(it["ch"]) == len(it["toks"])
 SRC = os.environ.get("LADDER_STATES", "full"); PARENT = os.environ.get("LADDER_PARENT", "geo")   # (ledger 11-10 LOCAL/ROLE)
-LOCALF = os.environ.get("LADDER_LOCALF", ".cache/gsmb_local_rb8.npy"); DIAL = os.environ.get("LADDER_DIAL") == "1"; NOVEL = os.environ.get("LADDER_NOVEL") == "1"; LTXT = []; LIDX = {}
+LOCALF = os.environ.get("LADDER_LOCALF", ".cache/gsmb_local_rb8.npy" if os.environ.get("LADDER_SPANS", "impulse") == "impulse" else f".cache/gsmb_local_rb8_{os.environ['LADDER_SPANS']}.npy"); DIAL = os.environ.get("LADDER_DIAL") == "1"; NOVEL = os.environ.get("LADDER_NOVEL") == "1"; LTXT = []; LIDX = {}
 if SRC == "local":
     LV = np.load(LOCALF); LIDX = {t: i for i, t in enumerate(json.load(open(LOCALF + ".json"))["texts"])}
 
 
 def words(it): return ["<num>" if v is not None else ("<name>" if n else w) for w, v, n in zip(it["toks"], it["vals"], it["isn"])]
 def cpl(it, i): s0 = it["imp0"]; return (IMP[s0 + i, 0] + IMP[s0 + i + 1, 1]) / 2
+SPANS = os.environ.get("LADDER_SPANS", "impulse")   # (ledger 11-11 MRI) impulse | mri | agree (a cut only where both witnesses cut)
+if SPANS != "impulse":
+    MRI = np.load(".cache/gsmb_mri_rb8.npy"); assert len(MRI) == len(IMP)
+def mcp(it, i): return MRI[it["imp0"] + i]
+
+
+def cut(f, it, i, n):   # a boundary after word i where the coupling f dips below both neighbouring pairs
+    c = f(it, i); return (i == 0 or c < f(it, i - 1)) and (i + 2 >= n or c < f(it, i + 1))
 
 
 def span_ids(it):
@@ -44,8 +52,8 @@ def span_ids(it):
     for i in range(len(w)):
         out.append(cur)
         if i + 1 >= len(w) or w[i] in PUN or w[i + 1] in PUN or sid[i] != sid[i + 1]: cur += 1; continue
-        c = cpl(it, i)
-        if (i == 0 or c < cpl(it, i - 1)) and (i + 2 >= len(w) or c < cpl(it, i + 1)): cur += 1
+        ci = SPANS != "mri" and cut(cpl, it, i, len(w)); cm = SPANS != "impulse" and cut(mcp, it, i, len(w))
+        if {"impulse": ci, "mri": cm, "agree": ci and cm}[SPANS]: cur += 1
     return out
 
 
@@ -70,7 +78,7 @@ def steps(it):
 
 tr = [s for it in D["TRAIN"] for s in steps(it)]; te = [s for it in D["TEST"] for s in steps(it)]
 if os.environ.get("LADDER_DUMP") == "1":   # the local texts for distill_reader.py --local
-    LT = sorted(set(LTXT)); json.dump(dict(texts=LT), open(".cache/gsm_ladder_local_texts.json", "w")); print(f"[ladder] {len(LT)} local texts"); sys.exit(0)
+    LT = sorted(set(LTXT)); json.dump(dict(texts=LT), open(".cache/gsm_ladder_local_texts" + ("" if SPANS == "impulse" else "_" + SPANS) + ".json", "w")); print(f"[ladder] {len(LT)} local texts"); sys.exit(0)
 u = np.concatenate([[SK.skeleton(it) not in seen] * min(len(it["prog"]), K) for it in D["TEST"]]).astype(bool)
 assert len(u) == len(te)
 Xtr = np.stack([s[3] for s in tr]); Xte = np.stack([s[3] for s in te]); ytr = np.array([s[2] for s in tr]); yte = np.array([s[2] for s in te])
@@ -135,10 +143,11 @@ def run(Z_tr, tag):
     return dict(tag=tag, U=acc(lad, u), S=acc(lad, ~u), ALL=acc(lad, np.ones_like(u)), REC=float((rl == ytr).mean()), census=cen)
 
 
-OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
+OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
-out = [f"LADDER [states {SRC}, parents {PARENT}, gate {GATE}, dial {DIAL}, novel {NOVEL}, localf {LOCALF}, kseed {KSEED}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
+_sl = np.mean([np.bincount(span_ids(it)).mean() for it in D["TEST"]])
+out = [f"mean span {_sl:.2f} words | LADDER [states {SRC}, parents {PARENT}, gate {GATE}, dial {DIAL}, novel {NOVEL}, spans {SPANS}, localf {LOCALF}, kseed {KSEED}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
 for r in (R, P):
     out.append(f"  {r['tag']:12s}: TEST-U {r['U']:.4f} | seen {r['S']:.4f} | all {r['ALL']:.4f} | RECALL {r['REC']:.4f}")
     out.append("    census (each level alone; TEST-U / seen): " + " | ".join(f"{n} {a:.4f}/{b:.4f}" for n, (a, b) in zip(names, r["census"])))
