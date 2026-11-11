@@ -58109,3 +58109,20 @@ Artifacts `.cache/distill_reader_lband8x4.safetensors` (30k, 0.162 s/step), `.ca
   span is shown alone; the Tree's rows (token n-grams of the teacher's corpus) had no GSM8K step knowledge to push into the gap.
   Per the residual-seal law the seal must leave a road that CAN carry what was sealed; here no such road existed (static,
   context-free Tree rows). LT8 (the live Tree, a contextual key) is that road's first form -- queued.
+
+### 2026-11-11 09:02 -- MRI LEAVES: MRI-x FAIL (-0.0100), AGREE-x FAIL (-0.0178) -- the spin detector reads phrases; leaves are not the limit
+Artifacts `.cache/gsmb_mri_rb8.npy` (324,057 words, ~3 min GPU), `gsmb_local_rb8_{mri,agree}.npy`, `gsm_ladder_local_{mri,agree}{,_k1}.txt`.
+| leaves | mean span | k0 | k1 | mean - impulse (0.5453) | flat 1-NN | RECALL |
+|---|---|---|---|---|---|---|
+| impulse (banked) | 2.21 | 0.5432 | 0.5474 | -- | 0.5152 | 0.92 |
+| MRI | 2.49 | 0.5241 | 0.5466 | -0.0100 FAIL | 0.4932 | 0.944 |
+| AGREE | 3.72 | 0.5279 | 0.5271 | -0.0178 FAIL | 0.4932 | 0.946 |
+Predictions FAIL / FAIL: right. MRI TEST demo: "<num> eggs per day | she | eats <num> for | breakfast every | ... | <num> per fresh
+duck egg | how much in | dollars does she make | every day | at the farmers"; "robe takes <num> bolts of | blue fiber and <num> |
+that much white fiber".
+- **Reading:** the spin coherence finds phrases (a second, independent witness beside impulse), and its leaves pass the ladder's own
+  test (+0.031 / +0.053 over flat 1-NN), but longer leaves again cost TEST-U (the IMPULSE2 lesson, now on two witnesses: AGREE's
+  3.7-word leaves lose most). With the climb results, the span line's limit is not WHERE leaves are cut. MRI's home is span_id for
+  binding (a volatile key), which needs a consumer.
+- **Custody note:** the k-means seed moves MRI's ladder by 0.0225 (k0 vs k1) -- seed spread at THE NUMBER's size. Ladder claims stay
+  twinned over k seeds (as pinned); single-seed ladder reads are not claims.
