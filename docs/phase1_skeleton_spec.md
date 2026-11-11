@@ -57868,3 +57868,18 @@ Artifact `.cache/gsm_verifier.txt`. VER ans 0.0425 (greedy 0.0287, SEL 0.0494, B
 - **The form closes (TF-IDF support, argmax); the line (the Tree as step judge) stays open.** Next forms named: SUPPORT as a margin
   (this op's best match minus the best match of any OTHER op over the same window -- the memory voting for the op, not for familiarity),
   added to SEL's judges rather than replacing COVER; then span keys from the impulse read.
+
+### 2026-11-10 16:26 -- VER2 PINNED (zero GPU): the margin judge ADDED to SEL's (clean attribution)
+SUPPORT2(step) = best TF-IDF match among TRAIN steps with this (op, kinds) MINUS the best among any OTHER op with the same kinds (the
+memory votes for the op, not for familiar wording); program = mean over anchored steps. **VER2** = argmax (FCERT, CERT, COVER, SUPPORT2,
+LL) = SEL with the memory inserted before the likelihood. **Bar VER2-x:** VER2 ans - SEL ans (0.0494) >= +0.020. PREDICTION: FAIL (~65%:
+COVER is continuous, so SUPPORT2 mostly breaks ties); margin higher on answer-right candidates (~70%).
+
+### 2026-11-10 16:27 -- VER2 READ: VER2-x FAIL (-0.0069); the margin separates (+0.069 right vs -0.005 wrong) and still selects worse than SEL's likelihood tie-break
+Artifact `.cache/gsm_verifier2.txt`. VER2 ans 0.0425 (SEL 0.0494); VER-ONLY 0.0227 (below greedy 0.0287). Predictions right (FAIL; margin
+higher on answer-right). COVER ties often (coverage is a small fraction), so SUPPORT2 decides real picks -- and replacing LL there costs
+answers: the model's own likelihood is the better tie-break among certified, covering candidates than the memory's margin.
+- **Reading (the two verifier reads together):** the step memory's verdict is CORRELATED with right answers (both forms) but WEAK as a
+  selector: among 17 candidates, the right one is rarely the best-supported one. Averaged over a program, the support is dominated by
+  the steps every candidate shares (most draws differ in one or two steps). **The form closes (mean support / margin as an argmax judge).**
+  Next form named: judge only the steps where candidates DISAGREE (the diff, not the mean), and the span keys from the impulse read.

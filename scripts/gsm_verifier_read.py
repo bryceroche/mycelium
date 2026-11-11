@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gsm_bench_data as GD
 import gsm_cj_probe_skel as SK
 
-K = 12; WIN = 3; ARM = "MACRO_s0"
+K = 12; WIN = 3; ARM = "MACRO_s0"; MARGIN = os.environ.get("VER_MARGIN") == "1"   # VER2
 D = json.load(open(GD.OUT)); its = D["TEST"]; seen = SK.seen(D["TRAIN"])
 
 
@@ -44,8 +44,11 @@ def support(prog, it, w):
     for o, a, b in prog:
         ia = a[1] if a[0] == "t" and a[1] < len(w) else None; ib = b[1] if b[0] == "t" and b[1] < len(w) else None
         if ia is None and ib is None: continue
-        ix = byk.get((o, a[0], b[0]))
-        sc.append(0.0 if not ix else float((Xtr[ix] @ vec.transform([wkey(w, ia, ib)]).T).toarray().max()))
+        q = vec.transform([wkey(w, ia, ib)]); best = lambda ix: float((Xtr[ix] @ q.T).toarray().max()) if ix else 0.0
+        own = best(byk.get((o, a[0], b[0]), []))
+        if MARGIN:   # (VER2) the memory votes for the op: this op's best match minus the best match of any OTHER op, same kinds
+            own -= max(best(byk.get((o2, a[0], b[0]), [])) for o2 in GD.OPS if o2 != o)
+        sc.append(own)
     return float(np.mean(sc)) if sc else 0.0
 
 
@@ -58,12 +61,12 @@ out = [f"{ARM}: greedy ans {A[0].mean():.4f} | SEL (banked rule) ans {sel.mean()
        f"{len(tr)} anchored TRAIN steps",
        f"  support: answer-right candidates {SUP[A].mean():.4f} vs wrong {SUP[~A].mean():.4f}"]
 res = {}
-for name, keys in {"VER": (0, 1, "sup", "ll"), "VER-ONLY": ("sup", "ll")}.items():
+for name, keys in ({"VER2": (0, 1, 2, "sup", "ll"), "VER-ONLY": ("sup", "ll")} if MARGIN else {"VER": (0, 1, "sup", "ll"), "VER-ONLY": ("sup", "ll")}).items():
     pick = np.array([max(range(C), key=lambda c: (tuple(SUP[c, j] if q == "sup" else LL[c, j] if q == "ll" else F[c, j, q] for q in keys), -c))
                      for j in range(len(its))])
     an = A[pick, np.arange(len(its))]; res[name] = an
     out.append(f"  {name}: ans {an.mean():.4f} (vs SEL {an.mean() - sel.mean():+.4f}, vs greedy {an.mean() - A[0].mean():+.4f}) | unseen-skeleton "
                f"ans {an[pu].mean():.4f} (SEL {sel[pu].mean():.4f}) | greedy kept {np.mean(pick == 0):.3f}")
-v = res["VER"].mean() - sel.mean()
-out.append(f"VER-x (VER - SEL ans >= +0.020): {v:+.4f} -> {'PASS' if v >= 0.020 else 'FAIL'}")
-txt = "\n".join(out); print(txt); open(".cache/gsm_verifier.txt", "w").write(txt + "\n")
+nm = "VER2" if MARGIN else "VER"; v = res[nm].mean() - sel.mean()
+out.append(f"{nm}-x ({nm} - SEL ans >= +0.020): {v:+.4f} -> {'PASS' if v >= 0.020 else 'FAIL'}")
+txt = "\n".join(out); print(txt); open(f".cache/gsm_verifier{'2' if MARGIN else ''}.txt", "w").write(txt + "\n")
