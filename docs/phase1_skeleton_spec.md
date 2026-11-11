@@ -58097,3 +58097,15 @@ tissue (T2). Boundaries at the coherence's LOCAL MINIMA (the IMPULSE2 rule); for
   more specific leaves).
 - **LT8 CPU smoke** (3 steps, batch 4): trains, the table writes (N > 1 on 99 nodes after 2 writes), LT-USE census runs, no
   non-finite. Removal cost at 3 steps is meaningless (-0.014). Queued after MRI on the GPU lock.
+
+### 2026-11-11 08:53 -- LBAND VERDICT: LBAND-x FAIL (-0.0093 / -0.0051) -- the sealed reader's keys are no better; the seal cost the copy +0.020
+Artifacts `.cache/distill_reader_lband8x4.safetensors` (30k, 0.162 s/step), `.cache/gsmb_local_lband.npy`, `.cache/run_lband.log`.
+- Distill VAL mse 0.1952 (RB8 0.1747): sealing the field at +-8 tokens costs +0.020 of the teacher copy (the context the Tree's
+  trigram rows cannot return).
+- Local ladder (geometry): k0 0.5339 / k1 0.5423 vs RB8 0.5432 / 0.5474 -> mean -0.0072, both < 0: **FAIL** (prediction FAIL: right).
+  LBAND-NN: flat 1-NN 0.5059 -> ladder +0.028 / +0.036 (the ladder's own gain holds on the sealed reader).
+- **Reading:** under the loss, the seal did not cook a better key: a reader trained to see +-8 tokens makes slightly WORSE span keys
+  than the full reader run on the span alone. The full reader's weights learned from context carry useful priors even when the
+  span is shown alone; the Tree's rows (token n-grams of the teacher's corpus) had no GSM8K step knowledge to push into the gap.
+  Per the residual-seal law the seal must leave a road that CAN carry what was sealed; here no such road existed (static,
+  context-free Tree rows). LT8 (the live Tree, a contextual key) is that road's first form -- queued.
