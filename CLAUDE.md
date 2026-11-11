@@ -266,6 +266,9 @@ it governs what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form,
 - **Connecting local charts** (added 11-04): *"so project mycelium is all about connecting local charts which are centroids in the Tree
   database."* A chart = an atom's centroid + its local coordinates; within a chart the breath moves by phase rotation, between charts the bridge
   (beam + solver) chooses at the junctions.
+- **The Cross Join, bottom and top** (carved 11-11): *"At the bottom of the Tree DB, the Cross Join is a cheating trap. But at the top
+  of the Tree DB, it is simply the grammar of mathematics."* Memorize exact spans at the leaves, never their pairings; store relations
+  only as class x class rows high in the Tree (GLUE-L: the op lives in the relation; SPAN TREE: class sequences are a join over slots).
 - **The SQL cross join is the nemesis.** Traditional ML trains on the cross join of concepts (why the whole internet isn't enough data).
   Complex planes give **clean binding and unbinding** (phase angle + conjugate multiplication), so we never train on the cross join. The
   superpower is NOT superposition (~20 items per complex plane before degradation); it is clean, on-demand bind/unbind.

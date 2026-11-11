@@ -45,6 +45,30 @@ Mobius - zoom function from Tree search
 Diffusion inspired – breath cycles must not specialize to per-step tasks but attention heads can specialize to avoid gradient tug of war
 ```
 
+## The Cross Join, bottom and top (carved 2026-11-11)
+
+```text
+At the bottom of the Tree DB, the Cross Join is a cheating trap.
+But at the top of the Tree DB, it is simply the grammar of mathematics.
+```
+
+*Bryce, 2026-11-11, carving a line from that day's reads.* It sharpens "the SQL cross join is the nemesis": the nemesis is a join
+of SPECIFIC things, never a join of abstractions.
+- **The bottom (leaves): memorize the spans, never their combinations.** Each exact span ("<num> per fresh duck egg") is memorized
+  aggressively, as itself, with its Welford statistics. A row per pairing of two specific spans ("these duck eggs with that breakfast")
+  is a row per problem: it memorizes how one problem was assembled, it can never cover the next problem, and it is the data hunger of
+  traditional ML in miniature.
+- **The top (parents): the join IS the grammar.** The operation a step performs is a relation between what its spans *are*:
+  rate x count -> multiply, total and part -> subtract. Those rules are a cross join, but of a few dozen abstract classes
+  (32^2 or 256^2 cells, not 18,000^2). That table is small, it is shared by every problem, and it is what mathematics is.
+- **How to build it:** the exact span at the leaf; the relation stored only as class x class rows high in the Tree; a query zooms out
+  until its spans' classes meet in a populated relation, then zooms back in for the specifics through the skip (the ID tags).
+- **Evidence (ledger 2026-11-11):** SPAN TREE -- word classes come out clean (fresh ~ ripe ~ rotten; duck ~ geese ~ emu;
+  dollars ~ cents ~ euros), but a phrase spelled as a SEQUENCE of classes is a join over word slots and covers only 22% of new
+  steps. GLUE-L -- storing each span alone and dropping every pair row costs ~0.035 on two seeds and two state kinds: the op lives
+  in the relation, so the relation must be stored somewhere. The banked pair ladder does best on new steps at its coarse
+  centroid level, not at its exact pairs. The bounded top-of-tree join (HYBRID) is the form this line names next.
+
 ## What changed since the 2026-10-30 statement
 
 - **#2, THE SOLVER INSIDE (added by Bryce 2026-11-04, after the carving):** LLMs have a solver inside; models naturally build internal

@@ -58197,3 +58197,7 @@ the op. RECALL 0.857 vs 0.922: even TRAIN steps are not recoverable from their p
 - **Next form (named, not pinned):** HYBRID -- memorize the exact phrase at the leaf (what it is: Welford state, kind), and keep the
   relation only as class x class rows high in the tree (L2/L3 x L2/L3: 256^2 / 32^2 cells, a bounded join of abstractions, never of
   specific spans). The cross join is the nemesis at the leaves; at the top of the tree it is the grammar.
+
+### 2026-11-11 10:40 -- CARVED: "At the bottom of the Tree DB, the Cross Join is a cheating trap. But at the top of the Tree DB, it is simply the grammar of mathematics." (Bryce)
+Into `docs/CORE_THEORIES.md` (new section, "The Cross Join, bottom and top") and CLAUDE.md §8. It sharpens the cross-join line:
+the nemesis is a join of specific spans (leaves), never a join of abstract classes (the top). Evidence: SPAN TREE + GLUE-L (above).
