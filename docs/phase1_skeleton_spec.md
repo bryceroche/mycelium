@@ -57883,3 +57883,19 @@ answers: the model's own likelihood is the better tie-break among certified, cov
   selector: among 17 candidates, the right one is rarely the best-supported one. Averaged over a program, the support is dominated by
   the steps every candidate shares (most draws differ in one or two steps). **The form closes (mean support / margin as an argmax judge).**
   Next form named: judge only the steps where candidates DISAGREE (the diff, not the mean), and the span keys from the impulse read.
+
+### 2026-11-10 16:31 -- VER3 PINNED (zero GPU; word given): the disagreement judge
+VER2 with one change: a step every candidate of the problem shares (same op, same operands) is skipped in SUPPORT2 -- the memory votes
+only where the candidates disagree; a candidate with no disagreeing anchored step scores 0. **VER3** = argmax (FCERT, CERT, COVER,
+SUPPORT2-diff, LL). **Bar VER3-x:** VER3 ans - SEL ans (0.0494) >= +0.020. PREDICTION: FAIL (~60%); VER3 >= VER2 (0.0425) (~65%).
+
+### 2026-11-10 16:33 -- VER3 READ: FAIL (-0.0079); the judge AUC diagnostic: every keyless judge is weak, and VER vs SEL differences are a few problems
+Artifact `.cache/gsm_verifier3.txt`. VER3 ans 0.0415 (VER2 0.0425; predictions: FAIL right, VER3 >= VER2 wrong). Margin on answer-right
+0.0457 vs wrong -0.0174.
+- **Diagnostic (descriptive, banked here, scratch script):** within-problem AUC (right vs wrong candidates) over the 139 problems whose
+  pool holds both: **LL 0.486** (chance), **SUPPORT2 0.545**, COVER 0.562, FCERT 0.621, CERT 0.627. The model's likelihood does NOT rank its
+  own right draws above its wrong ones; the step memory beats it, the certificates beat both. Only 139 problems can move at all, so a
+  0.007 answer difference is ~7 problems: VER/VER2/VER3 vs SEL are inside the noise, in both directions.
+- **Reading:** selection is bounded by judge strength (best AUC 0.63) more than by the judges' order. The verifier line needs a STRONGER
+  judge, not a re-ordering: span keys (the impulse read, next), and the judges combined by a fitted ranker on TRAIN draws (the key gates
+  TRAIN only) rather than a hand lexicographic order.

@@ -39,9 +39,10 @@ byk = defaultdict(list)
 for i, s in enumerate(tr): byk[s[1]].append(i)
 
 
-def support(prog, it, w):
+def support(prog, it, w, skip=frozenset()):
     sc = []
     for o, a, b in prog:
+        if (o, tuple(a), tuple(b)) in skip: continue                     # (VER3) a step every candidate shares carries no verdict
         ia = a[1] if a[0] == "t" and a[1] < len(w) else None; ib = b[1] if b[0] == "t" and b[1] < len(w) else None
         if ia is None and ib is None: continue
         q = vec.transform([wkey(w, ia, ib)]); best = lambda ix: float((Xtr[ix] @ q.T).toarray().max()) if ix else 0.0
@@ -54,19 +55,22 @@ def support(prog, it, w):
 
 d = np.load(f".cache/gsm_select_{ARM}.npz"); P = json.load(open(f".cache/gsm_select_{ARM}_progs.json"))
 A, F, LL = d["A"], d["F"], d["LL"]; C = A.shape[0]
-SUP = np.array([[support(P[c][j], its[j], words(its[j])) for j in range(len(its))] for c in range(C)])
+DIFF = os.environ.get("VER_DIFF") == "1"   # (VER3) judge only the steps where the candidates disagree
+shared = [frozenset.intersection(*[frozenset((o, tuple(a), tuple(b_)) for o, a, b_ in P[c][j]) for c in range(C)]) if DIFF else frozenset()
+          for j in range(len(its))]
+SUP = np.array([[support(P[c][j], its[j], words(its[j]), shared[j]) for j in range(len(its))] for c in range(C)])
 pu = np.array([SK.skeleton(it) not in seen for it in its])
 sel = A[d["pick_SEL"], np.arange(len(its))]
 out = [f"{ARM}: greedy ans {A[0].mean():.4f} | SEL (banked rule) ans {sel.mean():.4f} | BEST@{C} ans {A.any(0).mean():.4f} | memory "
        f"{len(tr)} anchored TRAIN steps",
        f"  support: answer-right candidates {SUP[A].mean():.4f} vs wrong {SUP[~A].mean():.4f}"]
 res = {}
-for name, keys in ({"VER2": (0, 1, 2, "sup", "ll"), "VER-ONLY": ("sup", "ll")} if MARGIN else {"VER": (0, 1, "sup", "ll"), "VER-ONLY": ("sup", "ll")}).items():
+for name, keys in ({"VER3" if DIFF else "VER2": (0, 1, 2, "sup", "ll"), "VER-ONLY": ("sup", "ll")} if MARGIN else {"VER": (0, 1, "sup", "ll"), "VER-ONLY": ("sup", "ll")}).items():
     pick = np.array([max(range(C), key=lambda c: (tuple(SUP[c, j] if q == "sup" else LL[c, j] if q == "ll" else F[c, j, q] for q in keys), -c))
                      for j in range(len(its))])
     an = A[pick, np.arange(len(its))]; res[name] = an
     out.append(f"  {name}: ans {an.mean():.4f} (vs SEL {an.mean() - sel.mean():+.4f}, vs greedy {an.mean() - A[0].mean():+.4f}) | unseen-skeleton "
                f"ans {an[pu].mean():.4f} (SEL {sel[pu].mean():.4f}) | greedy kept {np.mean(pick == 0):.3f}")
-nm = "VER2" if MARGIN else "VER"; v = res[nm].mean() - sel.mean()
+nm = ("VER3" if DIFF else "VER2") if MARGIN else "VER"; v = res[nm].mean() - sel.mean()
 out.append(f"{nm}-x ({nm} - SEL ans >= +0.020): {v:+.4f} -> {'PASS' if v >= 0.020 else 'FAIL'}")
-txt = "\n".join(out); print(txt); open(f".cache/gsm_verifier{'2' if MARGIN else ''}.txt", "w").write(txt + "\n")
+txt = "\n".join(out); print(txt); open(f".cache/gsm_verifier{('3' if DIFF else '2') if MARGIN else ''}.txt", "w").write(txt + "\n")
