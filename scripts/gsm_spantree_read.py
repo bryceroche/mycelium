@@ -168,3 +168,11 @@ if os.environ.get("SPANTREE_DEMO") == "1":   # who shares a parent with whom (th
         for w, k in zip(VOC, c[l]): grp[k].append(w)
         for probe in ("duck", "eggs", "fresh", "dollars"):
             if probe in mtr: print(f"  L{l + 1} class of {probe!r}: {sorted(grp[c[l][VOC.index(probe)]], key=lambda w: -ntr[w])[:14]}")
+if os.environ.get("SPANTREE_COVER") == "1":   # (anatomy, unbarred) how often a TEST-U query's phrase finds a populated node per level
+    cls_o, _, _ = classes(Ztr); ctr = cls_o(Ztr); cte = cls_o(Zte) if len(Vte) else [np.zeros(0, int)] * 3
+    C = [dict(zip(VOC, ctr[l])) | dict(zip(Vte, cte[l])) for l in range(3)]
+    gen = lambda ph, l: tuple(w if w in ("q:", "<num>", "<name>") or w in PUN else C[l][w] for w in ph)
+    for l in range(4):
+        have = {(ph[0] if l == 0 else gen(ph[0], l - 1)) for ph, _, _ in tr if ph[0] is not None}
+        q = [ph[0] for (ph, _, _), m in zip(te, u) if m and ph[0] is not None]
+        print(f"  COVER L{l}: {len(have)} distinct A phrases in TRAIN | TEST-U A phrase hits a node {np.mean([(p if l == 0 else gen(p, l - 1)) in have for p in q]):.4f}")

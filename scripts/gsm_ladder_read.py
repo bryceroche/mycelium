@@ -72,7 +72,9 @@ def steps(it):
             if SRC == "local": x = LV[LIDX[txt]].astype(np.float32) if P else np.zeros(LV.shape[1], np.float32)
             else: x = np.asarray(ST[it["st0"] + np.array(P, int)], np.float32).mean(0) if P else np.zeros(ST.shape[1], np.float32)
             v.append(x / (np.linalg.norm(x) + 1e-6))
-        res.append((key, (SK.first_kind(A), SK.first_kind(B)), OI[o], np.concatenate(v)))
+        kd = (SK.first_kind(A), SK.first_kind(B))   # (GLUE) one row per phrase: the side's own key, vector, kind and role
+        sides = [(("q: " if key.startswith("q:") else "") + " ".join(f"{'ab'[r]}:{w[j]}" for j in P), v[r], kd[r], r) for r, P in enumerate(pos) if P]
+        res.append((key, kd, OI[o], np.concatenate(v), sides))
     return res
 
 
@@ -143,6 +145,36 @@ def run(Z_tr, tag):
     return dict(tag=tag, U=acc(lad, u), S=acc(lad, ~u), ALL=acc(lad, np.ones_like(u)), REC=float((rl == ytr).mean()), census=cen)
 
 
+GLUE = os.environ.get("LADDER_GLUE") == "1"
+if GLUE:   # (ledger 11-11 GLUE-L) no pair rows: each phrase is its own row on a tree built over single-phrase vectors; glued at read time
+    sd = lambda S: [x for s in S for x in s[4]]
+    Str, Ste = sd(tr), sd(te); own = [len(s[4]) for s in te]
+    pca1 = PCA(64, random_state=0).fit(np.stack([x[1] for x in Str])); Gtr = pca1.transform(np.stack([x[1] for x in Str])); Gte = pca1.transform(np.stack([x[1] for x in Ste]))
+    gy = np.concatenate([[s[2]] * len(s[4]) for s in tr]); base = np.log(np.bincount(ytr, minlength=len(OPS)) / len(ytr) + 1e-9)
+    def glue_run(G, tag):
+        global ytr
+        km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(G); maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(km.cluster_centers_).labels_ for k in KS[1:]]
+        nodes = lambda X: [m[km.predict(X)] for m in maps]; ntr, nte = nodes(Gtr), nodes(Gte)
+        T = [defaultdict(lambda: np.zeros(len(OPS))) for _ in range(5)]
+        for i, (k, _, kd, r) in enumerate(Str):
+            T[0][(k, kd, r)][gy[i]] += 1; T[4][(kd, r)][gy[i]] += 1
+            for l in range(3): T[l + 1][(int(ntr[l][i]), kd, r)][gy[i]] += 1
+        def desc(k, kd, r, nd):
+            p = np.ones(len(OPS)) / len(OPS)
+            for c in [T[4].get((kd, r))] + [T[l + 1].get((int(nd[l]), kd, r)) for l in (2, 1, 0)] + [T[0].get((k, kd, r))]:
+                if c is not None and c.sum() > 0: p = (c + KAPPA * p) / (c.sum() + KAPPA)
+            return np.log(p + 1e-9)
+        def pred(S, steps_, nd):
+            out, i = [], 0
+            for s in steps_:
+                lp = sum(desc(S[i + j][0], S[i + j][2], S[i + j][3], [n[i + j] for n in nd]) for j in range(len(s[4])))
+                if len(s[4]) == 2: lp = lp - base
+                if len(s[4]) == 0: c = T[4].get((s[1][0], 0)); lp = np.log((c if c is not None else np.ones(len(OPS))) + 1e-9)
+                out.append(int(np.argmax(lp))); i += len(s[4])
+            return np.array(out)
+        p = pred(Ste, te, nte); rp = pred(Str, tr, ntr)
+        return dict(tag=tag, U=float((p[u] == yte[u]).mean()), S=float((p[~u] == yte[~u]).mean()), REC=float((rp == ytr).mean()), rows=len(T[0]))
+    gR = glue_run(Gtr, "GLUE"); gP = glue_run(Gtr[np.random.default_rng(0).permutation(len(Gtr))], "GLUE-PLACEBO")
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
@@ -156,6 +188,10 @@ out.append(f"  window +-3 (STEPMEM2, banked): TEST-U 0.5047")
 out.append(f"LADDER-x (TEST-U - 0.5047 >= +0.020): {R['U'] - WINDOW:+.4f} -> {'PASS' if R['U'] - WINDOW >= 0.020 else 'FAIL'} | "
            f"TREE-PLACEBO (ladder - placebo >= +0.020): {R['U'] - P['U']:+.4f} -> {'PASS' if R['U'] - P['U'] >= 0.020 else 'FAIL'} | "
            f"CROSSOVER (best seen = L0 {names[bs]}, best TEST-U coarser {names[bu]}): {'PASS' if bs == 0 and bu > 0 else 'FAIL'}")
+if GLUE:
+    for g in (gR, gP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | phrase rows {g['rows']}")
+    out.append(f"GLUE-L (GLUE - JOIN ladder, TEST-U >= +0.020): {gR['U'] - R['U']:+.4f} | GLUE-SEEN (seen >= -0.020): {gR['S'] - R['S']:+.4f} | GLUE-PLACEBO (GLUE - placebo >= +0.020): {gR['U'] - gP['U']:+.4f}")
+    OUTF = OUTF[:-4] + "_glue.txt"
 txt = "\n".join(out); print(txt); open(OUTF, "w").write(txt + "\n")
 
 if os.environ.get("LADDER_DIAG") == "1":   # (unbarred attribution, ledger 11-10) is it the states or the ladder? flat 1-NN on the same vectors

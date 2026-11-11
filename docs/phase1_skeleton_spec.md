@@ -58149,3 +58149,33 @@ Tree**. Zero GPU, zero training: `scripts/gsm_spantree_read.py` (CPU, banked RB8
   - **TREE-PLACEBO:** GLUE - GLUE on shuffled word vectors >= +0.020. **CROSSOVER:** best seen at L0, best TEST-U at a parent.
 - **Static vs live, said plainly:** in a frozen read, Welford + BIRCH give the same counts as a batch build; they matter when the Tree
   grows while training (LT8's line). Here BIRCH sets the branching of the word classes.
+
+### 2026-11-11 10:27 -- SPAN TREE VERDICT: all bars FAIL -- the word classes are right, the class-SEQUENCE key never recurs (a cross join over word positions)
+Artifacts `.cache/gsm_spantree.txt` (k0), `gsm_spantree_k1.txt`. Custody: the first k1 unit ran seed 0 (systemd-run passes no env
+without --setenv); rerun as `spantree1b` with --setenv. Means of k0/k1:
+| store | TEST-U | seen | RECALL |
+|---|---|---|---|
+| GLUE (phrase rows) | 0.4369 | 0.4685 | 0.884 |
+| JOIN (pair rows) | 0.4628 | 0.5087 | 0.944 |
+| GLUE placebo | 0.4361 | 0.4697 | 0.882 |
+GLUE-x -0.0259 FAIL (pred FAIL: right) | GLUE-SEEN -0.0402 FAIL | SPANTREE-x -0.119 FAIL (pred: right) | TREE-PLACEBO +0.0009 FAIL |
+CROSSOVER FAIL (the kind prior is best everywhere).
+- **The word classes are what Bryce described** (k1 demo, L1 1024): fresh ~ ripe, rotten, unripe | duck ~ bear, geese, emu, snail |
+  eggs ~ egg, bones, nuts, onions | dollars ~ cents, euros, yen, $. L2 256: duck joins goldfish, toads, pelican; eggs join seeds,
+  feathers, petals; dollars join miles, pounds, gallons (the units class).
+- **Anatomy (COVER, k1):** a TEST-U A phrase finds a TRAIN node 9.7% exact, 14.5% at 1024 classes, 17.1% at 256, 21.8% at 64.
+  Genericizing word by word barely merges phrases (11,210 -> 9,915 distinct), so 78% of queries fall to the kind prior: the tree
+  never acted, and GLUE vs JOIN measured only the priors (per-side kind 0.4314 vs kind-pair 0.4572).
+- **Reading:** a phrase spelled as a SEQUENCE of classes is still a combination -- of word slots: 64^5 cells, a cross join over
+  positions. The banked ladder's parents work (0.5555) because a CENTROID pools the phrase into one point that always has a nearest
+  node. Genericize-by-word is the right ATOM (the classes are clean); the parent key must pool, not spell. The cross-join question
+  (GLUE vs JOIN) was not tested by this form -> GLUE-L.
+
+### 2026-11-11 10:27 -- GLUE-L PINNED (zero GPU): the cross-join test on the working ladder (centroid parents, 100% coverage)
+Theory line: **the SQL cross join is the nemesis** (glue on the fly, no stored combinations). `LADDER_GLUE=1` in
+`scripts/gsm_ladder_read.py`: the same ladder, but each operand phrase is ITS OWN row (key, own kind, role a/b) on a tree built over
+single-phrase vectors (PCA-64 -> k-means 2048 -> Ward 256/32; L4 = (kind, role)); a step glues A and B at read time (sum of log
+descents minus the op base rate). JOIN = the banked pair ladder, recomputed in the same run.
+- **GLUE-L:** GLUE - JOIN TEST-U >= +0.020 on the mean of k0/k1, primary config local states / impulse spans (banked JOIN 0.5432/0.5474).
+  Second witness (reported, same bar): full states / impulse. Prediction FAIL (~60%): the pair row holds the relation.
+- **GLUE-SEEN guard:** seen >= -0.020. **GLUE-PLACEBO:** GLUE - shuffled-vector GLUE >= +0.020.
