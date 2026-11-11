@@ -198,8 +198,14 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         return RDB.level_rows(RB_STORE, RB_MU, RB_U, RB_SCALE, np.asarray(ids_r), np.asarray(m_r), teach_r, T_ALG)
 
 
+    BAND = int(os.environ.get("DR_BAND", "0"))   # (ledger 11-11 LBAND) local-only mask: a token attends within +-BAND per application
+
+
     def addmask(tm):
-        return Tensor(np.where(tm[:, None, None, :] > 0, 0.0, -1e4).astype(np.float32), dtype=dtypes.float)
+        am = np.where(tm[:, None, None, :] > 0, 0.0, -1e4).astype(np.float32)
+        if BAND:   # (LBAND) the band: |i - j| > BAND is sealed (field after L layers x breaths applications = +-BAND x L x BR)
+            ii = np.arange(tm.shape[1]); am = am + np.where(np.abs(ii[:, None] - ii[None, :]) > BAND, -1e4, 0.0).astype(np.float32)[None, None]
+        return Tensor(am, dtype=dtypes.float)
 
 
     def owned(p):
@@ -331,7 +337,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     if args.local:   # (ledger 11-10 LOCAL ladder) each text through the reader ALONE: no context = a local key by construction
         from tokenizers import Tokenizer
         from phase1_algebra_head import sent_indices
-        out_p = ".cache/gsmb_local_rb8.npy"
+        out_p = os.environ.get("DR_LOCAL_OUT", ".cache/gsmb_local_rb8.npy")
         assert os.path.exists(CKPT) and not os.path.exists(out_p), f"need {CKPT}; refusing to overwrite {out_p}"
         texts = json.load(open(args.local))["texts"]; tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json")
         ld = safe_load(CKPT); p = owned({k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld})

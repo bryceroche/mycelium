@@ -58029,3 +58029,19 @@ Artifacts `.cache/gsm_ladder_local_k1.txt`, `gsm_ladder_local_role_gate0.{4,5,6,
   as a dial rather than a level -- memorize where the node agrees with itself, abstract where it doesn't. Too eager (>= 0.6) and the
   climb throws away good fine nodes. Not claimable at +0.010; the next form must let the dial be READ per query (e.g. the fine node's
   purity vs the parent's, a proper radius) rather than a global threshold.
+
+### 2026-11-11 07:24 -- DIAL + LBAND PINNED (Bryce: "word given for the queue!"; the pressure cooker: seal the easy road under a LOSS)
+**(1) DIAL** (zero GPU; `LADDER_DIAL=1`, local states, role parents). Theory lines: the bridge's confidence dial; zooming out on the Tree.
+Per query, a node is skipped when its confidence is BELOW its nearest kept ancestor's: conf(c) = (max_op c + 1) / (n + #ops) (a
+Laplace-smoothed majority share: a radius that knows n). Root never skipped. **DIAL-x:** dial - ungated (0.5428) >= +0.020 on TEST-U;
+gate 0.5 (0.5529) quoted beside. PREDICTION: FAIL (~55%: singletons always climb, so SEEN should fall harder than at gate 0.5).
+**(2) LBAND** (GPU training, ~1.3 h; theory lines: local-only mask on the key-forming road; overfit the Tree, regularize the reader;
+THE RESIDUAL-SEAL LAW). The RB8 reader retrained from scratch (seed 0, 30k, BEAM=2, same config: DR_RB=1 D768 L2 x 4 breaths, T9-NS
+clock) with `DR_BAND=1`: each attention application sees +-1 token, so the field is sealed at +-8 tokens (2 layers x 4 breaths). The
+teacher is still the full-context Llama state: whatever context the reader cannot see, the loss can only get from the Tree's rows
+(RB8's three per-level rows) -- the seal leaves the Tree as the only road to context. Then `--local` keys (each key text alone,
+band on) -> `.cache/gsmb_local_lband.npy` -> the ladder (local, geometry) on k-means seeds 0 and 1.
+- **LBAND-x:** band-reader ladder - RB8-alone ladder (0.5432 / 0.5474) >= +0.020 as the mean over both k seeds, both > 0.
+- **LBAND-NN** (reported): band-reader ladder - its own flat 1-NN. **Distill val MSE** reported beside RB8's final 0.1747 (expected
+  worse: the seal costs the copy).
+- PREDICTION: LBAND-x FAIL (~60%: RB8 run on a span alone is already local; training to the regime may buy little).
