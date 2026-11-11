@@ -57914,3 +57914,12 @@ composite keys".
   span, side-tagged; placebo = random boundaries at the impulse rate.
 - **Bars:** **SPAN-x:** TEST-U MEM - 0.5047 (the +-3 window) >= +0.020. **SPAN-PLACEBO:** impulse - placebo >= +0.020. **RECALL** >= 0.99.
 - **PREDICTIONS:** SPAN-x FAIL (~55%: the window is a strong key), SPAN-PLACEBO PASS (~65%: the demo spans are phrases), RECALL FAIL.
+
+### 2026-11-10 17:41 -- IMPULSE SPAN READ: SPAN-PLACEBO PASS (+0.0284), SPAN-x FAIL (-0.0233 vs the window), RECALL FAIL (0.8790) -- all three as predicted
+Artifacts `.cache/gsmb_impulse_rb8.npy` (+ .json; 6,349 texts, 324,057 words, 3,703 s on the GPU), `.cache/gsm_span_impulse.txt`.
+Impulse spans: TEST-U MEM 0.4814 (prior 0.4572), RECALL 0.8790; placebo MEM 0.4530, RECALL 0.9086; mean span 1.46 words.
+- **Reading:** the reader's coupling carries real phrase structure -- it beats random cuts at the same rate by +0.028 (the JSD spans
+  managed +0.013) -- but at the median cut half of all free positions become boundaries, so spans are 1.5 words and still split
+  "<num> | eggs" on the TEST demo; the fixed +-3 window keeps more of each operand's phrase. **The form closes (median threshold); the
+  line stays open.** Next forms named: a cut at the coupling's LOCAL minima (a boundary only where coupling dips below both neighbours),
+  or a lower quantile; and the MRI coherence detector (Bryce 11-10) as a second, independent witness -- boundaries where both agree.
