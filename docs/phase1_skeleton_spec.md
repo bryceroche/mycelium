@@ -58045,3 +58045,11 @@ band on) -> `.cache/gsmb_local_lband.npy` -> the ladder (local, geometry) on k-m
 - **LBAND-NN** (reported): band-reader ladder - its own flat 1-NN. **Distill val MSE** reported beside RB8's final 0.1747 (expected
   worse: the seal costs the copy).
 - PREDICTION: LBAND-x FAIL (~60%: RB8 run on a span alone is already local; training to the regime may buy little).
+
+### 2026-11-11 07:24 -- DIAL READ: DIAL-x FAIL (+0.0093) -- same unseen gain as gate 0.5, more seen loss, and RECALL collapses (0.92 -> 0.64)
+Artifact `.cache/gsm_ladder_local_role_dial.txt`. TEST-U 0.5521 (ungated 0.5428, gate 0.5 0.5529), seen 0.6108 (-0.0198), RECALL
+0.6403; placebo 0.4585. Prediction FAIL: right.
+- **Reading:** a confidence that knows n sends every singleton leaf up the ladder, so the Tree stops recalling its own TRAIN steps --
+  the dial abstracts AWAY the memorization the north star asks for ("overfit the facts to the Tree"). The unseen gain is capped at
+  ~+0.01 by both gates: the parents' extra knowledge is about that big. A dial that keeps RECALL must leave exact leaf hits alone
+  (a hit on a seen key = memorize; a miss = climb), i.e. the climb should be decided by whether the QUERY recurs, not by node size.
