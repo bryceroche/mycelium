@@ -58126,3 +58126,26 @@ that much white fiber".
   binding (a volatile key), which needs a consumer.
 - **Custody note:** the k-means seed moves MRI's ladder by 0.0225 (k0 vs k1) -- seed spread at THE NUMBER's size. Ladder claims stay
   twinned over k seeds (as pinned); single-seed ladder reads are not claims.
+
+### 2026-11-11 10:25 -- SPAN TREE PINNED (Bryce: "the leaf node gets the highly specific MRI tagged span but the parent node gets a genericized version of the span ... aggressively memorize spans ... dont memorize the problem specific combinations how spans are assembled -- the SQL cross join")
+Theory lines: **Memory leaves the MLP for the Tree** (coarse-to-fine levels) + **the SQL cross join is the nemesis** + **zoom out on the
+Tree**. Zero GPU, zero training: `scripts/gsm_spantree_read.py` (CPU, banked RB8 states + banked MRI coherence).
+- **Audit that prompted it:** every banked ladder leaf is keyed by the PAIR "a:<A phrase> b:<B phrase>" -- a row per combination of two
+  spans in one step = a cross join in miniature. And its parents are k-means/Ward over STATE vectors, not genericized text.
+- **Leaves:** the exact MRI operand phrase (its span + the next span; numbers/names genericized, words literal: "<num> per fresh duck egg").
+- **Parents = the same phrase genericized word by word:** each word -> its word class. Word vectors = Welford means of the reader's
+  state over every TRAIN occurrence of the word type; classes by BIRCH branching (a new subcluster when a word falls outside every
+  radius; threshold lowered until >= 1536 subclusters), Ward-nested 1024 > 256 > 64; L4 = operand-kind prior. TEST-only words are
+  classed by the TRAIN tree from their own state means (no labels touch the classes). BIRCH is order-dependent: the seed is the
+  insertion order.
+- **Two stores on the identical tree (the only difference):** GLUE = one row per phrase (role a/b + own kind); a step reads A's and B's
+  phrases separately and glues them on the fly (product of experts minus one copy of the op base rate). JOIN = one row per pair
+  (the banked store, the cross join).
+- **Bars (each on the mean of seeds 0 and 1):**
+  - **GLUE-x:** GLUE - JOIN, TEST-U >= +0.020 (dropping the cross join buys transfer). Prediction: FAIL (~55%) -- the op is partly a
+    relation between the two phrases ("<num> eggs" with "<num> for breakfast" -> minus), which only the pair row holds.
+  - **GLUE-SEEN (guard):** GLUE - JOIN on seen >= -0.020 (no memory lost by not storing combinations).
+  - **SPANTREE-x:** GLUE TEST-U - 0.5555 (banked best ladder, full/geo/impulse) >= +0.020. Prediction: FAIL (~75%).
+  - **TREE-PLACEBO:** GLUE - GLUE on shuffled word vectors >= +0.020. **CROSSOVER:** best seen at L0, best TEST-U at a parent.
+- **Static vs live, said plainly:** in a frozen read, Welford + BIRCH give the same counts as a batch build; they matter when the Tree
+  grows while training (LT8's line). Here BIRCH sets the branching of the word classes.
