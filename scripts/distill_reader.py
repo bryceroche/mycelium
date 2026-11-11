@@ -21,6 +21,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     ap = argparse.ArgumentParser()
     ap.add_argument("--export", default=""); ap.add_argument("--src", default=""); ap.add_argument("--out", default="")
     ap.add_argument("--padzero", default=""); ap.add_argument("--gsm", default=""); ap.add_argument("--table", default="")
+    ap.add_argument("--impulse", default="")   # (ledger 11-10 IMPULSE) per-word coupling of the GSM TRAIN+TEST texts
     args = ap.parse_args()
     assert os.environ.get("DEV") in ("PCI+AMD", "CPU"), "DEV=PCI+AMD (never bare AMD) or CPU"
     import numpy as np
@@ -55,7 +56,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
     STEPS, BATCH, LR = int(os.environ.get("DR_STEPS", 30000)), int(os.environ.get("DR_BATCH", 32)), float(os.environ.get("DR_LR", 3e-4))
     TRAIN_JSONL, TRAIN_SPLIT = ".cache/form_mix_pm35c.jsonl", "formpm35cBP"
     CKPT, META = f".cache/distill_reader_{TAG}.safetensors", f".cache/distill_reader_{TAG}.json"
-    if (args.export or args.gsm or args.table) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
+    if (args.export or args.gsm or args.table or args.impulse) and os.environ.get("DR_CKPT"): CKPT = os.environ["DR_CKPT"]       # export a snapshot (DR_SAVE_AT)
     EPS = 1e-5
     PROF = bool(int(os.environ.get("DR_PROF", "0")))
 
@@ -75,7 +76,7 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
         assert args.out; padzero(args.padzero, args.out); sys.exit(0)
 
     TABLE = os.environ.get("DR_TABLE", "")   # THE STUDENT'S OWN TABLE (ledger 10-31, Llama retired): folded + pruned, Llama's file never opened
-    if TABLE and (args.export or args.gsm):
+    if TABLE and (args.export or args.gsm or args.impulse):
         _t = np.load(TABLE); EMB = np.zeros((int(_t["V"]), int(_t["rows"].shape[1])), np.float16); EMB[_t["keep"]] = _t["rows"]
         for _j, _i in enumerate(_t["oov_ids"]):
             EMB[_i] = EMB[_t["pieces"][_t["piece_ptr"][_j]:_t["piece_ptr"][_j + 1]]].astype(np.float32).mean(0).astype(np.float16)
@@ -281,6 +282,50 @@ if __name__ == "__main__":   # (the __main__ guard, ledger 11-04) spawned BEAM w
             assert np.isfinite(o).all()
             for r, i in enumerate(sl): st[start[i]:start[i + 1]] = o[r, al[i]].astype(np.float16)
         st.flush(); print(f"[gsm] {len(uniq)} texts, {int(start[-1])} words -> {args.gsm} ({CKPT})", flush=True); sys.exit(0)
+
+    if args.impulse:   # (ledger 11-10 IMPULSE, Bryce: "impulse function with acoustic detectors") the reader's word coupling
+        # each word j of a text is struck (its sub-tokens -> one neutral token, " the": embedding AND Tree row move together); the
+        # response at word i = ||o_j[i] - o[i]|| / ||o[i]||. Saved per word: [response to striking the NEXT word, to striking the PREVIOUS
+        # word] (0 at the text's ends). -> args.impulse (float32 [n_words, 2], gsmb_trunk_index layout restricted to TRAIN + TEST texts)
+        import gsm_bench_data as GD, gsm_trunk_states as GTS
+        from tokenizers import Tokenizer
+        assert os.path.exists(CKPT) and not os.path.exists(args.impulse), f"need {CKPT}; refusing to overwrite {args.impulse}"
+        from phase1_algebra_head import sent_indices
+        Dt, Q = GTS.texts(); tok = Tokenizer.from_file(".cache/llama-3.2-1b-weights/tokenizer.json"); NEU = tok.encode(" the", add_special_tokens=False).ids[0]
+        uniq = list(dict.fromkeys(q for sp in ("TRAIN", "TEST") for q in Q[sp])); NI = int(os.environ.get("IMP_N", len(uniq))); uniq = uniq[:NI]
+        enc = [tok.encode(q) for q in uniq]; al = [GTS.align(q, e.offsets, len(e.ids)) for q, e in zip(uniq, enc)]
+        start = np.cumsum([0] + [len(a) for a in al]); json.dump(dict(texts=uniq), open(args.impulse + ".json", "w"))
+        ld = safe_load(CKPT); p = owned({k: ld[k].to(Device.DEFAULT).cast(dtypes.float).contiguous().realize() for k in ld})
+        out = np.zeros((int(start[-1]), 2), np.float32); IB = 8; t0 = time.time()
+
+        def run(rows):   # rows: [(ids (T,), m (T,), text index)] -> outputs (len(rows), T, H)
+            ids = np.zeros((IB, T_ALG), np.int32); m = np.zeros((IB, T_ALG), np.float32); sent = np.zeros((IB, T_ALG), np.int8)
+            for r, (ii, mm, ti) in enumerate(rows): ids[r], m[r], sent[r] = ii, mm, sent_indices(uniq[ti], enc[ti].offsets, mm).astype(np.int8)
+            for r in range(len(rows), IB): ids[r], m[r] = ids[0], m[0]
+            db = rb_rows(ids, m) if RB else np.zeros((IB, T_ALG, DBP), np.float16)
+            xin = (Tensor(EMB[ids], dtype=dtypes.half), addmask(m), Tensor(db, dtype=dtypes.half) if DBIN else None)
+            rc = tuple(Tensor(a, dtype=dtypes.float) for a in t6_rot(sent, m)) if T6 else None
+            o = forward(p, *xin, rc).realize().numpy(); assert np.isfinite(o).all(); return o[:len(rows)]
+
+        for ti in range(len(uniq)):
+            n = len(enc[ti].ids); ids0 = np.zeros(T_ALG, np.int32); ids0[:n] = enc[ti].ids; m0 = np.zeros(T_ALG, np.float32); m0[:n] = 1
+            a_ = al[ti]; W = len(a_); lo = [0] + [x + 1 for x in a_[:-1]]
+            jobs = [(ids0, m0, ti)]
+            for j in range(W):
+                ii = ids0.copy(); ii[lo[j]:a_[j] + 1] = NEU; jobs.append((ii, m0, ti))
+            O = np.concatenate([run(jobs[k:k + IB]) for k in range(0, len(jobs), IB)])
+            base = O[0][a_]; nb = np.linalg.norm(base, axis=-1) + 1e-6
+            if ti == 0:   # custody: the unstruck pass reproduces the banked GSM states of the first TRAIN text
+                bk = np.load(".cache/gsmb_rb8_states.npy", mmap_mode="r"); s_ = json.load(open(GTS.OUT_IDX))["TRAIN"][0]
+                err = float(np.abs(base - np.asarray(bk[s_:s_ + W], np.float32)).max()); print(f"[impulse] custody max |d| {err:.3e}", flush=True)
+                assert err < 0.05, f"the unstruck pass differs from the banked states: {err}"
+            R = np.stack([np.linalg.norm(O[1 + j][a_] - base, axis=-1) / nb for j in range(W)])   # R[j, i]: response at i to striking j
+            s0 = int(start[ti])
+            for i in range(W):
+                if i + 1 < W: out[s0 + i, 0] = R[i + 1, i]
+                if i > 0: out[s0 + i, 1] = R[i - 1, i]
+            if ti % 200 == 0: print(f"[impulse] {ti}/{len(uniq)} ({time.time() - t0:.0f}s)", flush=True)
+        np.save(args.impulse, out); print(f"[impulse] {len(uniq)} texts, {int(start[-1])} words -> {args.impulse} ({CKPT})", flush=True); sys.exit(0)
 
     # ---- train ------------------------------------------------------------------------------------------------------
     LK = os.environ.get("DR_LK") == "1"   # (ledger 11-02 LK0) read a trained MBR ckpt: the per-token best-breath ceiling

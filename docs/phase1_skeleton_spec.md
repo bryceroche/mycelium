@@ -57899,3 +57899,18 @@ Artifact `.cache/gsm_verifier3.txt`. VER3 ans 0.0415 (VER2 0.0425; predictions: 
 - **Reading:** selection is bounded by judge strength (best AUC 0.63) more than by the judges' order. The verifier line needs a STRONGER
   judge, not a re-ordering: span keys (the impulse read, next), and the judges combined by a fitted ranker on TRAIN draws (the key gates
   TRAIN only) rather than a hand lexicographic order.
+
+### 2026-11-10 16:36 -- IMPULSE SPAN READ PINNED (GPU inference on the banked reader rb8x4; word given 11-10)
+**Serves:** Bryce 11-10 ("panama hats ... impulse function with acoustic detectors"; span_id as a volatile key, span content as the
+Tree's memory key); the memory line (genericized spans into the Tree); CORE_THEORIES "MHA reads the problem and compresses it into
+composite keys".
+- **Instrument** (`distill_reader.py --impulse`, the rb8x4 export's env; custody: the unstruck pass reproduces the banked
+  gsmb_rb8_states rows, max |d| 8.6e-4 on the smoke): every word of every TRAIN + TEST text is struck in turn (its sub-tokens -> " the",
+  embedding and Tree row together); the response at word i = ||o_struck[i] - o[i]|| / ||o[i]||. Coupling(i, i+1) = the mean of the two
+  cross responses. Smoke demo (TRAIN[0]): "natalia sold clips | to | <num> of her | friends | in april | , and then she | sold | half as
+  many clips | ..." -- coherent phrases at the median cut.
+- **Spans:** a boundary after word i when Coupling(i, i+1) < the TRAIN median over non-forced positions; forced at punctuation and
+  sentence ends (as the JSD read). **Yardstick** unchanged (`gsm_span_read.py`, SPAN_SRC=impulse): key = the operand's span + the next
+  span, side-tagged; placebo = random boundaries at the impulse rate.
+- **Bars:** **SPAN-x:** TEST-U MEM - 0.5047 (the +-3 window) >= +0.020. **SPAN-PLACEBO:** impulse - placebo >= +0.020. **RECALL** >= 0.99.
+- **PREDICTIONS:** SPAN-x FAIL (~55%: the window is a strong key), SPAN-PLACEBO PASS (~65%: the demo spans are phrases), RECALL FAIL.
