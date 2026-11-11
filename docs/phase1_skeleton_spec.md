@@ -57937,3 +57937,39 @@ SPAN-x FAIL (predicted), SPAN-PLACEBO FAIL (predicted PASS: wrong), RECALL FAIL 
   unseen ones: a longer span is a MORE SPECIFIC key, and a specific key memorizes surface that TEST-U problems do not repeat. The
   cross join reappears at the KEY's grain: the memory line needs keys short enough to recur (the +-3 window, 1.5-word impulse spans) or
   genericized further (a span's role, not its words). Span quality for a human reader is not span quality for a memory key.
+
+### 2026-11-10 19:57 -- LADDER PINNED (zero GPU; Bryce: "different levels of the Tree DB should hold different levels of abstraction")
+Theory lines: **abstract reasoning = zooming out on the Tree DB**; **overfit the facts to the Tree**; connecting local charts. The span
+reads so far were FLAT memories at one grain; IMPULSE2 showed a specific span is a LEAF, not a wrong key. The ladder stores the IS-A
+(vertical) edges only -- span -> its abstraction; the THEN-A (horizontal) edges stay bound per problem (the cross-join line holds).
+`scripts/gsm_ladder_read.py`:
+- **Leaves (L0):** the IMPULSE2 local-minimum spans; key = the operand's span + the next span, side-tagged (exact genericized text).
+  Steps with no token operand key on the question sentence (as all span reads).
+- **Step vector:** per side, the mean of the reader's banked word states (`gsmb_rb8_states.npy`) over the key's words, L2-normed;
+  [a | b] (zeros for a side without a token operand) -> PCA-64 fit on TRAIN.
+- **Parents:** nested on TRAIN: k-means 2048 (L1) -> Ward agglomeration of those centroids cut at 256 (L2) and 32 (L3); root L4 = the
+  operand-kind prior. Each node keeps op counts per operand-kind (gold grounding given, as STEPMEM); writes = TRAIN gold steps only.
+- **Answer:** descend root -> leaf, p_l = (n_l p_node + kappa p_{l+1}) / (n_l + kappa), kappa = 0.5 (the Tree's measured kappa*).
+- **Bars:** **LADDER-x:** TEST-U >= 0.5247 (the +-3 window 0.5047 + 0.020). **TREE-PLACEBO:** the same ladder over TRAIN vectors
+  shuffled across steps must lose by >= 0.020. **CROSSOVER:** in the per-level census (each level alone, empty node -> its parent),
+  the best level on SEEN is L0 and the best on TEST-U is coarser than L0.
+- **PREDICTIONS:** LADDER-x FAIL (~60%: the window is strong and the role tier is not built by k-means on words), TREE-PLACEBO PASS
+  (~65%), CROSSOVER PASS (~60%).
+
+### 2026-11-10 19:59 -- LADDER READ: LADDER-x PASS (+0.0508), TREE-PLACEBO PASS (+0.1325), CROSSOVER FAIL (L1 best on both)
+Artifact `.cache/gsm_ladder.txt` (reproduced bit-identically on a second run). 20,938 TRAIN steps, 16,678 distinct leaves; TEST 3,978
+(TEST-U 2,362); PCA-64 keeps 0.728 of the variance.
+- LADDER TEST-U **0.5555** (window 0.5047), seen 0.6337, RECALL 0.9227. TREE-PLACEBO TEST-U 0.4229 (below the kind prior 0.4572).
+- Census (each level alone, TEST-U / seen): L0 0.5504/0.6318 | **L1 (2048) 0.5627/0.6343** | L2 (256) 0.5478/0.5891 | L3 (32)
+  0.4903/0.5260 | L4 kind 0.4572/0.4901. CROSSOVER FAIL: L1 is best on SEEN and TEST-U alike (L0 vs L1 on seen: -0.0025, noise).
+- **Attribution (unbarred diagnostic, LADDER_DIAG=1):** flat 1-NN on the SAME state vectors = TEST-U 0.5436 / seen 0.6343. So of the
+  +0.051 over the window, **+0.039 is the reader's states** (duck ~ chicken: the words-to-states swap) and +0.012 is the ladder's
+  descent -- below THE NUMBER; the ladder itself is NOT claimed. L1 alone over flat 1-NN = +0.019 (unpinned; a named next form).
+- **Reading:** the IMPULSE2 leaves -- which lost to the window as words -- beat it by +0.051 once they are keyed by the reader's
+  states and backed off through the Tree's levels; the placebo says the grouping is real (+0.133). But the abstraction ladder does
+  not climb: coarser levels LOSE on unseen skeletons (L2 -0.015, L3 -0.072 vs L1), and the leaves rarely recur (80% singletons) so
+  L0 mostly falls through. The sweet spot is ONE fine level (~10 steps per node). Predictions: LADDER-x FAIL (wrong), TREE-PLACEBO
+  PASS (right), CROSSOVER PASS (wrong).
+- **Caveat (custody of locality):** the RB8 states are full-attention, so a span's vector carries its whole problem's context -- the
+  key is NOT local by construction; part of the gain may be skeleton seeping in through context. Next form named: the same ladder on a
+  LOCAL-mask state (the key-forming road's contract), and parents by role (op-conditioned) rather than by k-means geometry.
