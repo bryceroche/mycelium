@@ -58179,3 +58179,21 @@ descents minus the op base rate). JOIN = the banked pair ladder, recomputed in t
 - **GLUE-L:** GLUE - JOIN TEST-U >= +0.020 on the mean of k0/k1, primary config local states / impulse spans (banked JOIN 0.5432/0.5474).
   Second witness (reported, same bar): full states / impulse. Prediction FAIL (~60%): the pair row holds the relation.
 - **GLUE-SEEN guard:** seen >= -0.020. **GLUE-PLACEBO:** GLUE - shuffled-vector GLUE >= +0.020.
+
+### 2026-11-11 10:30 -- GLUE-L VERDICT: FAIL (-0.034 local / -0.039 full) -- the step's op lives in the RELATION between phrases, not in either phrase
+Artifacts `.cache/gsm_ladder{_local,}{,_k1}_glue.txt` (CPU, ~1 min each). Custody: journald dropped the k1 lines; numbers read off the files.
+| states | k | JOIN (pair rows) TEST-U / seen | GLUE (phrase rows) TEST-U / seen | GLUE placebo TEST-U |
+|---|---|---|---|---|
+| local | 0 | 0.5432 / 0.6324 | 0.5097 / 0.5743 | 0.5034 |
+| local | 1 | 0.5474 / 0.6200 | 0.5135 / 0.5575 | 0.4996 |
+| full | 0 | 0.5555 / 0.6337 | 0.5042 / 0.5774 | 0.5212 |
+| full | 1 | 0.5521 / 0.6306 | 0.5258 / 0.5885 | 0.5241 |
+GLUE-L (primary, local) mean -0.0337 **FAIL** (prediction FAIL: right); full witness -0.0387. GLUE-SEEN -0.060 / -0.049 FAIL.
+GLUE-PLACEBO +0.010 local / -0.008 full FAIL: a phrase's OWN tree barely beats shuffled vectors -- one phrase alone says little about
+the op. RECALL 0.857 vs 0.922: even TRAIN steps are not recoverable from their phrases separately.
+- **Reading:** dropping the pair costs ~0.035 on both seeds, both states. The op is a relation (rate x count -> mul; total and part ->
+  sub), so a row per phrase stores the wrong unit for the op. This does NOT vindicate the leaf cross join: the banked JOIN ladder's
+  best level on TEST-U is L1 (2048 centroids), i.e. the relation is read as a pair of CLASSES, not of exact spans.
+- **Next form (named, not pinned):** HYBRID -- memorize the exact phrase at the leaf (what it is: Welford state, kind), and keep the
+  relation only as class x class rows high in the tree (L2/L3 x L2/L3: 256^2 / 32^2 cells, a bounded join of abstractions, never of
+  specific spans). The cross join is the nemesis at the leaves; at the top of the tree it is the grammar.
