@@ -57986,3 +57986,25 @@ Artifact `.cache/gsm_ladder.txt` (reproduced bit-identically on a second run). 2
   parents the best single level on TEST-U is L2 or L3 (either source).
 - **PREDICTIONS:** LOCAL-x PASS (~55%), LEAK named (~45%), ROLE-x FAIL (~65%: kappa 0.5 lets parents speak only on sparse nodes),
   CROSSOVER-R FAIL (~60%).
+
+### 2026-11-10 20:47 -- LOCAL + ROLE LADDERS: LOCAL-x PASS (0.5432), LEAK none named (+0.0123), ROLE-x FAIL (-0.003 / -0.000), CROSSOVER-R PASS by < 0.001 (noise)
+Artifacts `.cache/gsmb_local_rb8.npy` (+ .json; 22,728 key texts, each run alone through RB8, 238 s on the GPU), `.cache/gsm_ladder_role.txt`,
+`gsm_ladder_local.txt`, `gsm_ladder_local_role.txt`.
+| states / parents | TEST-U | seen | flat 1-NN (diag) | census TEST-U L0 / L1 / L2 / L3 |
+|---|---|---|---|---|
+| full / geo (banked) | 0.5555 | 0.6337 | 0.5436 | 0.5504 / 0.5627 / 0.5478 / 0.4903 |
+| full / role | 0.5525 | 0.6380 | 0.5436 | 0.5504 / 0.5627 / 0.5635 / 0.5411 |
+| local / geo | 0.5432 | 0.6324 | 0.5152 | 0.5402 / 0.5491 / 0.5250 / 0.5004 |
+| local / role | 0.5428 | 0.6306 | 0.5152 | 0.5390 / 0.5478 / 0.5483 / 0.5356 |
+Placebos 0.42-0.43 throughout. Predictions: LOCAL-x PASS (right), LEAK named (wrong: none), ROLE-x FAIL (right), CROSSOVER-R FAIL (wrong
+on the letter: L2 beats L1 by +0.0008 full / +0.0005 local -- a tie, read as NO crossover in substance).
+- **LOCAL:** a key that sees nothing but its own two spans still beats the word window by +0.038 -- the states' gain is mostly NOT
+  the skeleton leaking through context (context's share +0.012, under THE NUMBER). The local-mask contract costs little.
+- **The ladder matters more on local keys (unbarred diag):** ladder - flat 1-NN = +0.028 on local states (+0.012 on full). Without
+  context, single neighbours are noisier and the Tree's node pooling + backoff earns its keep. Named next pin (barred): LADDER vs
+  flat 1-NN on local states, seed twin on the k-means.
+- **ROLE parents:** zooming out becomes nearly LOSSLESS -- at L3 (32 parents) role beats geometry by +0.051 full / +0.035 local, and
+  L2 ties L1 -- but the descent never needs them (kappa 0.5 lets a populated L1 node speak first), so the ladder does not move.
+  Abstraction by role is real; it is not yet USED. The open question: when should a query PREFER the parent (the fine node's
+  disagreement / low radius), rather than only falling back when the node is empty.
+- Unpinned observation: on local/geo the original CROSSOVER signature appears (leaf best on seen by +0.0056, L1 best on TEST-U).
