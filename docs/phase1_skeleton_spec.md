@@ -57923,3 +57923,17 @@ Impulse spans: TEST-U MEM 0.4814 (prior 0.4572), RECALL 0.8790; placebo MEM 0.45
   "<num> | eggs" on the TEST demo; the fixed +-3 window keeps more of each operand's phrase. **The form closes (median threshold); the
   line stays open.** Next forms named: a cut at the coupling's LOCAL minima (a boundary only where coupling dips below both neighbours),
   or a lower quantile; and the MRI coherence detector (Bryce 11-10) as a second, independent witness -- boundaries where both agree.
+
+### 2026-11-10 17:42 -- IMPULSE2 PINNED (zero GPU, the banked coupling): cut at the coupling's LOCAL MINIMA
+Same read (SPAN_SRC=impulse SPAN_LOCMIN=1): a boundary after word i only where Coupling(i, i+1) is below both neighbouring pairs'
+(forced cuts unchanged); the placebo's rate = this rule's TRAIN rate on free positions. Same bars: SPAN-x vs the window (0.5047) >=
++0.020; SPAN-PLACEBO >= +0.020; RECALL >= 0.99. PREDICTIONS: SPAN-x FAIL (~55%), SPAN-PLACEBO PASS (~70%), RECALL FAIL.
+
+### 2026-11-10 17:43 -- IMPULSE2 READ: all FAIL -- longer, cleaner spans transfer WORSE (TEST-U at the placebo, -0.0042); seen rises
+Artifact `.cache/gsm_span_impulse_locmin.txt`. Spans 2.21 words ("<num> eggs | per day", "eats <num> for breakfast", "fresh duck egg"),
+free-boundary rate 0.324. TEST-U MEM 0.4555 (prior 0.4572; placebo 0.4598); seen MEM 0.5031 (placebo 0.4827); RECALL 0.9085.
+SPAN-x FAIL (predicted), SPAN-PLACEBO FAIL (predicted PASS: wrong), RECALL FAIL (predicted).
+- **Reading:** the phrases look right to a reader and gain on SEEN skeletons (+0.020 over the placebo) while giving it all back on
+  unseen ones: a longer span is a MORE SPECIFIC key, and a specific key memorizes surface that TEST-U problems do not repeat. The
+  cross join reappears at the KEY's grain: the memory line needs keys short enough to recur (the +-3 window, 1.5-word impulse spans) or
+  genericized further (a span's role, not its words). Span quality for a human reader is not span quality for a memory key.

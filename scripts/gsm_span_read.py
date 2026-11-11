@@ -41,7 +41,7 @@ for a, c in big.items():
 med = float(np.median([coh.get(w, 0.0) for it in D["TRAIN"] for w in words(it) if w not in PUN]))
 
 
-SRC = os.environ.get("SPAN_SRC", "jsd")   # (ledger 11-10) jsd | impulse (the reader's word coupling, distill_reader.py --impulse)
+SRC = os.environ.get("SPAN_SRC", "jsd"); LOCMIN = os.environ.get("SPAN_LOCMIN") == "1"   # IMPULSE2   # (ledger 11-10) jsd | impulse (the reader's word coupling, distill_reader.py --impulse)
 if SRC == "impulse":
     import gsm_trunk_states as GTS
     _, Q = GTS.texts(); IMP = np.load(".cache/gsmb_impulse_rb8.npy"); _tx = json.load(open(".cache/gsmb_impulse_rb8.npy.json"))["texts"]
@@ -62,6 +62,8 @@ def bounds(it, rng=None, rate=None):
     for i in range(len(w) - 1):
         if w[i] in PUN or w[i + 1] in PUN or sid[i] != sid[i + 1]: b[i] = True
         elif rng is not None: b[i] = rng.random() < rate
+        elif SRC == "impulse" and LOCMIN:   # (IMPULSE2) a boundary only where the coupling dips below both neighbouring pairs
+            c = cpl(it, i); b[i] = (i == 0 or c < cpl(it, i - 1)) and (i + 2 >= len(w) or c < cpl(it, i + 1))
         elif SRC == "impulse": b[i] = cpl(it, i) < med
         else: b[i] = coh.get(w[i], 0.0) < med
     return b                                                     # b[i]: a boundary after token i
@@ -106,7 +108,8 @@ def read(make):
 nb = [b for it in D["TRAIN"] for b in bounds(it)]; rate_free = None
 # the placebo's rate = the JSD boundary rate on non-forced positions
 forced = [w[i] in PUN or w[i + 1] in PUN or it["sid"][i] != it["sid"][i + 1] for it in D["TRAIN"] for w in [words(it)] for i in range(len(w) - 1)]
-jb = [(cpl(it, i) if SRC == "impulse" else coh.get(words(it)[i], 0.0)) < med for it in D["TRAIN"] for i in range(len(words(it)) - 1)]
+jb = [bounds(it)[i] for it in D["TRAIN"] for i in range(len(words(it)) - 1)] if LOCMIN else \
+     [(cpl(it, i) if SRC == "impulse" else coh.get(words(it)[i], 0.0)) < med for it in D["TRAIN"] for i in range(len(words(it)) - 1)]
 rate = float(np.mean([b for b, f in zip(jb, forced) if not f]))
 rng = np.random.default_rng(0)
 J = read(lambda it: spans(it, bounds(it)))
@@ -121,4 +124,4 @@ out = [f"{SRC.upper()} segmenter: median coherence {med:.4f} bits; free-boundary
        f"  window +-3 (STEPMEM2, banked): RECALL 0.9582 | TEST-U MEM 0.5047",
        f"SPAN-x (spans - window >= +0.020): {J[1] - 0.5047:+.4f} -> {'PASS' if J[1] - 0.5047 >= 0.020 else 'FAIL'} | "
        f"SPAN-PLACEBO (spans - placebo >= +0.020): {J[1] - P[1]:+.4f} -> {'PASS' if J[1] - P[1] >= 0.020 else 'FAIL'} | RECALL >= 0.99 -> {'PASS' if J[0] >= 0.99 else 'FAIL'}"]
-txt = "\n".join(out); print(txt); open(f".cache/gsm_span{'' if SRC == 'jsd' else '_' + SRC}.txt", "w").write(txt + "\n")
+txt = "\n".join(out); print(txt); open(f".cache/gsm_span{'' if SRC == 'jsd' else '_' + SRC}{'_locmin' if LOCMIN else ''}.txt", "w").write(txt + "\n")
