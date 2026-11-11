@@ -17,6 +17,7 @@ import gsm_cj_probe_skel as SK
 import gsm_trunk_reader as TR
 import gsm_trunk_states as GTS
 
+GATE = float(os.environ.get("LADDER_GATE", "0")); KSEED = int(os.environ.get("LADDER_SEED", "0"))   # (ledger 11-11 GATED / LADDER-NN)
 K = 12; PUN = set(".,;:?!'\"()’"); KAPPA = 0.5; KS = (2048, 256, 32); WINDOW = 0.5047
 D, ST = TR.load(); seen = SK.seen(D["TRAIN"])   # D carries st0 per item (the states' layout); GD.OUT order
 OPS = sorted({o for it in D["TRAIN"] for o, _, _ in it["prog"]}); OI = {o: i for i, o in enumerate(OPS)}
@@ -80,7 +81,7 @@ print(f"[ladder] {len(tr)} TRAIN steps, {len(te)} TEST steps (TEST-U {u.sum()}),
 
 def build(Z):
     """nested levels on TRAIN vectors Z -> (assign fn, train node ids per level L1..L3)"""
-    km = MiniBatchKMeans(KS[0], random_state=0, n_init=3, batch_size=4096).fit(Z); c1 = km.labels_
+    km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Z); c1 = km.labels_
     maps = [np.arange(KS[0])]; C = km.cluster_centers_
     if PARENT == "role":   # (ROLE) parents in an op-discriminant space: spans that FEED THE SAME OP group together
         from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
@@ -110,7 +111,10 @@ def read(T, keys, kinds, nodes):
         p = np.ones(len(OPS)) / len(OPS); alone = None
         for lv in range(L - 1, -1, -1):
             c = cnt[lv]
-            if c is not None and c.sum() > 0: p = (c + KAPPA * p) / (c.sum() + KAPPA); alone = int(c.argmax())
+            if c is not None and c.sum() > 0:
+                alone = int(c.argmax())
+                if lv < L - 1 and GATE and c.max() / c.sum() < GATE: lvl[lv].append(alone); continue   # (GATED) a split node: climb
+                p = (c + KAPPA * p) / (c.sum() + KAPPA)
             lvl[lv].append(alone if alone is not None else -1)
         lad.append(int(p.argmax()))
     return np.array(lad), [np.array(x)[::1] for x in lvl]
@@ -125,10 +129,10 @@ def run(Z_tr, tag):
     return dict(tag=tag, U=acc(lad, u), S=acc(lad, ~u), ALL=acc(lad, np.ones_like(u)), REC=float((rl == ytr).mean()), census=cen)
 
 
-OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + ".txt"
+OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
-out = [f"LADDER [states {SRC}, parents {PARENT}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
+out = [f"LADDER [states {SRC}, parents {PARENT}, gate {GATE}, kseed {KSEED}]: {len(tr)} TRAIN step entries, {len({s[0] for s in tr})} distinct leaves, levels {KS}, kappa {KAPPA}"]
 for r in (R, P):
     out.append(f"  {r['tag']:12s}: TEST-U {r['U']:.4f} | seen {r['S']:.4f} | all {r['ALL']:.4f} | RECALL {r['REC']:.4f}")
     out.append("    census (each level alone; TEST-U / seen): " + " | ".join(f"{n} {a:.4f}/{b:.4f}" for n, (a, b) in zip(names, r["census"])))

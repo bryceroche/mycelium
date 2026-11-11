@@ -58008,3 +58008,24 @@ on the letter: L2 beats L1 by +0.0008 full / +0.0005 local -- a tie, read as NO 
   Abstraction by role is real; it is not yet USED. The open question: when should a query PREFER the parent (the fine node's
   disagreement / low radius), rather than only falling back when the node is empty.
 - Unpinned observation: on local/geo the original CROSSOVER signature appears (leaf best on seen by +0.0056, L1 best on TEST-U).
+
+### 2026-11-11 06:57 -- LADDER-NN + GATED CLIMB PINNED (Bryce: word given). Theory lines: abstract reasoning = zooming out on the Tree DB; the bridge's confidence dial; local-only mask on the key-forming road
+- **LADDER-NN:** local states, geometry parents: ladder - flat 1-NN (same vectors) >= +0.020 on TEST-U on BOTH k-means seeds
+  (LADDER_SEED 0 = banked 0.5432 vs 0.5152; seed 1 new). PREDICTION: PASS (~60%).
+- **GATED** (`LADDER_GATE=0.5`, role parents): the descent SKIPS a node whose majority share is < 0.5 (a split node: its spans feed
+  different ops) and keeps its parent's blended distribution instead -- the query climbs to the role parent when the fine node
+  disagrees with itself, not only when it is empty. Root never skipped. Bar **GATED-x:** gated - ungated (local/role, 0.5428) >= +0.020
+  on TEST-U at seed 0; full/role reported alongside (unbarred). Census of gates 0.4/0.6/0.7 unbarred. PREDICTION: FAIL (~60%: split
+  nodes are a minority and their majority is still the best single guess).
+
+### 2026-11-11 06:59 -- LADDER-NN PASS on both k-means seeds (+0.028 / +0.032); GATED-x FAIL (+0.0101) -- the gate trades seen for unseen
+Artifacts `.cache/gsm_ladder_local_k1.txt`, `gsm_ladder_local_role_gate0.{4,5,6,7}.txt`, `gsm_ladder_role_gate0.5.txt`.
+- **LADDER-NN (local, geometry) PASS:** seed 0 0.5432 vs flat 1-NN 0.5152 (+0.0280, banked); seed 1 0.5474 (+0.0322). **The Tree's
+  levels (node pooling + backoff) beat a flat memory on local keys, twinned -- the first claim for the ladder ITSELF.** (prediction PASS: right)
+- **GATED-x FAIL** (prediction FAIL: right): local/role gate 0.5 = TEST-U 0.5529 (+0.0101 vs 0.5428), seen 0.6182 (-0.0124); full/role
+  0.5584 (+0.0059), seen 0.6411. Sweep (local/role, TEST-U / seen): gate 0.4 0.5440/0.6225 | 0.5 0.5529/0.6182 | 0.6 0.5305/0.6015 |
+  0.7 0.5207/0.5699.
+- **Reading:** climbing past a split node moves accuracy from SEEN to UNSEEN (+0.010 / -0.012 at 0.5): the crossover Bryce predicted,
+  as a dial rather than a level -- memorize where the node agrees with itself, abstract where it doesn't. Too eager (>= 0.6) and the
+  climb throws away good fine nodes. Not claimable at +0.010; the next form must let the dial be READ per query (e.g. the fine node's
+  purity vs the parent's, a proper radius) rather than a global threshold.
