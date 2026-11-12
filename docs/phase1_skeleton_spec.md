@@ -58440,3 +58440,37 @@ spaces edge-op + cmotif-op, permanent batches certifier answer-key|diversity, L1
 - **CLAIM (scoped):** everything the STACK reads at test time -- centroids, class parents, admitted edges, admitted motifs -- is held by
   the custody store as class-level symbols and Welford counts; per-problem junctions are rebuilt on the fly; no stored key names a
   leaf. A storage/custody result, not a new accuracy claim.
+
+### 2026-11-12 13:01 -- PARTITION RULING (proposed) + SCOPE CORRECTION + PJ and EXEC pinned (Bryce: "word given for your choice")
+**Partition (Bryce: "do we partition the Tree DB table by tier and MHA head? or just by tier"):** SYMBOLS by tier, COORDINATES by
+(tier, head). The permanent symbolic tables (leaf rows, class parents, edges, motifs) are facts: one copy per tier contract (surface =
+UI, role/relation = business, value = data; the Tree DB itself is the database layer, not a tier). Splitting facts per head would
+store each fact H times and thin every Welford n by H. The generation-tagged model-space tables (centroids, chart Welford/BIRCH) ARE
+per (tier, head): each head sees the silhouette through its own chart projection, so its centroids live in its own coordinates (the
+11-07 ChartTable partition key stands for these). Heads specialize in HOW they look, never in WHAT is true.
+**Scope correction (STACK, TDB-STACK):** the ladder's phrase spans are PREDICTED (the IMPULSE2 segmenter, `span_ids`), not gold. What
+is gold: WHICH token is each operand (S["t"][:1]) and the step skeleton (step count, which step feeds which = refs). The STACK claim's
+"gold operand spans" reads "gold operand positions + gold step skeleton, predicted span boundaries". SEG-COST (named 11-12) is
+therefore moot as a separate read (MRI/AGREE boundaries already read -0.010/-0.018 on the pair ladder); the gold that matters is the
+skeleton + the pointer (the BT's job).
+**Solver census (zero GPU, executed gold programs, before any pin):** gold intermediate results are negative on 1.5% of TRAIN steps
+(1.6% TEST) and non-integer on 7.6% (7.1%); 3 TRAIN steps unexecutable. So sign and integrality are NOT proofs on GSM8K: a hard prune
+would cut gold. Per the bridge rule (only a proof crosses hard), the executor enters the beam as SOFT evidence only.
+Custody: the 13:00 dump run (LADDER_DUMPPRED for PJ) rewrote `gsm_ladder_local_chain_beam4_cmotif1.0.txt` again, deterministic, same numbers.
+
+**PJ -- phase-bound junctions** (theory lines: clean bind/unbind via the conjugate; junctions volatile per problem). Build delegated
+(Sonnet agent): `mycelium/junction_bus.py` over `complex_tensor` (numpy). Each TEST step's text-side junction (per role a/b: L1, L2, L3
+classes) is bound into complex registers (role phasor x level phasor x class code, P planes, unit-modulus random codes), recovered by
+conjugate unbind + cleanup against the level codebook, and the STACK beam re-predicts on the recovered junctions (refs still come
+from the notebook: the producer's committed op).
+- **PJ-REG:** per-step registers (6 items) at P = 256: STACK(bus) - STACK(tuple) TEST-U >= -0.002, mean seeds 0-3 local; full witness.
+  Prediction PASS ~85%.
+- **PJ-CAP (reported):** exact-recovery rate vs P in {32, 64, 128, 256, 512}, per-step registers vs one whole-problem superposition
+  (up to 72 items). Prediction: the whole-problem bus degrades below P = 512 on long problems (the ~20-per-plane theory line).
+**EXEC -- the executor as a soft expert in the beam** (theory line: the alternation; the continuous mirror of the solver on GSM8K).
+Each hypothesis executes its own ops (self-fed values: text numerals, earlier results, constants); expert p(result class | op, kinds)
+from TRAIN gold, classes {negative, non-integer, integer >= 0, undefined}; product of experts in the beam: + log p(class | op, kd)
+- log p(class | kd) (a likelihood ratio; lambda 1).
+- **EXEC-x:** STACK+EXEC - STACK TEST-U >= +0.020, mean seeds 0-3 local; full = second witness. **EXEC-PLACEBO:** the expert's rows
+  shuffled across (op, kd): EXEC - placebo >= +0.020. Prediction: EXEC-x FAIL ~60% (direction and division-by-integrality carry real
+  signal; the beam's edges may already hold most of it).
