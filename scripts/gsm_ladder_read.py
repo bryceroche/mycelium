@@ -186,8 +186,8 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
     def hyb_run(rules, tag, Hfit, chain="off"):
         km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit)
         maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(km.cluster_centers_).labels_ for k in KS[1:]]
-        def junctions(S, H):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1, L2, L3]
-            c = km.predict(H); out, i = [], 0
+        def junctions(S, H, C=None):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1, L2, L3]
+            c = km.predict(H) if C is None else np.argmin((H ** 2).sum(1)[:, None] - 2 * H @ C.T + (C ** 2).sum(1)[None], 1); out, i = [], 0
             for s in S:
                 ab = [None, None]
                 for j, (k, _, _, r) in enumerate(s[4]): ab[r] = [k] + [int(m[c[i + j]]) for m in maps]
@@ -213,11 +213,11 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 dab, dop = [], []
                 for _ in range(n): ab = fill(Jtr[g], tr[g], dab, dop); out_.append(ab); dab.append(ab); dop.append(int(ytr_ref[g])); g += 1
             Jtr = out_
-        cnt = defaultdict(lambda: np.zeros(len(OPS))); lp_ = defaultdict(set); pr_ = defaultdict(set)
+        cnt = defaultdict(lambda: np.zeros(len(OPS))); lp_ = defaultdict(set); pr_ = defaultdict(set); eev = defaultdict(list)
         levels = (4, 3, 2, 1) if rules else (4, 3, 2, 1, 0)
         for ab, s, q in zip(Jtr, tr, pid):
             for l in levels:
-                e = ekey(ab, s[1], l); cnt[e][s[2]] += 1; lp_[e].add(tuple(None if x is None else x[0] for x in ab)); pr_[e].add(int(q))
+                e = ekey(ab, s[1], l); cnt[e][s[2]] += 1; eev[e].append((int(s[2]), int(q))); lp_[e].add(tuple(None if x is None else x[0] for x in ab)); pr_[e].add(int(q))
         if rules:   # admission top-down: the top always; below, diversity AND a split (impure) admitted parent
             adm = {e for e in cnt if e[0] == 4}
             for l in (3, 2, 1):
@@ -270,17 +270,18 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     oc = None if o is None else ("s" if isref(o) else o[ol])
                     out.append(((ol, kd, r) + tuple(strip(c) for c in ab[r][pl][2:]) + (oc,), lf))
             return out
-        ccnt = defaultdict(lambda: np.zeros(len(OPS))); cpr = defaultdict(set); clf = defaultdict(set)
+        ccnt = defaultdict(lambda: np.zeros(len(OPS))); cpr = defaultdict(set); clf = defaultdict(set); cev = defaultdict(list)
         if MOTIF in ("class", "classplacebo"):
             yc = np.random.default_rng(13).permutation(ytr) if MOTIF == "classplacebo" else ytr
             for g, (ab, st, q) in enumerate(zip(Jtr, tr, pid)):
-                for mk, lf in ckeys(ab, st[1]): ccnt[mk][yc[g]] += 1; cpr[mk].add(int(q)); clf[mk].add(lf)
+                for mk, lf in ckeys(ab, st[1]): ccnt[mk][yc[g]] += 1; cpr[mk].add(int(q)); clf[mk].add(lf); cev[mk].append((int(yc[g]), int(q)))
+        cadm = {mk for mk in ccnt if len(cpr[mk]) >= MPROB and len(clf[mk]) >= 2}
         def cscore(ab, kd):   # sum over linked sides of (log p_motif - log base), each a 32 -> 256 shrinkage descent over admitted rows
             tot, ks = 0.0, ckeys(ab, kd)
             for i in range(0, len(ks), 2):
                 p = np.ones(len(OPS)) / len(OPS)
                 for mk, _ in ks[i:i + 2]:
-                    if len(cpr.get(mk, ())) >= MPROB and len(clf[mk]) >= 2: c = ccnt[mk]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
+                    if mk in cadm: c = ccnt[mk]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
                 tot = tot + np.log(p + 1e-12) - lbase
             return tot
         def mdist(dop, st, j):
@@ -303,12 +304,35 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 out.extend(hyps[0][2])
             return np.array(out)
         pe = pred_beam(Jte, te, BEAM) if BEAM and chain != "off" else pred(Jte, te)
+        tdb = None
+        if os.environ.get("LADDER_TDB") == "1" and MOTIF == "class" and BEAM and chain == "pred":   # (TDB-STACK, ledger 11-12)
+            from mycelium import stack_db
+            gen = f"rb8-{SRC}-k{KSEED}"; path = f".cache/tree_stack_{SRC}_k{KSEED}.db"
+            for f_ in (path, path + "-wal", path + "-shm"):
+                if os.path.exists(f_): os.remove(f_)
+            vocab = {x for st in tr + te for x in st[1] if isinstance(x, str)}
+            lab = km.predict(Hfit); nA = np.bincount(lab, minlength=KS[0]).astype(float)
+            ssA = np.bincount(lab, weights=(Hfit.astype(np.float64) ** 2).sum(1), minlength=KS[0])
+            stack_db.write_stack(path, gen, km.cluster_centers_.astype(np.float64), np.maximum(nA, 1), ssA, maps,
+                                 {e: eev[e] for e in adm}, {mk: cev[mk] for mk in cadm}, len(OPS), vocab)
+            pe_mem, adm_mem = pe, set(adm)
+            C_, maps_db, E_, M_ = stack_db.load_stack(path, gen)   # every in-memory structure is replaced by what the store holds
+            maps[:] = maps_db; cnt = defaultdict(lambda: np.zeros(len(OPS)), E_); adm = set(E_)
+            ccnt = defaultdict(lambda: np.zeros(len(OPS)), M_); cadm = set(M_)
+            Jte = junctions(te, Hte, C_)
+            pe = pred_beam(Jte, te, BEAM)
+            leafs = {k for st in tr for k, _, _, _ in st[4]}
+            def strs(x): return [y for z in x for y in strs(z)] if isinstance(x, tuple) else ([x] if isinstance(x, str) else [])
+            nleaf = sum(any(t in leafs for t in strs(k)) for k in list(E_) + list(M_)); nl0 = sum(k[0] == 0 for k in E_)
+            tdb = dict(dU=float((pe[u] == yte[u]).mean() - (pe_mem[u] == yte[u]).mean()), agree=float((pe == pe_mem).mean()),
+                       nE=len(E_), nM=len(M_), nleaf=nleaf, nl0=nl0, same=adm == adm_mem, mb=os.path.getsize(path) / 1e6)
+            pe = pe_mem   # the banked arm reports its in-memory read; the DB read is the parity witness
         pr = pred(Jtr, tr, "TRAIN", "tf"); ptf = pred(Jte, te, "TEST", "tf")
         if os.environ.get("LADDER_DUMPPRED"): np.savez(os.environ["LADDER_DUMPPRED"] + f"_{tag}.npz", pe=pe, ptf=ptf, y=yte, u=u, Jte=np.array([repr(x) for x in Jte]))
         per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
-                    edges={l: per[l] for l in sorted(per)})
+                    edges={l: per[l] for l in sorted(per)}, tdb=tdb)
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
         CM = os.environ["LADDER_MOTIF"] == "class"
@@ -339,7 +363,10 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     for g in (hR, hCH, hCP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} (gold-fed {g['TF']:.4f}) | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f} | edges {g['edges']}")
     out.append(f"CHAIN-x (CHAIN - HYBRID, self-fed, >= +0.020): {hCH['U'] - hR['U']:+.4f} | CHAIN-PLACEBO (CHAIN - placebo >= +0.020): {hCH['U'] - hCP['U']:+.4f} | "
                f"fed-steps CHAIN - HYBRID {hCH['UREF'] - hR['UREF']:+.4f} | CHAIN - JOIN {hCH['U'] - R['U']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ".txt"
+    if hCH.get("tdb"):
+        t = hCH["tdb"]; out.append(f"TDB-STACK: DB-PARITY dU {t['dU']:+.4f} (agree {t['agree']:.4f}; edges {t['nE']}, motifs {t['nM']}, same edge set {t['same']}, "
+                                   f"{t['mb']:.1f} MB) -> {'PASS' if abs(t['dU']) <= 0.0005 else 'FAIL'} | NO-LEAF-PAIR (L0 keys {t['nl0']}, keys with a leaf phrase {t['nleaf']}) -> {'PASS' if t['nl0'] == 0 and t['nleaf'] == 0 else 'FAIL'}")
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "

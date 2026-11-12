@@ -58426,3 +58426,17 @@ beam re-predicts TEST.
 - **NO-LEAF-PAIR:** zero stored keys at L0 and zero stored keys containing any TRAIN leaf phrase (writer guard raises; reader scans).
   Prediction: PASS ~95%.
 - A FAIL closes this storage form, not the line.
+
+### 2026-11-12 12:10 -- TDB-STACK VERDICT: DB-PARITY PASS 8/8, NO-LEAF-PAIR PASS 8/8 -- the stack lives in the Tree DB with no leaf pair
+Artifacts `.cache/gsm_ladder{_local,}{,_k1,_k2,_k3}_chain_beam4_cmotif1.0_tdb.txt` (CPU, unit tdb, 12:07-12:10); stores
+`.cache/tree_stack_{local,full}_k{0..3}.db` (3.6-3.7 MB each). Code: `mycelium/stack_db.py` (write_stack / load_stack over TreeDB:
+spaces edge-op + cmotif-op, permanent batches certifier answer-key|diversity, L1->L2->L3 parent nodes, generation-tagged centroids).
+- **DB-PARITY:** dU +0.0000 and prediction agreement 1.0000 on all 8 reads; the stored edge set equals the in-memory admitted set
+  (edges 3274-3401, motifs 1893-1983 per store). **PASS** (prediction PASS ~85%: right).
+- **NO-LEAF-PAIR:** L0 keys 0, keys holding any TRAIN leaf phrase 0, on all 8 stores (the writer guard also refuses both). **PASS** (~95%).
+- The in-memory arm reproduces the banked CMOTIF numbers exactly (local 0.5631/0.5682/0.5703/0.5728; full mean 0.5778).
+- Custody note: the seed-0 local smoke (12:05) ran before the _tdb suffix patch landed and rewrote the banked
+  `gsm_ladder_local_chain_beam4_cmotif1.0.txt`; its numbers are identical to the banked ones (BEAM4 0.5580, CMOTIF 0.5631) plus one TDB line.
+- **CLAIM (scoped):** everything the STACK reads at test time -- centroids, class parents, admitted edges, admitted motifs -- is held by
+  the custody store as class-level symbols and Welford counts; per-problem junctions are rebuilt on the fly; no stored key names a
+  leaf. A storage/custody result, not a new accuracy claim.
