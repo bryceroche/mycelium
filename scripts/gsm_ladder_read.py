@@ -175,6 +175,54 @@ if GLUE:   # (ledger 11-11 GLUE-L) no pair rows: each phrase is its own row on a
         p = pred(Ste, te, nte); rp = pred(Str, tr, ntr)
         return dict(tag=tag, U=float((p[u] == yte[u]).mean()), S=float((p[~u] == yte[~u]).mean()), REC=float((rp == ytr).mean()), rows=len(T[0]))
     gR = glue_run(Gtr, "GLUE"); gP = glue_run(Gtr[np.random.default_rng(0).permutation(len(Gtr))], "GLUE-PLACEBO")
+HYB = os.environ.get("LADDER_HYB") == "1"
+if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases), edges (class x class, level-gated), junctions (volatile)
+    HK, HM, PURE = 2, 2, 0.9   # diversity: >= HK distinct leaf pairs from >= HM problems; an edge splits down only if its parent is < PURE
+    pid = np.concatenate([[i] * min(len(it["prog"]), K) for i, it in enumerate(D["TRAIN"])]); assert len(pid) == len(tr)
+    hS = lambda S: [x for s in S for x in s[4]]
+    pcaH = PCA(64, random_state=0).fit(np.stack([x[1] for x in hS(tr)]))
+    Htr, Hte = pcaH.transform(np.stack([x[1] for x in hS(tr)])), pcaH.transform(np.stack([x[1] for x in hS(te)]))
+    def hyb_run(rules, tag, Hfit):
+        km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit)
+        maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(km.cluster_centers_).labels_ for k in KS[1:]]
+        def junctions(S, H):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1, L2, L3]
+            c = km.predict(H); out, i = [], 0
+            for s in S:
+                ab = [None, None]
+                for j, (k, _, _, r) in enumerate(s[4]): ab[r] = [k] + [int(m[c[i + j]]) for m in maps]
+                out.append(ab); i += len(s[4])
+            return out
+        def ekey(ab, kd, l): return (l, kd) if l == 4 else (l, kd) + tuple(None if x is None else x[l] for x in ab)
+        Jtr, Jte = junctions(tr, Hfit), junctions(te, Hte)   # (placebo) TRAIN sides take shuffled vectors
+        cnt = defaultdict(lambda: np.zeros(len(OPS))); lp_ = defaultdict(set); pr_ = defaultdict(set)
+        levels = (4, 3, 2, 1) if rules else (4, 3, 2, 1, 0)
+        for ab, s, q in zip(Jtr, tr, pid):
+            for l in levels:
+                e = ekey(ab, s[1], l); cnt[e][s[2]] += 1; lp_[e].add(tuple(None if x is None else x[0] for x in ab)); pr_[e].add(int(q))
+        if rules:   # admission top-down: the top always; below, diversity AND a split (impure) admitted parent
+            adm = {e for e in cnt if e[0] == 4}
+            for l in (3, 2, 1):
+                for ab, s in zip(Jtr, tr):
+                    e = ekey(ab, s[1], l)
+                    if e in adm: continue
+                    par = ekey(ab, s[1], l + 1); c = cnt[par]
+                    if len(lp_[e]) >= HK and len(pr_[e]) >= HM and par in adm and (l == 3 or c.max() / c.sum() < PURE): adm.add(e)
+        else: adm = set(cnt)
+        def pred(J, S):
+            out = []
+            for ab, s in zip(J, S):
+                p = np.ones(len(OPS)) / len(OPS)
+                for l in levels:
+                    e = ekey(ab, s[1], l)
+                    if e in adm: c = cnt[e]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
+                out.append(int(p.argmax()))
+            return np.array(out)
+        pe, pr = pred(Jte, te), pred(Jtr, tr)
+        per = Counter(e[0] for e in adm)
+        return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
+                    edges={l: per[l] for l in sorted(per)})
+    hR = hyb_run(True, "HYBRID", Htr); hC = hyb_run(False, "CROSS", Htr)
+    hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
@@ -192,6 +240,11 @@ if GLUE:
     for g in (gR, gP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | phrase rows {g['rows']}")
     out.append(f"GLUE-L (GLUE - JOIN ladder, TEST-U >= +0.020): {gR['U'] - R['U']:+.4f} | GLUE-SEEN (seen >= -0.020): {gR['S'] - R['S']:+.4f} | GLUE-PLACEBO (GLUE - placebo >= +0.020): {gR['U'] - gP['U']:+.4f}")
     OUTF = OUTF[:-4] + "_glue.txt"
+if HYB:
+    for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
+    out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
+               f"RULES (HYB - CROSS >= +0.020): {hR['U'] - hC['U']:+.4f} | HYB-PLACEBO (HYB - placebo >= +0.020): {hR['U'] - hP['U']:+.4f} | seen HYB - JOIN {hR['S'] - R['S']:+.4f}")
+    OUTF = OUTF[:-4] + "_hyb.txt"
 txt = "\n".join(out); print(txt); open(OUTF, "w").write(txt + "\n")
 
 if os.environ.get("LADDER_DIAG") == "1":   # (unbarred attribution, ledger 11-10) is it the states or the ladder? flat 1-NN on the same vectors

@@ -58201,3 +58201,20 @@ the op. RECALL 0.857 vs 0.922: even TRAIN steps are not recoverable from their p
 ### 2026-11-11 10:40 -- CARVED: "At the bottom of the Tree DB, the Cross Join is a cheating trap. But at the top of the Tree DB, it is simply the grammar of mathematics." (Bryce)
 Into `docs/CORE_THEORIES.md` (new section, "The Cross Join, bottom and top") and CLAUDE.md §8. It sharpens the cross-join line:
 the nemesis is a join of specific spans (leaves), never a join of abstract classes (the top). Evidence: SPAN TREE + GLUE-L (above).
+
+### 2026-11-11 17:24 -- HYBRID PINNED (Bryce: "word given!"): three tables -- nodes / edges / junctions -- with level rules on edges
+Theory lines: **the Cross Join, bottom and top** (carved today) + **memory leaves the MLP for the Tree** + **discover the structure**.
+Zero GPU: `LADDER_HYB=1` in `scripts/gsm_ladder_read.py`.
+- **nodes:** an IS-A tree over SINGLE operand phrases (PCA-64 -> k-means 2048 -> Ward 256 / 32), leaves = exact phrases.
+- **edges:** (level, kind pair, A node, B node) -> op counts, role-ordered (A, B); a missing text side = None; L4 = kind pair alone.
+- **junctions:** per step, which leaf/node each of its phrases hits -- built per problem, used to read, never stored as a row.
+- **Rules (HYBRID):** (1) leaves are never edge endpoints (no L0 edges); (2) diversity: an edge needs >= 2 distinct leaf pairs from
+  >= 2 problems; (3) edges are born at L3 (32 classes) and split one level down only under an ADMITTED parent whose majority share
+  is < 0.9 (a pure parent's children inherit it). Read: shrinkage descent over admitted edges, kappa 0.5.
+- **CROSS (rules off):** the same tree and edge table with every level incl. L0 leaf-pair rows, no diversity, no split rule.
+- **HYB-PLACEBO:** TRAIN phrase vectors shuffled before nodes are assigned.
+- **Bars (mean of k0/k1; primary local states, full states = second witness, same bars):**
+  - **HYB-NOLOSS:** HYBRID - JOIN (the banked pair ladder, same run) >= -0.010 TEST-U. Prediction: PASS ~50%.
+  - **HYB-x:** HYBRID - JOIN >= +0.020. Prediction: FAIL ~80%.
+  - **RULES:** HYBRID - CROSS >= +0.020 (the level rules buy transfer). Prediction: FAIL ~65%.
+  - **HYB-PLACEBO:** HYBRID - placebo >= +0.020. Reported: edges admitted per level (the table's size) and seen (memory given up).
