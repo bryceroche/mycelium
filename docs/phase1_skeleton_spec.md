@@ -58289,3 +58289,24 @@ edges, same rules as CHAIN; the placebo is CHAIN-PLACEBO (greedy).
 - **BEAM-x:** BEAM4 - CHAIN greedy (banked, same seed/state) >= +0.020 TEST-U, mean of k0/k1; local primary, full witness.
   Prediction: FAIL ~60% (the descent's probabilities are uncalibrated, and only steps fed by a result can vote on an earlier op).
 - Reported: BEAM - HYBRID, BEAM - JOIN, the share of the gold-fed gain (+0.045) recovered.
+
+### 2026-11-12 10:20 -- BEAM VERDICT: BEAM-x FAIL (+0.011 local / +0.003 full vs greedy CHAIN) -- but BEAM is above HYBRID and the pair ladder on every read
+Artifacts `.cache/gsm_ladder{_local,}{,_k1}_chain_beam4.txt` (CPU, ~1 min each; run 10:14-10:17). Correction to the pin: the
+CHAIN-PLACEBO arm was also beamed (the beam flag applies to every chain arm), not greedy.
+| states | k | HYBRID | CHAIN greedy (banked) | BEAM4 | gold-fed | BEAM placebo | BEAM - JOIN |
+|---|---|---|---|---|---|---|---|
+| local | 0 | 0.5347 | 0.5466 | 0.5580 | 0.5881 | 0.5343 | +0.0148 |
+| local | 1 | 0.5453 | 0.5466 | 0.5580 | 0.5881 | 0.5313 | +0.0106 |
+| full | 0 | 0.5470 | 0.5635 | 0.5567 | 0.5889 | 0.5390 | +0.0013 |
+| full | 1 | 0.5415 | 0.5648 | 0.5783 | 0.5889 | 0.5254 | +0.0262 |
+**BEAM-x** (BEAM - greedy CHAIN): local +0.0114 **FAIL**; full +0.0034 FAIL (prediction FAIL ~60%: right).
+Reported: BEAM - HYBRID +0.018 local / +0.023 full; BEAM - placebo +0.025 / +0.035; BEAM - JOIN +0.013 local / +0.014 full
+(positive on all four reads, unbarred). Share of the gold-fed gain recovered (local): greedy ~14%, BEAM ~38%.
+- **Custody (the twin-tie flag, resolved):** k0 and k1 local tie exactly (1,318 / 2,362 self-fed, 1,389 gold-fed) although 24% of
+  predictions differ and the per-op correct counts differ (625/404/88/201 vs 639/415/67/197). Seeds 2 and 3 land at 1,340 / 1,323
+  self-fed (1,397 / 1,394 gold-fed): a coincidence inside a narrow spread. Chaining narrows the k-seed spread (the result classes'
+  top levels do not depend on k-means). Four-seed local means: HYBRID 0.5410, BEAM 0.5609 (+0.0199). Dump: `LADDER_DUMPPRED`.
+- **Reading:** the beam helps (local both seeds +0.011) but less than the bar; on full states it is mixed by seed. Its probabilities
+  are shrinkage frequencies, uncalibrated across levels, and only result-fed steps can vote on an earlier op. The grammar-plus-beam
+  stack (no leaf pairs) now sits above the pair ladder on all four reads (+0.001 to +0.026). Not a claim -- the motif prior is the
+  named next form (whole-fragment priors for the beam's scoring).

@@ -256,6 +256,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
             return np.array(out)
         pe = pred_beam(Jte, te, BEAM) if BEAM and chain != "off" else pred(Jte, te)
         pr = pred(Jtr, tr, "TRAIN", "tf"); ptf = pred(Jte, te, "TEST", "tf")
+        if os.environ.get("LADDER_DUMPPRED"): np.savez(os.environ["LADDER_DUMPPRED"] + f"_{tag}.npz", pe=pe, ptf=ptf, y=yte, u=u, Jte=np.array([repr(x) for x in Jte]))
         per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
