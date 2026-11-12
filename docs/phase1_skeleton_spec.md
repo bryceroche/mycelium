@@ -58408,3 +58408,21 @@ Replicates seeds 0-3 (+0.0255 / +0.0249). CMOTIF over BEAM4 on the fresh seeds: 
   reader. The JOIN comparator's seed spread is wide (0.5275-0.5555); the claim is paired by seed.
 - **Next forms (named):** the stack's tables into `mycelium/tree_db.py` (nodes / edges / motifs permanent, junctions volatile in the
   notebook); the stack as the BT's retrieval road (a consumer that must read edges + motifs to type its steps).
+
+### 2026-11-12 12:05 -- TDB-STACK pinned: the stack's tables built OFFLINE into tree_db (custody), read back, no leaf pair stored
+Bryce: "word given -- should we build the Tree DB tables offline or during training?" Ruling proposed (answered in chat): OFFLINE first
+(what STACK measured), from answer-key-gated TRAIN only; during a training run the tables are READ-ONLY (a table that moves under the
+reader is a moving label, and writes from the reader's own guesses would memorize its own cross join); growth happens BETWEEN runs as
+provisional batches promoted by the key (custody tiers + promote_recurrent, already in tree_db). Junctions never enter the store.
+Theory lines: **Memory leaves the MLP for the Tree** + **the Cross Join, bottom and top**. Zero GPU (CPU build + read).
+Form: `LADDER_TDB=1` in the CMOTIF arm: after the in-memory STACK predicts, the builder writes a fresh per-seed store
+(`.cache/tree_stack_{src}_k{seed}.db`, NOT the canonical tree.db): the 2048 L1 centroids (generation-tagged), the L1->L2->L3 parent
+nodes, the ADMITTED edges (space edge-op) and ADMITTED class motifs (space cmotif-op) as permanent events (vec = one-hot op,
+source = problem id; admission applied by the builder, which alone ever sees leaf pairs). Then every in-memory structure is dropped,
+junctions are rebuilt from the DB's centroids + parents, edges/motifs from the DB's Welford leaves (count = n * mean), and the
+beam re-predicts TEST.
+- **DB-PARITY:** |TEST-U(DB) - TEST-U(memory)| <= 0.0005 on all 8 reads (seeds 0-3 x local/full). Prediction: PASS ~85% (exact
+  agreement expected; risks = float drift in centroids, a key that does not round-trip).
+- **NO-LEAF-PAIR:** zero stored keys at L0 and zero stored keys containing any TRAIN leaf phrase (writer guard raises; reader scans).
+  Prediction: PASS ~95%.
+- A FAIL closes this storage form, not the line.
