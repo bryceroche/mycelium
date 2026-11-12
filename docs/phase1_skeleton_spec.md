@@ -58324,3 +58324,23 @@ Theory lines: **the Cross Join, bottom and top** (motifs = recurring fragments o
 - **Bars (mean of k seeds 0-3, four seeds given the narrow chained spread; local primary, full witness):**
   - **MOTIF-x:** BEAM4+MOTIF - BEAM4 >= +0.020 TEST-U. Prediction: FAIL ~55%.
   - **MOTIF-PLACEBO:** BEAM4+MOTIF - placebo >= +0.020.
+
+### 2026-11-12 10:27 -- MOTIF VERDICT: MOTIF-x FAIL (-0.004 local / -0.002 full on TEST-U) -- motifs buy SEEN shapes (+0.013 / +0.015), not new ones
+Artifacts `.cache/gsm_ladder{_local,}{,_k1,_k2,_k3}_chain_beam4_motif1.0.txt` (CPU, run 10:2x-10:27).
+| states | arm | k0 | k1 | k2 | k3 | mean TEST-U | mean seen |
+|---|---|---|---|---|---|---|---|
+| local | BEAM4 | 0.5580 | 0.5580 | 0.5673 | 0.5601 | 0.5609 | 0.5965 |
+| local | +MOTIF | 0.5517 | 0.5529 | 0.5572 | 0.5665 | 0.5571 | 0.6091 |
+| local | placebo | 0.5546 | 0.5432 | 0.5656 | 0.5470 | 0.5526 | 0.5922 |
+| full | BEAM4 | 0.5567 | 0.5783 | 0.5677 | 0.5715 | 0.5686 | 0.6149 |
+| full | +MOTIF | 0.5660 | 0.5694 | 0.5631 | 0.5690 | 0.5669 | 0.6295 |
+| full | placebo | 0.5445 | 0.5622 | 0.5593 | 0.5572 | 0.5558 | 0.6190 |
+**MOTIF-x** local -0.0038 **FAIL** (prediction FAIL ~55%: right); full -0.0017. **MOTIF-PLACEBO** +0.0045 / +0.0111 FAIL.
+Seen (unbarred): +0.0126 local / +0.0146 full, on all eight reads but one (full k1 0.0000).
+- **Reading:** the instrument and the form collide by construction. TEST-U = steps of problems whose SKELETON (the op + kind sequence)
+  never occurs in TRAIN; a motif keyed by previous ops + link shape is a fragment of exactly that sequence. So the motif prior pulls
+  the parse toward familiar shapes: it helps seen skeletons and slightly hurts unseen ones. The carved line one level up: a motif
+  over op SEQUENCES drifts toward the skeleton cross join (memorizing how whole problems are shaped). A motif must be keyed by what
+  its slots ARE (classes, result classes), not by the order ops happened to come in.
+- **Next form (named):** class-keyed motifs -- a fragment = a pair of linked edges as (input classes -> result class -> consumer's
+  other input class), with no op history in the key; the op comes out of the motif, never goes in.
