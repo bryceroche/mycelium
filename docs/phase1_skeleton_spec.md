@@ -58246,3 +58246,18 @@ Means: **HYB-NOLOSS** local -0.0053 **PASS** (pred PASS ~50%); full witness -0.0
   the shrinkage descent already discounts them on new problems. The rules' value is SIZE (8x fewer rows, no leaf pairs) at parity.
 - **Next forms (named):** edges that chain (store the result class: rate x count -> mul -> total, so steps compose into a parse);
   the junction table as the BT's notebook rows (volatile, per problem).
+
+### 2026-11-11 19:31 -- CHAIN PINNED (Bryce: "word given for the chaining edges"): edges carry a RESULT CLASS, so steps compose into a parse
+Theory lines: **discover the structure, then solve over it** (a problem's steps parsed by a grammar of edges) + **the Cross Join,
+bottom and top** + **connecting local charts**. Zero GPU: `LADDER_HYB=1 LADDER_CHAIN=1` in `scripts/gsm_ladder_read.py`.
+- **Audit:** in HYBRID a side fed by an earlier step's result is blank (kind 's' only), and a step with no text operand reads the
+  question sentence. 57% of TRAIN steps have a step-fed side; 3,319 have two.
+- **Result class (bounded):** a step's result = ("s", its op, its inputs' classes): 256-class inputs at L1, 32-class at L2, the op
+  alone at L3. A nested result collapses to its op, so the symbol set stays finite (no recursion = no cross join over depth). For
+  the diversity rule a result's "leaf" is what it was made of (its op + its inputs' leaves). Same HYBRID rules otherwise.
+- **The parse feeds itself:** steps are read in order per problem; a step-fed side takes the result class built from the parse's OWN
+  predicted op (primary). Gold-fed (teacher-forced) reported as the ceiling. TRAIN tables use gold ops (custody: key-verified).
+- **Bars (mean of k0/k1; local primary, full witness):**
+  - **CHAIN-x:** CHAIN (self-fed) - HYBRID >= +0.020 TEST-U. Prediction: PASS ~45%.
+  - **CHAIN-PLACEBO:** CHAIN - the same build with result-class ops shuffled across TRAIN steps >= +0.020.
+  - Reported: gold-fed, the step-fed TEST-U subset, CHAIN - JOIN.

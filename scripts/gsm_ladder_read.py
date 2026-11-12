@@ -74,7 +74,8 @@ def steps(it):
             v.append(x / (np.linalg.norm(x) + 1e-6))
         kd = (SK.first_kind(A), SK.first_kind(B))   # (GLUE) one row per phrase: the side's own key, vector, kind and role
         sides = [(("q: " if key.startswith("q:") else "") + " ".join(f"{'ab'[r]}:{w[j]}" for j in P), v[r], kd[r], r) for r, P in enumerate(pos) if P]
-        res.append((key, kd, OI[o], np.concatenate(v), sides))
+        refs = tuple(S["s"][0] if S["s"] and not S["t"] else None for S in (A, B))   # (CHAIN) which earlier step feeds each side
+        res.append((key, kd, OI[o], np.concatenate(v), sides, refs, not (A["t"] or B["t"])))
     return res
 
 
@@ -182,7 +183,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
     hS = lambda S: [x for s in S for x in s[4]]
     pcaH = PCA(64, random_state=0).fit(np.stack([x[1] for x in hS(tr)]))
     Htr, Hte = pcaH.transform(np.stack([x[1] for x in hS(tr)])), pcaH.transform(np.stack([x[1] for x in hS(te)]))
-    def hyb_run(rules, tag, Hfit):
+    def hyb_run(rules, tag, Hfit, chain="off"):
         km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit)
         maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(km.cluster_centers_).labels_ for k in KS[1:]]
         def junctions(S, H):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1, L2, L3]
@@ -194,6 +195,24 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
             return out
         def ekey(ab, kd, l): return (l, kd) if l == 4 else (l, kd) + tuple(None if x is None else x[l] for x in ab)
         Jtr, Jte = junctions(tr, Hfit), junctions(te, Hte)   # (placebo) TRAIN sides take shuffled vectors
+        # (CHAIN, ledger 11-11) a side fed by an earlier step gets that step's RESULT CLASS: a bounded symbol = its op + its inputs'
+        # classes (256 at L1, 32 at L2, op alone at L3); a nested result collapses to its op, so the symbol set stays finite
+        nst = lambda sp: [min(len(it["prog"]), K) for it in D[sp]]
+        cl = lambda y, l: None if y is None else (y[3] if isinstance(y[3], tuple) else y[l])
+        refpath = lambda x, op: [("s", op, tuple(None if y is None else y[0] for y in x)), ("s", op, cl(x[0], 2), cl(x[1], 2)), ("s", op, cl(x[0], 3), cl(x[1], 3)), ("s", op)]
+        def fill(ab, st, dab, dop):
+            if chain == "off": return ab
+            ab = [None, None] if st[6] and any(r is not None for r in st[5]) else list(ab)   # a no-text step reads its inputs, not the question
+            for r, ref in enumerate(st[5]):
+                if ref is not None and ref < len(dab) and ab[r] is None: ab[r] = refpath(dab[ref], dop[ref])
+            return ab
+        ytr_ref = np.random.default_rng(7).permutation(ytr) if chain == "placebo" else ytr   # (CHAIN-PLACEBO) result classes carry a shuffled op
+        if chain != "off":
+            out_, g = [], 0
+            for n in nst("TRAIN"):
+                dab, dop = [], []
+                for _ in range(n): ab = fill(Jtr[g], tr[g], dab, dop); out_.append(ab); dab.append(ab); dop.append(int(ytr_ref[g])); g += 1
+            Jtr = out_
         cnt = defaultdict(lambda: np.zeros(len(OPS))); lp_ = defaultdict(set); pr_ = defaultdict(set)
         levels = (4, 3, 2, 1) if rules else (4, 3, 2, 1, 0)
         for ab, s, q in zip(Jtr, tr, pid):
@@ -208,21 +227,27 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     par = ekey(ab, s[1], l + 1); c = cnt[par]
                     if len(lp_[e]) >= HK and len(pr_[e]) >= HM and par in adm and (l == 3 or c.max() / c.sum() < PURE): adm.add(e)
         else: adm = set(cnt)
-        def pred(J, S):
-            out = []
-            for ab, s in zip(J, S):
-                p = np.ones(len(OPS)) / len(OPS)
-                for l in levels:
-                    e = ekey(ab, s[1], l)
-                    if e in adm: c = cnt[e]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
-                out.append(int(p.argmax()))
+        def desc(ab, kd):
+            p = np.ones(len(OPS)) / len(OPS)
+            for l in levels:
+                e = ekey(ab, kd, l)
+                if e in adm: c = cnt[e]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
+            return int(p.argmax())
+        def pred(J, S, sp="TEST", mode="pred"):   # sequential per problem: mode pred = the parse feeds its OWN ops forward; tf = gold ops
+            out, g = [], 0; yg = yte if sp == "TEST" else ytr
+            for n in nst(sp):
+                dab, dop = [], []
+                for _ in range(n):
+                    ab = fill(J[g], S[g], dab, dop); q = desc(ab, S[g][1]); out.append(q); dab.append(ab); dop.append(q if mode == "pred" else int(yg[g])); g += 1
             return np.array(out)
-        pe, pr = pred(Jte, te), pred(Jtr, tr)
-        per = Counter(e[0] for e in adm)
+        pe, pr = pred(Jte, te), pred(Jtr, tr, "TRAIN", "tf"); ptf = pred(Jte, te, "TEST", "tf")
+        per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
+                    TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
                     edges={l: per[l] for l in sorted(per)})
-    hR = hyb_run(True, "HYBRID", Htr); hC = hyb_run(False, "CROSS", Htr)
-    hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
+    hR = hyb_run(True, "HYBRID", Htr)
+    if os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN", Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
+    else: hC = hyb_run(False, "CROSS", Htr); hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
 names = ["L0 leaf", "L1 2048", "L2 256", "L3 32", "L4 kind"]
@@ -240,7 +265,12 @@ if GLUE:
     for g in (gR, gP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | phrase rows {g['rows']}")
     out.append(f"GLUE-L (GLUE - JOIN ladder, TEST-U >= +0.020): {gR['U'] - R['U']:+.4f} | GLUE-SEEN (seen >= -0.020): {gR['S'] - R['S']:+.4f} | GLUE-PLACEBO (GLUE - placebo >= +0.020): {gR['U'] - gP['U']:+.4f}")
     OUTF = OUTF[:-4] + "_glue.txt"
-if HYB:
+if HYB and os.environ.get("LADDER_CHAIN") == "1":
+    for g in (hR, hCH, hCP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} (gold-fed {g['TF']:.4f}) | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f} | edges {g['edges']}")
+    out.append(f"CHAIN-x (CHAIN - HYBRID, self-fed, >= +0.020): {hCH['U'] - hR['U']:+.4f} | CHAIN-PLACEBO (CHAIN - placebo >= +0.020): {hCH['U'] - hCP['U']:+.4f} | "
+               f"fed-steps CHAIN - HYBRID {hCH['UREF'] - hR['UREF']:+.4f} | CHAIN - JOIN {hCH['U'] - R['U']:+.4f}")
+    OUTF = OUTF[:-4] + "_chain.txt"
+elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
                f"RULES (HYB - CROSS >= +0.020): {hR['U'] - hC['U']:+.4f} | HYB-PLACEBO (HYB - placebo >= +0.020): {hR['U'] - hP['U']:+.4f} | seen HYB - JOIN {hR['S'] - R['S']:+.4f}")
