@@ -58511,3 +58511,13 @@ their step's op; the ROLE ladder's 11-10 rule) instead of geometry. Edges, motif
 - **FOREST-x:** STACK(role cut) - STACK(geometry cut) TEST-U >= +0.020, mean seeds 0-3 local; full = second witness. PASS = the
   business tier wants its own cut (per-tier forests); FAIL = one shared forest stands.
   Prediction: FAIL ~80% (ROLE-x 11-10 read -0.003 / -0.000 on the pair ladder; the edges already condition on the op).
+
+### 2026-11-12 13:28 -- PJ VERDICT: PJ-REG PASS 8/8 (+0.0000, junctions exact 1.0000) -- per-problem junctions live on the phase bus
+Artifacts `.cache/gsm_ladder{_local,}{,_k1,_k2,_k3}_chain_beam4_cmotif1.0_pj256.txt` (unit pj, 13:17-13:28). On every read the STACK beam
+on bus-recovered TEST junctions (per-step registers, P = 256, conjugate unbind + cleanup) equals the tuple form exactly: dU +0.0000,
+prediction agreement 1.0000, junction recovery 1.0000. Prediction PASS ~85%: right.
+- **Reading (scoped):** a lossless-capacity result, not a gain: at 6 items per 256-plane register the bus is exact (PJ-CAP: 0.992 at
+  P = 128, 0.80 at P = 64), so the volatile junction table can live as phase-bound registers in the notebook with zero cost to the
+  stack. One whole-problem superposition holds ~12 items exactly at P = 256 (24 items: 0.83): GSM8K problems need registers (one per
+  step = the notebook row), not one bus vector -- the stone's "~20 items per plane" measured in this geometry.
+- Build: Sonnet agent (brief + review in this session), files committed with this verdict.

@@ -331,6 +331,12 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 out.extend(hyps[0][2])
             return np.array(out)
         pe = pred_beam(Jte, te, BEAM) if BEAM and chain != "off" else pred(Jte, te)
+        pj = None
+        if os.environ.get("LADDER_PJ") and MOTIF == "class" and BEAM and chain == "pred" and not EXEC:   # (PJ, ledger 11-12) phase-bound junctions
+            from mycelium.junction_bus import roundtrip
+            Jbus = roundtrip(Jte, int(os.environ["LADDER_PJ"])); pe_bus = pred_beam(Jbus, te, BEAM)
+            pj = dict(dU=float((pe_bus[u] == yte[u]).mean() - (pe[u] == yte[u]).mean()), agree=float((pe_bus == pe).mean()),
+                      exact=float(np.mean([a_ == b_ for a_, b_ in zip(Jbus, Jte)])))
         tdb = None
         if os.environ.get("LADDER_TDB") == "1" and MOTIF == "class" and BEAM and chain == "pred":   # (TDB-STACK, ledger 11-12)
             from mycelium import stack_db
@@ -359,7 +365,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
         per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
-                    edges={l: per[l] for l in sorted(per)}, tdb=tdb)
+                    edges={l: per[l] for l in sorted(per)}, tdb=tdb, pj=pj)
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
         CM = os.environ["LADDER_MOTIF"] == "class"
@@ -397,10 +403,12 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     if hCH.get("tdb"):
         t = hCH["tdb"]; out.append(f"TDB-STACK: DB-PARITY dU {t['dU']:+.4f} (agree {t['agree']:.4f}; edges {t['nE']}, motifs {t['nM']}, same edge set {t['same']}, "
                                    f"{t['mb']:.1f} MB) -> {'PASS' if abs(t['dU']) <= 0.0005 else 'FAIL'} | NO-LEAF-PAIR (L0 keys {t['nl0']}, keys with a leaf phrase {t['nleaf']}) -> {'PASS' if t['nl0'] == 0 and t['nleaf'] == 0 else 'FAIL'}")
+    if hCH.get("pj"):
+        t = hCH["pj"]; out.append(f"PJ-REG (P={os.environ['LADDER_PJ']}): STACK(bus) - STACK(tuple) {t['dU']:+.4f} (agree {t['agree']:.4f}, junctions exact {t['exact']:.4f}) -> {'PASS' if t['dU'] >= -0.002 else 'FAIL'} (per seed; the bar is the seed mean)")
     if os.environ.get("LADDER_EXEC") == "on":
         for g in (hEX, hEP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f}")
         out.append(f"EXEC-x (STACK+EXEC - STACK >= +0.020): {hEX['U'] - hCH['U']:+.4f} | EXEC-PLACEBO (EXEC - placebo >= +0.020): {hEX['U'] - hEP['U']:+.4f} | seen {hEX['S'] - hCH['S']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + ".txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
