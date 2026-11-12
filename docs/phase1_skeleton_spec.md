@@ -58218,3 +58218,31 @@ Zero GPU: `LADDER_HYB=1` in `scripts/gsm_ladder_read.py`.
   - **HYB-x:** HYBRID - JOIN >= +0.020. Prediction: FAIL ~80%.
   - **RULES:** HYBRID - CROSS >= +0.020 (the level rules buy transfer). Prediction: FAIL ~65%.
   - **HYB-PLACEBO:** HYBRID - placebo >= +0.020. Reported: edges admitted per level (the table's size) and seen (memory given up).
+
+### 2026-11-11 17:27 -- LT8 VERDICT: LT-W FAIL (+0.0020 paired) -- the live Tree is a passenger (removal cost +0.0020 val mse)
+Chain `.cache/run_mrilt.sh` done 11:19 (worktree mycelium-runs/mrilt, removed). `distill_reader_lt8x4` 30k steps, 0.272 s/step.
+- Distill VAL mse 0.1746 (RB8 0.1747): parity. **LT-USE census:** severed 0.1766 -> removal cost +0.0020; nodes live 4096 / full
+  (count cap) 3624 -- the table filled and was read, but the student barely leans on it.
+- **LT-W:** wild fac-exact (frozen CLK3_241) LT8 0.3530 vs RB8 0.3510 -> +0.0020, paired SE 0.0078, McNemar z 0.25 (126 vs 130
+  discordant): **FAIL** (prediction FAIL ~70%: right).
+- **Reading:** a live Tree gated only by soft reads, under a distillation loss the residual already solves, is voted down from birth
+  (the mandatory-road law, again): no seal, so no headroom converted. Its form-next is a ROAD: the live Tree on a sealed field
+  (LBAND's seal + LT's table), so the sealed context can only return through the table.
+
+### 2026-11-11 17:27 -- HYBRID VERDICT: HYB-NOLOSS PASS (-0.005 local / -0.010 full) at 1/8 the rows and NO leaf pairs; HYB-x FAIL; RULES FAIL
+Artifacts `.cache/gsm_ladder{_local,}{,_k1}_hyb.txt` (CPU, ~1 min each).
+| states | k | JOIN TEST-U / seen | HYBRID TEST-U / seen / RECALL | CROSS TEST-U / RECALL | placebo | edges (L1/L2/L3/L4) | CROSS rows (L0..L4) |
+|---|---|---|---|---|---|---|---|
+| local | 0 | 0.5432 / 0.6324 | 0.5347 / 0.6170 / 0.676 | 0.5296 / 0.923 | 0.4111 | 2004/1396/758/9 | 17079/9900/5092/889/9 |
+| local | 1 | 0.5474 / 0.6200 | 0.5453 / 0.6040 / 0.668 | 0.5368 / 0.923 | 0.4056 | 1944/1446/724/9 | 17079/9866/5180/861/9 |
+| full | 0 | 0.5555 / 0.6337 | 0.5470 / 0.6361 / 0.682 | 0.5368 / 0.925 | 0.3920 | 2000/1454/697/9 | 17079/9769/4978/850/9 |
+| full | 1 | 0.5521 / 0.6306 | 0.5415 / 0.6269 / 0.683 | 0.5491 / 0.925 | 0.4153 | 1983/1434/700/9 | 17079/9794/5012/889/9 |
+Means: **HYB-NOLOSS** local -0.0053 **PASS** (pred PASS ~50%); full witness -0.0096 PASS (at the line). **HYB-x** FAIL (pred: right).
+**RULES** HYBRID - CROSS +0.0068 local / +0.0013 full **FAIL** (pred FAIL: right). **HYB-PLACEBO** +0.132 / +0.141 PASS.
+- **Reading:** the carved line holds as a NO-LOSS claim. A grammar of ~4,150 class x class edges, with no row ever pairing two specific
+  phrases, keeps unseen-skeleton transfer within 0.005-0.010 of the pair ladder, while giving up TRAIN recall (0.68 vs 0.92): the
+  leaf-pair rows buy memorization of how TRAIN problems were assembled and almost nothing on new ones. The rules themselves do not buy
+  transfer over the full cross join on the same tree (RULES FAIL): the leaf pairs are a trap only for recall, not for transfer --
+  the shrinkage descent already discounts them on new problems. The rules' value is SIZE (8x fewer rows, no leaf pairs) at parity.
+- **Next forms (named):** edges that chain (store the result class: rate x count -> mul -> total, so steps compose into a parse);
+  the junction table as the BT's notebook rows (volatile, per problem).
