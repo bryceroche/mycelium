@@ -58261,3 +58261,22 @@ bottom and top** + **connecting local charts**. Zero GPU: `LADDER_HYB=1 LADDER_C
   - **CHAIN-x:** CHAIN (self-fed) - HYBRID >= +0.020 TEST-U. Prediction: PASS ~45%.
   - **CHAIN-PLACEBO:** CHAIN - the same build with result-class ops shuffled across TRAIN steps >= +0.020.
   - Reported: gold-fed, the step-fed TEST-U subset, CHAIN - JOIN.
+
+### 2026-11-11 19:34 -- CHAIN VERDICT: CHAIN-x FAIL on the primary (+0.007 local; full witness +0.0199, at the line) -- fed the TRUTH the grammar gains +0.045; fed itself it keeps a third
+Artifacts `.cache/gsm_ladder{_local,}{,_k1}_chain.txt` (CPU; the sequential parse is slow, chain done 19:34).
+| states | k | HYBRID | CHAIN self-fed | CHAIN gold-fed | placebo | step-fed subset (n=1441) HYB -> CHAIN | CHAIN - JOIN |
+|---|---|---|---|---|---|---|---|
+| local | 0 | 0.5347 | 0.5466 | 0.5881 | 0.5334 | 0.4712 -> 0.4906 | +0.0034 |
+| local | 1 | 0.5453 | 0.5466 | 0.5881 | 0.5368 | 0.4851 -> 0.4872 | -0.0008 |
+| full | 0 | 0.5470 | 0.5635 | 0.5889 | 0.5394 | 0.4997 -> 0.5267 | +0.0080 |
+| full | 1 | 0.5415 | 0.5648 | 0.5889 | 0.5313 | 0.4906 -> 0.5288 | +0.0127 |
+**CHAIN-x** local mean +0.0066 **FAIL** (prediction PASS ~45%: wrong); full witness +0.0199 (FAIL by 0.0001; not a claim).
+**CHAIN-PLACEBO** local +0.0114 FAIL; full +0.0288 PASS. Gold-fed CHAIN - HYBRID: +0.048 local / +0.045 full (both seeds).
+- **Reading:** the result class carries real information: fed the gold ops, the grammar of chaining edges gains +0.045 on unseen
+  skeletons, both seeds, both states (and on full states the self-fed CHAIN is the first form above the pair ladder, +0.008 / +0.013,
+  with no leaf-pair rows). Fed its own ops, it keeps 15-45%: each wrong op writes a wrong result class forward (error propagation in a
+  greedy parse). This is the bridge's job, not the grammar's: never commit a soft op as if it were proven.
+- **Custody note:** gold-fed TEST-U is identical across k seeds within each state type (0.5881 / 0.5889) while every other column
+  moves; plausible (gold-fed result classes at L3 are seed-independent op symbols) but unexplained -- flagged, not used for a claim.
+- **Next form (named):** BEAM over the parse -- carry the top-k ops per step forward as alternative result classes, score whole
+  parses by joint log-probability (theory line: beam search across top choices), the gold-fed ceiling as the target.
