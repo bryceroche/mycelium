@@ -58521,3 +58521,17 @@ prediction agreement 1.0000, junction recovery 1.0000. Prediction PASS ~85%: rig
   stack. One whole-problem superposition holds ~12 items exactly at P = 256 (24 items: 0.83): GSM8K problems need registers (one per
   step = the notebook row), not one bus vector -- the stone's "~20 items per plane" measured in this geometry.
 - Build: Sonnet agent (brief + review in this session), files committed with this verdict.
+
+### 2026-11-12 13:32 -- FOREST VERDICT: FOREST-x FAIL (-0.0118 local / -0.0247 full) -- one shared forest stands; the role cut is worse
+Artifacts `.cache/gsm_ladder{_local,}{,_k1,_k2,_k3}_chain_beam4_cmotif1.0_hrole.txt` (unit forest, 13:29-13:31).
+| states | k0 | k1 | k2 | k3 | mean role - geo |
+|---|---|---|---|---|---|
+| local STACK role cut | 0.5669 | 0.5546 | 0.5521 | 0.5538 | |
+| local STACK geo (banked) | 0.5631 | 0.5682 | 0.5703 | 0.5728 | **-0.0118 FAIL** |
+| full STACK role cut | 0.5538 | 0.5529 | 0.5542 | 0.5517 | |
+| full STACK geo (banked) | 0.5707 | 0.5821 | 0.5847 | 0.5737 | **-0.0247 FAIL** |
+Prediction FAIL ~80%: right (7/8 reads negative; local k0 +0.004).
+- **Reading:** cutting the business tier's parents by op (LDA on the side's step op) makes the parents WORSE for the class x class
+  edges: the edges already condition on the op pair, so an op-sorted parent duplicates the label and loses the geometry that tells
+  unseen phrases apart. Answer to "different Tree DB tables per tier?": per-tier FACT tables over ONE shared node forest (the
+  geometric cut), as proposed at 13:01. Scope: the business tier's cut on the step-op read; a surface-tier cut is not read.

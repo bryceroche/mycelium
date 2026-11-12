@@ -197,8 +197,11 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
     pcaH = PCA(64, random_state=0).fit(np.stack([x[1] for x in hS(tr)]))
     Htr, Hte = pcaH.transform(np.stack([x[1] for x in hS(tr)])), pcaH.transform(np.stack([x[1] for x in hS(te)]))
     def hyb_run(rules, tag, Hfit, chain="off"):
-        km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit)
-        maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(km.cluster_centers_).labels_ for k in KS[1:]]
+        km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit); Cw = km.cluster_centers_
+        if os.environ.get("LADDER_HPARENT") == "role":   # (FOREST, ledger 11-12) same L1 classes; L2/L3 cut in an op-discriminant space
+            from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+            Cw = LinearDiscriminantAnalysis().fit(Hfit, np.array([s[2] for s in tr for _ in s[4]])).transform(Cw)
+        maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(Cw).labels_ for k in KS[1:]]
         def junctions(S, H, C=None):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1, L2, L3]
             c = km.predict(H) if C is None else np.argmin((H ** 2).sum(1)[:, None] - 2 * H @ C.T + (C ** 2).sum(1)[None], 1); out, i = [], 0
             for s in S:
@@ -408,7 +411,7 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     if os.environ.get("LADDER_EXEC") == "on":
         for g in (hEX, hEP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f}")
         out.append(f"EXEC-x (STACK+EXEC - STACK >= +0.020): {hEX['U'] - hCH['U']:+.4f} | EXEC-PLACEBO (EXEC - placebo >= +0.020): {hEX['U'] - hEP['U']:+.4f} | seen {hEX['S'] - hCH['S']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ".txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ("_hrole" if os.environ.get("LADDER_HPARENT") == "role" else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
