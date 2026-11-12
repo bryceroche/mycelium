@@ -80,6 +80,19 @@ def steps(it):
 
 
 tr = [s for it in D["TRAIN"] for s in steps(it)]; te = [s for it in D["TEST"] for s in steps(it)]
+from fractions import Fraction
+def operands(it):   # (EXEC, ledger 11-12) per step, per side: ("t", value) | ("s", earlier step) | ("c", constant) | None
+    def one(S):
+        if S["t"]: v = it["vals"][S["t"][0]]; return None if v is None else ("t", Fraction(str(v)))
+        if S["s"]: return ("s", S["s"][0])
+        if S["c"]: return ("t", Fraction(str(S["c"][0])))
+        return None
+    return [(one(A), one(B)) for _, A, B in it["prog"][:K]]
+ex_tr = [x for it in D["TRAIN"] for x in operands(it)]; ex_te = [x for it in D["TEST"] for x in operands(it)]
+def execute(o, a, b):   # -> result value or None (undefined)
+    if a is None or b is None: return None
+    return {"*": a * b, "+": a + b, "-": a - b, "/": a / b if b != 0 else None}[o]
+def rclass(v): return 3 if v is None else (0 if v < 0 else (1 if v.denominator != 1 else 2))   # neg | non-integer | int >= 0 | undefined
 if os.environ.get("LADDER_DUMP") == "1":   # the local texts for distill_reader.py --local
     LT = sorted(set(LTXT)); json.dump(dict(texts=LT), open(".cache/gsm_ladder_local_texts" + ("" if SPANS == "impulse" else "_" + SPANS) + ".json", "w")); print(f"[ladder] {len(LT)} local texts"); sys.exit(0)
 u = np.concatenate([[SK.skeleton(it) not in seen] * min(len(it["prog"]), K) for it in D["TEST"]]).astype(bool)
@@ -284,6 +297,19 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     if mk in cadm: c = ccnt[mk]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
                 tot = tot + np.log(p + 1e-12) - lbase
             return tot
+        EXEC = os.environ.get("LADDER_EXEC", "")   # "" | on | placebo  (EXEC, ledger 11-12: the executor as a soft expert)
+        val = lambda x, dv: None if x is None else (x[1] if x[0] == "t" else (dv[x[1]] if x[1] < len(dv) else None))
+        if EXEC:
+            xc = defaultdict(lambda: np.full(4, 0.5)); g = 0
+            for n in nst("TRAIN"):
+                dv = []
+                for j in range(n):
+                    a, b = (val(x, dv) for x in ex_tr[g]); r = execute(OPS[ytr[g]], a, b); dv.append(r); xc[(int(ytr[g]), tr[g][1])][rclass(r)] += 1; g += 1
+            if EXEC == "placebo":   # (EXEC-PLACEBO) the expert's rows shuffled across (op, kinds)
+                ks_ = list(xc); vs_ = [xc[k] for k in ks_]; pm = np.random.default_rng(17).permutation(len(ks_)); xc = defaultdict(lambda: np.full(4, 0.5), {k: vs_[i] for k, i in zip(ks_, pm)})
+            def xscore(ex, kd, dv):   # log p(class(o) | o, kd) - log p(class(o) | kd), per op o
+                a, b = (val(x, dv) for x in ex); cls = [rclass(execute(o, a, b)) for o in OPS]
+                tot = sum(xc[(o, kd)] for o in range(len(OPS))); return np.array([np.log(xc[(o, kd)][c] / xc[(o, kd)].sum()) - np.log(tot[c] / tot.sum()) for o, c in enumerate(cls)]), [execute(o, a, b) for o in OPS]
         def mdist(dop, st, j):
             p = np.ones(len(OPS)) / len(OPS)
             for mk in mkeys(dop, st, j):
@@ -292,14 +318,15 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
         def pred_beam(J, S, B):   # (BEAM, ledger 11-12) top-B whole parses per problem, scored by joint log-probability; never commit early
             out, g = [], 0
             for n in nst("TEST"):
-                hyps = [(0.0, [], [])]
+                hyps = [(0.0, [], [], [])]
                 for _ in range(n):
                     nh = []
-                    for lp, dab, dop in hyps:
-                        ab = fill(J[g], S[g], dab, dop); sc = np.log(dist(ab, S[g][1]) + 1e-12)
+                    for lp, dab, dop, dv in hyps:
+                        ab = fill(J[g], S[g], dab, dop); sc = np.log(dist(ab, S[g][1]) + 1e-12); rv = [None] * len(OPS)
+                        if EXEC: xs, rv = xscore(ex_te[g], S[g][1], dv); sc = sc + xs
                         if MOTIF in ("on", "placebo"): sc = sc + LAM * (np.log(mdist(dop, S[g], len(dop)) + 1e-12) - lbase)   # product of experts: edge x motif / base
                         elif MOTIF: sc = sc + LAM * cscore(ab, S[g][1])
-                        for o in np.argsort(-sc)[:B]: nh.append((lp + float(sc[o]), dab + [ab], dop + [int(o)]))
+                        for o in np.argsort(-sc)[:B]: nh.append((lp + float(sc[o]), dab + [ab], dop + [int(o)], dv + [rv[o]]))
                     hyps = sorted(nh, key=lambda h: -h[0])[:B]; g += 1
                 out.extend(hyps[0][2])
             return np.array(out)
@@ -336,10 +363,14 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
         CM = os.environ["LADDER_MOTIF"] == "class"
+        EXA = os.environ.get("LADDER_EXEC", ""); os.environ["LADDER_EXEC"] = ""   # the banked arms run without the executor
         os.environ["LADDER_MOTIF"] = ""; hR = hyb_run(True, "BEAM4", Htr, "pred")
         os.environ["LADDER_MOTIF"] = "class" if CM else "on"
         hCH = hyb_run(True, "BEAM4+CMOTIF" if CM else "BEAM4+MOTIF", Htr, "pred")
         os.environ["LADDER_MOTIF"] = "classplacebo" if CM else "placebo"; hCP = hyb_run(True, "MOTIF-PLACEBO", Htr, "pred"); os.environ["LADDER_MOTIF"] = "class" if CM else "on"
+        os.environ["LADDER_EXEC"] = EXA
+        if os.environ.get("LADDER_EXEC") and CM:   # (EXEC) STACK = BEAM4+CMOTIF (hCH); + the executor expert; + its placebo
+            hEX = hyb_run(True, "STACK+EXEC", Htr, "pred"); os.environ["LADDER_EXEC"] = "placebo"; hEP = hyb_run(True, "EXEC-PLACEBO", Htr, "pred"); os.environ["LADDER_EXEC"] = "on"
     elif os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN" + (f"-BEAM{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else ""), Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
     else: hC = hyb_run(False, "CROSS", Htr); hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
@@ -366,7 +397,10 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     if hCH.get("tdb"):
         t = hCH["tdb"]; out.append(f"TDB-STACK: DB-PARITY dU {t['dU']:+.4f} (agree {t['agree']:.4f}; edges {t['nE']}, motifs {t['nM']}, same edge set {t['same']}, "
                                    f"{t['mb']:.1f} MB) -> {'PASS' if abs(t['dU']) <= 0.0005 else 'FAIL'} | NO-LEAF-PAIR (L0 keys {t['nl0']}, keys with a leaf phrase {t['nleaf']}) -> {'PASS' if t['nl0'] == 0 and t['nleaf'] == 0 else 'FAIL'}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ".txt"
+    if os.environ.get("LADDER_EXEC") == "on":
+        for g in (hEX, hEP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f}")
+        out.append(f"EXEC-x (STACK+EXEC - STACK >= +0.020): {hEX['U'] - hCH['U']:+.4f} | EXEC-PLACEBO (EXEC - placebo >= +0.020): {hEX['U'] - hEP['U']:+.4f} | seen {hEX['S'] - hCH['S']:+.4f}")
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "

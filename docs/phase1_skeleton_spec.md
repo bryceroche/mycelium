@@ -58474,3 +58474,24 @@ from TRAIN gold, classes {negative, non-integer, integer >= 0, undefined}; produ
 - **EXEC-x:** STACK+EXEC - STACK TEST-U >= +0.020, mean seeds 0-3 local; full = second witness. **EXEC-PLACEBO:** the expert's rows
   shuffled across (op, kd): EXEC - placebo >= +0.020. Prediction: EXEC-x FAIL ~60% (direction and division-by-integrality carry real
   signal; the beam's edges may already hold most of it).
+
+### 2026-11-12 13:16 -- EXEC VERDICT: EXEC-x FAIL (-0.0615 local / -0.0592 full); the result class is not evidence on GSM8K
+Artifacts `.cache/gsm_ladder{_local,}{,_k1,_k2,_k3}_chain_beam4_cmotif1.0_exec.txt` (unit exec, 13:05-13:13; seed-0 local 13:02).
+| states | k0 | k1 | k2 | k3 | mean EXEC - STACK | EXEC - placebo (mean) |
+|---|---|---|---|---|---|---|
+| local | -0.0593 | -0.0732 | -0.0529 | -0.0605 | **-0.0615 FAIL** | +0.0700 |
+| full | -0.0546 | -0.0652 | -0.0601 | -0.0567 | **-0.0592 FAIL** | +0.0643 |
+Prediction FAIL ~60%: right on the verdict, wrong on the sign (expected ~0, got a large loss). Seen also falls (-0.08..-0.10).
+The banked arms reproduce exactly inside these runs (STACK local k0..k3 0.5631/0.5682/0.5703/0.5728).
+- **Autopsy (seed 0 local, dumps `.cache/pj/exec_local_k0_*.npz`):** TEST-U predicted op shares * / + / - / / = STACK 0.367/0.290/0.163/0.180
+  (gold 0.374/0.280/0.159/0.187) vs EXEC 0.315/0.212/**0.251**/0.222: the expert pushes mass onto '-' (gold '-' recall 0.370 -> 0.468,
+  gold '+' 0.565 -> 0.418, gold '*' 0.657 -> 0.570).
+- **Root cause (the form, not the line):** at test time there is no observed result, so the result class carries no evidence about
+  the op. Each op determines its own class, so the ratio log p(c_o | o, kd) - log p(c_o | kd) is just a reweighting by the training
+  frequencies of (op, kinds). Where a row is thin, the 0.5 smoothing flattens it. The placebo (+0.07) shows the reweighting is
+  structured, not that it is evidence. Combined with the census (gold violates sign 1.5% and integrality 7.6%), the executor has
+  nothing to say about a GSM8K step BEFORE the answer is known.
+- **Where alternation does bite on GSM8K (named):** (1) the ANSWER KEY at training time (custody: only key-verified chains write the
+  Tree, as built); (2) cross-witness agreement at test time (the fingerpost: two independent parses that execute to the same final
+  value); (3) constraint-network domains (rel-DSL, MATH algebra), where the solver has proofs. Closes: the executor as a step-level
+  soft expert in the beam.
