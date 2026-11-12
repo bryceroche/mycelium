@@ -58310,3 +58310,17 @@ Reported: BEAM - HYBRID +0.018 local / +0.023 full; BEAM - placebo +0.025 / +0.0
   are shrinkage frequencies, uncalibrated across levels, and only result-fed steps can vote on an earlier op. The grammar-plus-beam
   stack (no leaf pairs) now sits above the pair ladder on all four reads (+0.001 to +0.026). Not a claim -- the motif prior is the
   named next form (whole-fragment priors for the beam's scoring).
+
+### 2026-11-12 10:24 -- MOTIF TABLE PINNED (Bryce: "word given for the motif table"): whole-fragment priors for the beam
+Theory lines: **the Cross Join, bottom and top** (motifs = recurring fragments over CLASSES, never leaves) + **discover the structure**
++ **beam search across top choices**. Zero GPU: `LADDER_HYB=1 LADDER_CHAIN=1 LADDER_BEAM=4 LADDER_MOTIF=on`.
+- **What a motif adds that an edge lacks:** a CHAIN edge already sees its one-hop input (the result class carries the producer's op).
+  A motif sees the problem's SHAPE: the ops of the previous two steps (linked or not) + the link signature (how far back each side's
+  feeding step is, capped at 3, + the no-text flag) + the kinds. Backoff M2 (two previous ops) -> M1 (one) -> M0 (shape only),
+  shrinkage kappa 0.5. Mined from TRAIN junctions with gold ops (key-verified). A row needs >= 3 distinct problems; no leaf enters.
+- **Scoring:** inside the beam, each op's score = log p_edge + 1.0 x (log p_motif - log base rate) (product of experts; lambda pinned
+  at 1.0, not tuned). The motif history is the hypothesis's own ops.
+- **Arms (same tree, same edges):** BEAM4 (motif off) | BEAM4+MOTIF | MOTIF-PLACEBO (motif rows point at shuffled ops).
+- **Bars (mean of k seeds 0-3, four seeds given the narrow chained spread; local primary, full witness):**
+  - **MOTIF-x:** BEAM4+MOTIF - BEAM4 >= +0.020 TEST-U. Prediction: FAIL ~55%.
+  - **MOTIF-PLACEBO:** BEAM4+MOTIF - placebo >= +0.020.

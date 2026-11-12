@@ -241,7 +241,27 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 for _ in range(n):
                     ab = fill(J[g], S[g], dab, dop); q = desc(ab, S[g][1]); out.append(q); dab.append(ab); dop.append(q if mode == "pred" else int(yg[g])); g += 1
             return np.array(out)
-        BEAM = int(os.environ.get("LADDER_BEAM", "0"))
+        BEAM = int(os.environ.get("LADDER_BEAM", "0")); MOTIF = os.environ.get("LADDER_MOTIF", "")   # "" | on | placebo
+        LAM = float(os.environ.get("LADDER_MOTIF_LAM", "1.0")); MPROB = 3
+        # (MOTIF, ledger 11-12) the motif table: recurring parse FRAGMENTS over classes, mined from TRAIN junctions (gold ops = key-verified).
+        # key = (ops of the previous two steps, the link signature: how far back each side's feeding step is (cap 3) + no-text flag,
+        # kinds); backoff M2 -> M1 (one previous op) -> M0 (shape only); a row needs >= MPROB distinct problems (no leaf ever enters)
+        sig = lambda st, j: tuple(None if r is None else min(j - r, 3) for r in st[5]) + (st[6],)
+        mkeys = lambda dop, st, j: [(0, sig(st, j), st[1]), (1, tuple(dop[-1:]), sig(st, j), st[1]), (2, tuple(dop[-2:]), sig(st, j), st[1])]
+        mcnt = defaultdict(lambda: np.zeros(len(OPS))); mpr = defaultdict(set)
+        if MOTIF:
+            ym = np.random.default_rng(11).permutation(ytr) if MOTIF == "placebo" else ytr   # (MOTIF-PLACEBO) fragments point at shuffled ops
+            g = 0
+            for q, n in enumerate(nst("TRAIN")):
+                for j in range(n):
+                    for mk in mkeys([int(x) for x in ytr[g - j:g]], tr[g], j): mcnt[mk][ym[g]] += 1; mpr[mk].add(q)
+                    g += 1
+        lbase = np.log(np.bincount(ytr, minlength=len(OPS)) / len(ytr) + 1e-9)
+        def mdist(dop, st, j):
+            p = np.ones(len(OPS)) / len(OPS)
+            for mk in mkeys(dop, st, j):
+                if len(mpr.get(mk, ())) >= MPROB: c = mcnt[mk]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
+            return p
         def pred_beam(J, S, B):   # (BEAM, ledger 11-12) top-B whole parses per problem, scored by joint log-probability; never commit early
             out, g = [], 0
             for n in nst("TEST"):
@@ -249,8 +269,9 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 for _ in range(n):
                     nh = []
                     for lp, dab, dop in hyps:
-                        ab = fill(J[g], S[g], dab, dop); p = dist(ab, S[g][1])
-                        for o in np.argsort(-p)[:B]: nh.append((lp + float(np.log(p[o] + 1e-12)), dab + [ab], dop + [int(o)]))
+                        ab = fill(J[g], S[g], dab, dop); sc = np.log(dist(ab, S[g][1]) + 1e-12)
+                        if MOTIF: sc = sc + LAM * (np.log(mdist(dop, S[g], len(dop)) + 1e-12) - lbase)   # product of experts: edge x motif / base
+                        for o in np.argsort(-sc)[:B]: nh.append((lp + float(sc[o]), dab + [ab], dop + [int(o)]))
                     hyps = sorted(nh, key=lambda h: -h[0])[:B]; g += 1
                 out.extend(hyps[0][2])
             return np.array(out)
@@ -262,7 +283,11 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
                     edges={l: per[l] for l in sorted(per)})
     hR = hyb_run(True, "HYBRID", Htr)
-    if os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN" + (f"-BEAM{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else ""), Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
+    if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
+        os.environ["LADDER_MOTIF"] = ""; hR = hyb_run(True, "BEAM4", Htr, "pred")
+        os.environ["LADDER_MOTIF"] = "on"; hCH = hyb_run(True, "BEAM4+MOTIF", Htr, "pred")
+        os.environ["LADDER_MOTIF"] = "placebo"; hCP = hyb_run(True, "MOTIF-PLACEBO", Htr, "pred"); os.environ["LADDER_MOTIF"] = "on"
+    elif os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN" + (f"-BEAM{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else ""), Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
     else: hC = hyb_run(False, "CROSS", Htr); hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
@@ -285,7 +310,7 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     for g in (hR, hCH, hCP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} (gold-fed {g['TF']:.4f}) | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f} | edges {g['edges']}")
     out.append(f"CHAIN-x (CHAIN - HYBRID, self-fed, >= +0.020): {hCH['U'] - hR['U']:+.4f} | CHAIN-PLACEBO (CHAIN - placebo >= +0.020): {hCH['U'] - hCP['U']:+.4f} | "
                f"fed-steps CHAIN - HYBRID {hCH['UREF'] - hR['UREF']:+.4f} | CHAIN - JOIN {hCH['U'] - R['U']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + ".txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
