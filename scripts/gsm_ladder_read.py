@@ -311,8 +311,9 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     edges={l: per[l] for l in sorted(per)})
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
+        CM = os.environ["LADDER_MOTIF"] == "class"
         os.environ["LADDER_MOTIF"] = ""; hR = hyb_run(True, "BEAM4", Htr, "pred")
-        CM = os.environ["LADDER_MOTIF"] == "class"; os.environ["LADDER_MOTIF"] = "class" if CM else "on"
+        os.environ["LADDER_MOTIF"] = "class" if CM else "on"
         hCH = hyb_run(True, "BEAM4+CMOTIF" if CM else "BEAM4+MOTIF", Htr, "pred")
         os.environ["LADDER_MOTIF"] = "classplacebo" if CM else "placebo"; hCP = hyb_run(True, "MOTIF-PLACEBO", Htr, "pred"); os.environ["LADDER_MOTIF"] = "class" if CM else "on"
     elif os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN" + (f"-BEAM{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else ""), Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")

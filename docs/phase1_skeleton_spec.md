@@ -58358,3 +58358,30 @@ Zero GPU: `LADDER_MOTIF=class` (with HYB/CHAIN/BEAM=4).
 - **Arms:** BEAM4 | BEAM4+CMOTIF | CMOTIF-PLACEBO (rows point at shuffled ops). Four k seeds; local primary, full witness.
 - **CMOTIF-x:** BEAM4+CMOTIF - BEAM4 >= +0.020 TEST-U. Prediction FAIL ~65%. **CMOTIF-PLACEBO:** >= +0.020 over its placebo.
   Reported: seen, the step-fed subset.
+
+### 2026-11-12 10:38 -- CMOTIF VERDICT: CMOTIF-x FAIL (+0.008 local / +0.009 full) -- but positive on 8/8 reads, and the first motif that lifts unseen AND seen
+Artifacts `.cache/gsm_ladder{_local,}{,_k1,_k2,_k3}_chain_beam4_cmotif1.0.txt`. Custody: the first unit (cmotif) ran the OP-HISTORY
+motif (the arm block cleared LADDER_MOTIF before reading it) and its background-job failures were not propagated by `wait`; its
+outputs reproduced the banked MOTIF files bit-for-bit. Fixed (read the mode first; wait on each PID); rerun as cmotif2.
+| states | arm | k0 | k1 | k2 | k3 | mean TEST-U | mean seen |
+|---|---|---|---|---|---|---|---|
+| local | JOIN (pair ladder) | 0.5432 | 0.5474 | 0.5394 | 0.5423 | 0.5431 | |
+| local | BEAM4 | 0.5580 | 0.5580 | 0.5673 | 0.5601 | 0.5609 | 0.5965 |
+| local | +CMOTIF | 0.5631 | 0.5682 | 0.5703 | 0.5728 | 0.5686 | 0.6103 |
+| local | placebo | 0.5017 | 0.4928 | 0.4915 | 0.5042 | 0.4976 | 0.5560 |
+| full | JOIN | 0.5555 | 0.5521 | 0.5402 | 0.5639 | 0.5529 | |
+| full | BEAM4 | 0.5567 | 0.5783 | 0.5677 | 0.5715 | 0.5686 | 0.6149 |
+| full | +CMOTIF | 0.5707 | 0.5821 | 0.5847 | 0.5737 | 0.5778 | 0.6318 |
+| full | placebo | 0.4975 | 0.5233 | 0.5140 | 0.5233 | 0.5145 | 0.5665 |
+**CMOTIF-x** local +0.0078 **FAIL** (prediction FAIL ~65%: right); full +0.0093 FAIL. Per seed all positive (+0.003 to +0.017).
+**CMOTIF-PLACEBO** +0.071 / +0.063 PASS (shuffled rows cost ~0.06: the beam leans on the motif hard). Seen +0.014 / +0.017.
+- **Reading:** keyed by what slots ARE, the motif lifts unseen and seen together (the op-history motif traded one for the other):
+  the carved line holds at the fragment level. The op-free road recovers part of the error-propagation gap (local: self-fed 0.5686
+  vs gold-fed ~0.590). Unbarred: the whole no-leaf-pair stack (HYBRID + CHAIN + BEAM + CMOTIF) sits +0.0255 local / +0.0249 full
+  over the pair ladder on the mean of these four seeds -- NOT a claim (no bar was pinned on that comparison before reading).
+
+### 2026-11-12 10:38 -- STACK PINNED (replication on FRESH seeds): the no-leaf-pair stack vs the pair ladder
+Theory line: **the Cross Join, bottom and top** (a claim that the grammar side beats the stored cross join). Zero GPU. Seeds 4-7
+(never read). Arm: BEAM4+CMOTIF (as banked, no change); comparator JOIN (the pair ladder, same seed, same run).
+- **STACK-x:** mean over seeds 4-7 of (STACK - JOIN) TEST-U >= +0.020, local states (primary). Full states = second witness, same bar.
+  Prediction: PASS ~55% (seeds 0-3 gave +0.0255 / +0.0249 with per-seed spread 0.010-0.045; regression to the mean expected).
