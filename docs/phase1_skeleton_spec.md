@@ -58495,3 +58495,19 @@ The banked arms reproduce exactly inside these runs (STACK local k0..k3 0.5631/0
   Tree, as built); (2) cross-witness agreement at test time (the fingerpost: two independent parses that execute to the same final
   value); (3) constraint-network domains (rel-DSL, MATH algebra), where the solver has proofs. Closes: the executor as a step-level
   soft expert in the beam.
+
+### 2026-11-12 13:17 -- PJ-REG running (agent build reviewed) + FOREST pinned (Bryce: "word given for your choice -- salute!")
+**PJ build (Sonnet agent, reviewed):** `mycelium/junction_bus.py` (registers: role x level x class code + a PRESENT marker per present
+side, threshold 0.5; unbind = conj only; leaves never encoded), `scripts/test_junction_bus.py` (4/4 PASS), `scripts/pj_capacity_read.py`
+-> `.cache/pj/capacity.txt`. **PJ-CAP (reported, as pinned):** register step-exact recovery P = 32/64/128/256/512: 0.466/0.796/0.992/
+1.000/1.000 (seed 0; seed 1 0.429/0.801/0.992/1.000/1.000). Whole-problem superposition step-exact at P = 256: n_items 6/12/24/48/72 ->
+1.000/0.996/0.830/0.240/0.066; at P = 512: 1.000/1.000/0.997/0.833/0.477. Prediction (the whole-problem bus degrades below P = 512 on
+long problems): right -- ~12-24 items per 256 planes, the stone's "~20 per plane" in this geometry. Registers per step are the form.
+PJ-REG unit `pj` fired 13:17 (LADDER_PJ=256, seeds 0-3 x local/full).
+**FOREST -- one node forest for all tiers, or a cut per tier?** (Bryce 11-12: "do we want different Tree DB tables for each tier?";
+theory lines: tiers = invariance contracts; the Tree DB as the database layer.) Same L1 leaves-to-classes (same k-means), different
+CUT above them: the business tier's L2/L3 parents from Ward on the L1 centroids in an op-discriminant space (LDA fit on TRAIN sides ->
+their step's op; the ROLE ladder's 11-10 rule) instead of geometry. Edges, motifs, beam unchanged (LADDER_HPARENT=role).
+- **FOREST-x:** STACK(role cut) - STACK(geometry cut) TEST-U >= +0.020, mean seeds 0-3 local; full = second witness. PASS = the
+  business tier wants its own cut (per-tier forests); FAIL = one shared forest stands.
+  Prediction: FAIL ~80% (ROLE-x 11-10 read -0.003 / -0.000 on the pair ladder; the edges already condition on the op).
