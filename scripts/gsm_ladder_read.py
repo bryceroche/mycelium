@@ -227,12 +227,13 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     par = ekey(ab, s[1], l + 1); c = cnt[par]
                     if len(lp_[e]) >= HK and len(pr_[e]) >= HM and par in adm and (l == 3 or c.max() / c.sum() < PURE): adm.add(e)
         else: adm = set(cnt)
-        def desc(ab, kd):
+        def dist(ab, kd):
             p = np.ones(len(OPS)) / len(OPS)
             for l in levels:
                 e = ekey(ab, kd, l)
                 if e in adm: c = cnt[e]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
-            return int(p.argmax())
+            return p
+        desc = lambda ab, kd: int(dist(ab, kd).argmax())
         def pred(J, S, sp="TEST", mode="pred"):   # sequential per problem: mode pred = the parse feeds its OWN ops forward; tf = gold ops
             out, g = [], 0; yg = yte if sp == "TEST" else ytr
             for n in nst(sp):
@@ -240,13 +241,27 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 for _ in range(n):
                     ab = fill(J[g], S[g], dab, dop); q = desc(ab, S[g][1]); out.append(q); dab.append(ab); dop.append(q if mode == "pred" else int(yg[g])); g += 1
             return np.array(out)
-        pe, pr = pred(Jte, te), pred(Jtr, tr, "TRAIN", "tf"); ptf = pred(Jte, te, "TEST", "tf")
+        BEAM = int(os.environ.get("LADDER_BEAM", "0"))
+        def pred_beam(J, S, B):   # (BEAM, ledger 11-12) top-B whole parses per problem, scored by joint log-probability; never commit early
+            out, g = [], 0
+            for n in nst("TEST"):
+                hyps = [(0.0, [], [])]
+                for _ in range(n):
+                    nh = []
+                    for lp, dab, dop in hyps:
+                        ab = fill(J[g], S[g], dab, dop); p = dist(ab, S[g][1])
+                        for o in np.argsort(-p)[:B]: nh.append((lp + float(np.log(p[o] + 1e-12)), dab + [ab], dop + [int(o)]))
+                    hyps = sorted(nh, key=lambda h: -h[0])[:B]; g += 1
+                out.extend(hyps[0][2])
+            return np.array(out)
+        pe = pred_beam(Jte, te, BEAM) if BEAM and chain != "off" else pred(Jte, te)
+        pr = pred(Jtr, tr, "TRAIN", "tf"); ptf = pred(Jte, te, "TEST", "tf")
         per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
                     edges={l: per[l] for l in sorted(per)})
     hR = hyb_run(True, "HYBRID", Htr)
-    if os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN", Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
+    if os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN" + (f"-BEAM{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else ""), Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
     else: hC = hyb_run(False, "CROSS", Htr); hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
 R = run(Ztr, "LADDER"); P = run(Ztr[np.random.default_rng(0).permutation(len(Ztr))], "TREE-PLACEBO")
@@ -269,7 +284,7 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     for g in (hR, hCH, hCP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} (gold-fed {g['TF']:.4f}) | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f} | edges {g['edges']}")
     out.append(f"CHAIN-x (CHAIN - HYBRID, self-fed, >= +0.020): {hCH['U'] - hR['U']:+.4f} | CHAIN-PLACEBO (CHAIN - placebo >= +0.020): {hCH['U'] - hCP['U']:+.4f} | "
                f"fed-steps CHAIN - HYBRID {hCH['UREF'] - hR['UREF']:+.4f} | CHAIN - JOIN {hCH['U'] - R['U']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain.txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "

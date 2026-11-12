@@ -58280,3 +58280,12 @@ Artifacts `.cache/gsm_ladder{_local,}{,_k1}_chain.txt` (CPU; the sequential pars
   moves; plausible (gold-fed result classes at L3 are seed-independent op symbols) but unexplained -- flagged, not used for a claim.
 - **Next form (named):** BEAM over the parse -- carry the top-k ops per step forward as alternative result classes, score whole
   parses by joint log-probability (theory line: beam search across top choices), the gold-fed ceiling as the target.
+
+### 2026-11-12 10:14 -- BEAM PINNED (Bryce: "word given for the beam"): never commit a soft op -- carry whole parses
+Theory lines: **beam search across top choices** + **the bridge: only a proof crosses hard**. Zero GPU: `LADDER_HYB=1 LADDER_CHAIN=1
+LADDER_BEAM=4`. Per problem, the top-4 whole parses survive each step; each expands its step's top-4 ops (each op writes its own
+result class forward); parses scored by joint log-probability of the shrinkage descents; the best whole parse is read. Same tree, same
+edges, same rules as CHAIN; the placebo is CHAIN-PLACEBO (greedy).
+- **BEAM-x:** BEAM4 - CHAIN greedy (banked, same seed/state) >= +0.020 TEST-U, mean of k0/k1; local primary, full witness.
+  Prediction: FAIL ~60% (the descent's probabilities are uncalibrated, and only steps fed by a result can vote on an earlier op).
+- Reported: BEAM - HYBRID, BEAM - JOIN, the share of the gold-fed gain (+0.045) recovered.
