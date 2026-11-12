@@ -58385,3 +58385,26 @@ Theory line: **the Cross Join, bottom and top** (a claim that the grammar side b
 (never read). Arm: BEAM4+CMOTIF (as banked, no change); comparator JOIN (the pair ladder, same seed, same run).
 - **STACK-x:** mean over seeds 4-7 of (STACK - JOIN) TEST-U >= +0.020, local states (primary). Full states = second witness, same bar.
   Prediction: PASS ~55% (seeds 0-3 gave +0.0255 / +0.0249 with per-seed spread 0.010-0.045; regression to the mean expected).
+
+### 2026-11-12 10:41 -- STACK VERDICT: STACK-x PASS (+0.0266 local / +0.0288 full, fresh seeds 4-7) -- the grammar side beats the stored cross join
+Artifacts `.cache/gsm_ladder{_local,}_k{4,5,6,7}_chain_beam4_cmotif1.0.txt` (CPU, run 10:38-10:41).
+| states | k | JOIN (pair ladder) | BEAM4 | STACK (BEAM4+CMOTIF) | STACK - JOIN |
+|---|---|---|---|---|---|
+| local | 4 | 0.5470 | 0.5567 | 0.5652 | +0.0182 |
+| local | 5 | 0.5402 | 0.5491 | 0.5614 | +0.0212 |
+| local | 6 | 0.5453 | 0.5580 | 0.5669 | +0.0216 |
+| local | 7 | 0.5275 | 0.5601 | 0.5728 | +0.0453 |
+| full | 4 | 0.5487 | 0.5771 | 0.5631 | +0.0144 |
+| full | 5 | 0.5334 | 0.5601 | 0.5686 | +0.0352 |
+| full | 6 | 0.5538 | 0.5813 | 0.5914 | +0.0376 |
+| full | 7 | 0.5461 | 0.5686 | 0.5741 | +0.0280 |
+**STACK-x** local mean +0.0266 **PASS** (prediction PASS ~55%: right); full witness +0.0288 PASS. 8/8 seeds positive (min +0.014).
+Replicates seeds 0-3 (+0.0255 / +0.0249). CMOTIF over BEAM4 on the fresh seeds: local +0.0106, full +0.0025 (full k4 -0.014).
+- **CLAIM (scoped):** on the GSM8K step-op read (TEST-U = unseen skeletons, gold operand spans, banked RB8 states, CPU, no training),
+  a Tree that stores NO pairing of specific spans -- exact phrases at the leaves, class x class edges with result classes, beam over
+  whole parses, class-keyed motifs -- beats the stored pair cross join by ~+0.027 on two state types and eight seeds.
+  "At the bottom of the Tree DB, the Cross Join is a cheating trap; at the top it is the grammar of mathematics": measured.
+- **Scope / expiry:** a read on banked states with gold operands; not the wild fac-exact instrument, not the CF fixture, not a trained
+  reader. The JOIN comparator's seed spread is wide (0.5275-0.5555); the claim is paired by seed.
+- **Next forms (named):** the stack's tables into `mycelium/tree_db.py` (nodes / edges / motifs permanent, junctions volatile in the
+  notebook); the stack as the BT's retrieval road (a consumer that must read edges + motifs to type its steps).
