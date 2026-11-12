@@ -249,7 +249,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
         sig = lambda st, j: tuple(None if r is None else min(j - r, 3) for r in st[5]) + (st[6],)
         mkeys = lambda dop, st, j: [(0, sig(st, j), st[1]), (1, tuple(dop[-1:]), sig(st, j), st[1]), (2, tuple(dop[-2:]), sig(st, j), st[1])]
         mcnt = defaultdict(lambda: np.zeros(len(OPS))); mpr = defaultdict(set)
-        if MOTIF:
+        if MOTIF in ("on", "placebo"):
             ym = np.random.default_rng(11).permutation(ytr) if MOTIF == "placebo" else ytr   # (MOTIF-PLACEBO) fragments point at shuffled ops
             g = 0
             for q, n in enumerate(nst("TRAIN")):
@@ -257,6 +257,32 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     for mk in mkeys([int(x) for x in ytr[g - j:g]], tr[g], j): mcnt[mk][ym[g]] += 1; mpr[mk].add(q)
                     g += 1
         lbase = np.log(np.bincount(ytr, minlength=len(OPS)) / len(ytr) + 1e-9)
+        # (CMOTIF, ledger 11-12) class-keyed motifs: a fragment = producer's input classes -> (its result) -> meets the consumer's other
+        # side; NO op in the key (nested results collapse to "s"), so a wrong guess of the producer's op cannot change the row read
+        isref = lambda x: x is not None and isinstance(x[0], tuple)
+        strip = lambda c: "s" if isinstance(c, tuple) else c
+        def ckeys(ab, kd):
+            out = []
+            for r in (0, 1):
+                if not isref(ab[r]): continue
+                o = ab[1 - r]; lf = (ab[r][0][2], None if o is None else o[0])
+                for pl, ol in ((2, 3), (1, 2)):   # coarse: producer inputs at 32 classes (refpath[2]) + other side at 32; fine: 256 / 256
+                    oc = None if o is None else ("s" if isref(o) else o[ol])
+                    out.append(((ol, kd, r) + tuple(strip(c) for c in ab[r][pl][2:]) + (oc,), lf))
+            return out
+        ccnt = defaultdict(lambda: np.zeros(len(OPS))); cpr = defaultdict(set); clf = defaultdict(set)
+        if MOTIF in ("class", "classplacebo"):
+            yc = np.random.default_rng(13).permutation(ytr) if MOTIF == "classplacebo" else ytr
+            for g, (ab, st, q) in enumerate(zip(Jtr, tr, pid)):
+                for mk, lf in ckeys(ab, st[1]): ccnt[mk][yc[g]] += 1; cpr[mk].add(int(q)); clf[mk].add(lf)
+        def cscore(ab, kd):   # sum over linked sides of (log p_motif - log base), each a 32 -> 256 shrinkage descent over admitted rows
+            tot, ks = 0.0, ckeys(ab, kd)
+            for i in range(0, len(ks), 2):
+                p = np.ones(len(OPS)) / len(OPS)
+                for mk, _ in ks[i:i + 2]:
+                    if len(cpr.get(mk, ())) >= MPROB and len(clf[mk]) >= 2: c = ccnt[mk]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
+                tot = tot + np.log(p + 1e-12) - lbase
+            return tot
         def mdist(dop, st, j):
             p = np.ones(len(OPS)) / len(OPS)
             for mk in mkeys(dop, st, j):
@@ -270,7 +296,8 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     nh = []
                     for lp, dab, dop in hyps:
                         ab = fill(J[g], S[g], dab, dop); sc = np.log(dist(ab, S[g][1]) + 1e-12)
-                        if MOTIF: sc = sc + LAM * (np.log(mdist(dop, S[g], len(dop)) + 1e-12) - lbase)   # product of experts: edge x motif / base
+                        if MOTIF in ("on", "placebo"): sc = sc + LAM * (np.log(mdist(dop, S[g], len(dop)) + 1e-12) - lbase)   # product of experts: edge x motif / base
+                        elif MOTIF: sc = sc + LAM * cscore(ab, S[g][1])
                         for o in np.argsort(-sc)[:B]: nh.append((lp + float(sc[o]), dab + [ab], dop + [int(o)]))
                     hyps = sorted(nh, key=lambda h: -h[0])[:B]; g += 1
                 out.extend(hyps[0][2])
@@ -285,8 +312,9 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
         os.environ["LADDER_MOTIF"] = ""; hR = hyb_run(True, "BEAM4", Htr, "pred")
-        os.environ["LADDER_MOTIF"] = "on"; hCH = hyb_run(True, "BEAM4+MOTIF", Htr, "pred")
-        os.environ["LADDER_MOTIF"] = "placebo"; hCP = hyb_run(True, "MOTIF-PLACEBO", Htr, "pred"); os.environ["LADDER_MOTIF"] = "on"
+        CM = os.environ["LADDER_MOTIF"] == "class"; os.environ["LADDER_MOTIF"] = "class" if CM else "on"
+        hCH = hyb_run(True, "BEAM4+CMOTIF" if CM else "BEAM4+MOTIF", Htr, "pred")
+        os.environ["LADDER_MOTIF"] = "classplacebo" if CM else "placebo"; hCP = hyb_run(True, "MOTIF-PLACEBO", Htr, "pred"); os.environ["LADDER_MOTIF"] = "class" if CM else "on"
     elif os.environ.get("LADDER_CHAIN") == "1": hCH = hyb_run(True, "CHAIN" + (f"-BEAM{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else ""), Htr, "pred"); hCP = hyb_run(True, "CHAIN-PLACEBO", Htr, "placebo")
     else: hC = hyb_run(False, "CROSS", Htr); hP = hyb_run(True, "HYB-PLACEBO", Htr[np.random.default_rng(0).permutation(len(Htr))])
 OUTF = ".cache/gsm_ladder" + ("" if SRC == "full" else "_" + SRC) + ("" if PARENT == "geo" else "_" + PARENT) + (f"_gate{GATE}" if GATE else "") + ("_dial" if DIAL else "") + ("_novel" if NOVEL else "") + ("" if SPANS == "impulse" else "_" + SPANS) + ("_" + os.path.basename(LOCALF)[5:-4] if "LADDER_LOCALF" in os.environ else "") + (f"_k{KSEED}" if KSEED else "") + ".txt"
@@ -310,7 +338,7 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     for g in (hR, hCH, hCP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} (gold-fed {g['TF']:.4f}) | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f} | edges {g['edges']}")
     out.append(f"CHAIN-x (CHAIN - HYBRID, self-fed, >= +0.020): {hCH['U'] - hR['U']:+.4f} | CHAIN-PLACEBO (CHAIN - placebo >= +0.020): {hCH['U'] - hCP['U']:+.4f} | "
                f"fed-steps CHAIN - HYBRID {hCH['UREF'] - hR['UREF']:+.4f} | CHAIN - JOIN {hCH['U'] - R['U']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ".txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ".txt"
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "

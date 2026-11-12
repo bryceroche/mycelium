@@ -58344,3 +58344,17 @@ Seen (unbarred): +0.0126 local / +0.0146 full, on all eight reads but one (full 
   its slots ARE (classes, result classes), not by the order ops happened to come in.
 - **Next form (named):** class-keyed motifs -- a fragment = a pair of linked edges as (input classes -> result class -> consumer's
   other input class), with no op history in the key; the op comes out of the motif, never goes in.
+
+### 2026-11-12 10:31 -- CLASS-KEYED MOTIFS PINNED (Bryce: "word given for next form"): an op-free road around the producer's guess
+Theory lines: **the Cross Join, bottom and top** + **discover the structure** + **the bridge: only a proof crosses hard**.
+Zero GPU: `LADDER_MOTIF=class` (with HYB/CHAIN/BEAM=4).
+- **Critique first (on the record):** most of a class-keyed motif is already in CHAIN + BEAM -- the result symbol carries the
+  producer's input classes AND its op, and the beam scores the joint. What is NEW is an op-FREE path: the consumer's op voted by the
+  producer's INPUT classes + the consumer's other side, with the producer's op stripped (nested results collapse to "s"). A wrong guess
+  of the producer's op then cannot change the motif row read -- aimed at the self-fed vs gold-fed gap (error propagation).
+- **Row key:** (level, consumer kinds, link role, producer's two input classes, the consumer's other side's class); coarse 32 classes,
+  fine 256, shrinkage descent. Admission: >= 3 distinct problems AND >= 2 distinct leaf sets (no leaf enters a key). Mined from TRAIN
+  with gold ops. Beam score += 1.0 x sum over linked sides of (log p_motif - log base).
+- **Arms:** BEAM4 | BEAM4+CMOTIF | CMOTIF-PLACEBO (rows point at shuffled ops). Four k seeds; local primary, full witness.
+- **CMOTIF-x:** BEAM4+CMOTIF - BEAM4 >= +0.020 TEST-U. Prediction FAIL ~65%. **CMOTIF-PLACEBO:** >= +0.020 over its placebo.
+  Reported: seen, the step-fed subset.
