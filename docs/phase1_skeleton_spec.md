@@ -58826,3 +58826,33 @@ PCI+AMD, depth2 split, NB 10, 8000 steps.
 - Dither: the hold was "until POLE reads"; POLE has read. Not fired -- it needs its own pin and the word.
 - Named next forms (not pinned): DAMP with the pole actually trained (grad census first, then a per-plane lr or init sweep); NOTEBOOK
   DAMP at a harder coverage (below 0.0625) so the frame can see past the ceiling.
+
+### 2026-11-13 15:12 -- STEP QUEUE PINNED: STEP-R (zero-GPU), STEP-A (the step-angle census), SCHEDULED UNITARY (SU); the word given
+
+Theory lines: "the payoff: long chains without degrading" + "radius = confidence" (the conjugate mirror rule) + the Bridge's
+confidence dial (CLAUDE.md §9). Origin: DAMP's poles sat at init (radius gradient nets to ~0: everything reads x through a LayerNorm,
+so scale is invisible), and POLE read the trained additive breath as EXPANDING. Bryce: the Laplace view -- s = sigma + i omega; the
+unitary breath kept omega and pinned sigma = 0. Hypothesis: under the LayerNorm the expansion is a STEP-SIZE SCHEDULE (each write's
+angular effect ~ |write| / |x|; growing |x| cools the late breaths), and U2 lost that schedule, not something rotation cannot write.
+- **STEP-R (zero-GPU, banked norm censuses, the four controls NOMLP s0/s1 cov 0.25, NOTEBOOK s0/s1 cov 0.0625):** fit the mean token
+  norm after breaths 1..10 as linear (|x_b| = a + c b) and as geometric (log |x_b| = a + c b). LINEAR iff linear R^2 > geometric R^2
+  on all four; GEOMETRIC iff the reverse on all four; else MIXED. Linear = steps ~ 1/b (harmonic, slow algebraic convergence: the steps
+  sum diverges, the squares converge); geometric = exponential cooling. Disclosure: I have seen these curves (increments 15-20 per
+  breath); prediction LINEAR ~90%, so this read informs, it does not test blind.
+- **STEP-A (GPU reruns, witnessed):** census() gains the per-breath angle between consecutive LayerNorm-centered token states (real
+  tokens, the 256-item DEEP census batch, breaths 0->1 .. 9->10). Reruns: NOMLP s0, NOMLPU s0 (cov 0.25), NOTEBOOK s0, NOTEBOOKU s0
+  (cov 0.0625), tags `_step`. **Witness:** each rerun reproduces its banked per-item DEEP read exactly, or nothing in this queue banks.
+  Rule: COOLS iff the control's angle(9->10) / angle(1->2) <= 0.5 on both arms; else NO-COOL. The U arms' ratios reported beside.
+  Prediction: control COOLS ~70%.
+- **SU (SCHEDULED UNITARY; GPU):** the UNITARY arm (RD_UNIT=1) with every write in breath b (bproj, notebook, MHA, snap) scaled by
+  g_b = n_1 / n_{b-1} (g_1 = 1), n = the same-arm control's banked seed-mean norm census (norm after breath k). Fixed constants, read
+  from banked artifacts before any SU run; nothing learned. NOMLPS s0/s1 at cov 0.25, NOTEBOOKS s0/s1 at cov 0.0625; depth2, NB 10,
+  8000 steps, tinygrad on PCI+AMD. Checkpoints saved from here on (`.cache/rel_dsl_{TAG}_P.npz`).
+  - C0: SU SHALLOW seed mean < 0.95 -> VOID.
+  - S-REC (per arm): SU - U (the banked U arms) DEEP >= +0.03 with both seeds positive -> RECOVERS; <= -0.02 -> HURTS; else NONE.
+  - S-PAR (per arm): SU - control DEEP >= +0.03 both seeds positive -> HELPS; <= -0.02 -> SHORT; else EQUIVALENT (CEILING if both
+    arms >= 0.97).
+  - Reading frame: S-REC RECOVERS on both arms = the schedule carries U's loss; with S-PAR EQUIVALENT = it carries ALL of it (the
+    rotation line is back). S-REC NONE on both = rotation-only writes lose something a schedule does not restore. A FAIL closes the
+    uniform-schedule form; the named next form is a per-token sigma (radius = confidence) read from the state.
+  - Predictions: S-REC RECOVERS NOMLP ~40%, NOTEBOOK ~45%; S-PAR EQUIVALENT-or-CEILING ~25% per arm.
