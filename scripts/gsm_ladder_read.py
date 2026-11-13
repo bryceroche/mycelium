@@ -37,8 +37,10 @@ if SRC == "local":
 
 def words(it): return ["<num>" if v is not None else ("<name>" if n else w) for w, v, n in zip(it["toks"], it["vals"], it["isn"])]
 def cpl(it, i): s0 = it["imp0"]; return (IMP[s0 + i, 0] + IMP[s0 + i + 1, 1]) / 2
-SPANS = os.environ.get("LADDER_SPANS", "impulse")   # (ledger 11-11 MRI) impulse | mri | agree (a cut only where both witnesses cut)
-if SPANS != "impulse":
+SPANS = os.environ.get("LADDER_SPANS", "impulse")   # (ledger 11-11 MRI) impulse | mri | agree (a cut only where both witnesses cut) | tree (TREE-SEG)
+if SPANS == "tree":
+    TS = np.load(".cache/gsmb_treeseg.npy"); assert len(TS) == len(IMP)
+elif SPANS != "impulse":
     MRI = np.load(".cache/gsmb_mri_rb8.npy"); assert len(MRI) == len(IMP)
 def mcp(it, i): return MRI[it["imp0"] + i]
 
@@ -52,9 +54,65 @@ def span_ids(it):
     for i in range(len(w)):
         out.append(cur)
         if i + 1 >= len(w) or w[i] in PUN or w[i + 1] in PUN or sid[i] != sid[i + 1]: cur += 1; continue
+        if SPANS == "tree":
+            cur += int(TS[it["imp0"] + i]); continue
         ci = SPANS != "mri" and cut(cpl, it, i, len(w)); cm = SPANS != "impulse" and cut(mcp, it, i, len(w))
         if {"impulse": ci, "mri": cm, "agree": ci and cm}[SPANS]: cur += 1
     return out
+
+
+def forced(it, i, w):
+    return i + 1 >= len(w) or w[i] in PUN or w[i + 1] in PUN or it["sid"][i] != it["sid"][i + 1]
+
+
+if os.environ.get("LADDER_SEGBUILD") == "1":   # (TREE-SEG, ledger 11-12) the Tree's leaf lexicon segments the text: hard-EM unigram + Viterbi
+    from math import log
+    assert SPANS == "impulse"
+    def runs(it):   # the forced segments (punctuation, sentence ends): Viterbi never crosses them
+        w = words(it); out, a = [], 0
+        for i in range(len(w)):
+            if forced(it, i, w): out.append(tuple(w[a:i + 1])); a = i + 1
+        return out
+    R_tr = [runs(it) for it in D["TRAIN"]]; R_te = [runs(it) for it in D["TEST"]]
+    cnt = Counter()
+    for it in D["TRAIN"]:
+        w = words(it); sp = span_ids(it)
+        for j in sorted(set(sp)): cnt[tuple(w[i] for i in range(len(w)) if sp[i] == j)] += 1
+    V0 = len({x for r in R_tr for seg in r for x in seg}) + 1
+    def viterbi(seg, c, N, a1, ML):   # min sum -log p(piece), p = (c + a1 * p0) / (N + a1), p0 = 1 / V0 on single words only (alpha = N1)
+        best = [0.0] + [np.inf] * len(seg); bk = [0] * (len(seg) + 1)
+        for j in range(1, len(seg) + 1):
+            for i in range(max(0, j - ML), j):
+                pc = c.get(seg[i:j], 0) + (a1 / V0 if j - i == 1 else 0.0)
+                if pc <= 0: continue
+                v = best[i] - log(pc / (N + a1))
+                if v < best[j]: best[j], bk[j] = v, i
+        cuts, j = [], len(seg)
+        while j > 0: cuts.append(bk[j]); j = bk[j]
+        return sorted(x for x in cuts if x > 0)   # piece starts inside the run = cut after word (start - 1)
+    prev = None; fixed = False
+    for itn in range(1, 21):
+        N = sum(cnt.values()); a1 = sum(1 for v in cnt.values() if v == 1); ML = max(len(k) for k in cnt)
+        segs = [[viterbi(seg, cnt, N, a1, ML) for seg in r] for r in R_tr]
+        if segs == prev: fixed = True; break
+        prev = segs; cnt = Counter()
+        for r, cs in zip(R_tr, segs):
+            for seg, c_ in zip(r, cs):
+                b = [0] + c_ + [len(seg)]
+                for x, y in zip(b, b[1:]): cnt[seg[x:y]] += 1
+    TSB = np.zeros(len(IMP), np.int8); agree = tot = 0; N = sum(cnt.values()); a1 = sum(1 for v in cnt.values() if v == 1); ML = max(len(k) for k in cnt)
+    for sp_, R_ in (("TRAIN", R_tr), ("TEST", R_te)):
+        for it, r in zip(D[sp_], R_):
+            off = 0; imp = span_ids(it)
+            for seg in r:
+                for c_ in viterbi(seg, cnt, N, a1, ML): TSB[it["imp0"] + off + c_ - 1] = 1
+                for k in range(len(seg) - 1):
+                    if sp_ == "TRAIN": agree += int(TSB[it["imp0"] + off + k]) == int(imp[off + k + 1] != imp[off + k]); tot += 1
+                off += len(seg)
+    np.save(".cache/gsmb_treeseg.npy", TSB)
+    msl = np.mean([len(words(it)) / (len(r) + sum(int(TSB[it["imp0"] + k]) for k in range(len(words(it))))) for it, r in zip(D["TEST"], R_te)])
+    msg = f"TREE-SEG build: EM {itn} iterations ({'fixed point' if fixed else 'cap'}), lexicon {len(cnt)} pieces (alpha = N1 = {a1}, longest {ML}), TRAIN cut agreement with impulse {agree / tot:.4f} over {tot} free positions, TEST mean span {msl:.2f} words -> .cache/gsmb_treeseg.npy"
+    print(msg); open(".cache/gsmb_treeseg.txt", "w").write(msg + "\n"); sys.exit(0)
 
 
 def steps(it):
@@ -193,29 +251,70 @@ HYB = os.environ.get("LADDER_HYB") == "1"
 if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases), edges (class x class, level-gated), junctions (volatile)
     HK, HM, PURE = 2, 2, 0.9   # diversity: >= HK distinct leaf pairs from >= HM problems; an edge splits down only if its parent is < PURE
     pid = np.concatenate([[i] * min(len(it["prog"]), K) for i, it in enumerate(D["TRAIN"])]); assert len(pid) == len(tr)
+    TREE = os.environ.get("LADDER_TREE", "ks"); LAW = os.environ.get("LADDER_ADMIT", "banked") == "law"   # (BIC-TREE, ledger 11-12)
+    assert TREE in ("ks", "bic") and not (TREE == "bic" and (os.environ.get("LADDER_TDB") or os.environ.get("LADDER_PJ") or os.environ.get("LADDER_HPARENT")))
+    XM = {}
+    def xmeans(X, seed):   # (BIC-TREE) x-means from the root: a node splits in two iff BIC improves (spherical Gaussian, pooled variance)
+        from sklearn.cluster import KMeans
+        X = X.astype(np.float64); d = X.shape[1]; cen = [X.mean(0)]; kids = {}; stack = [(0, np.arange(len(X)))]
+        def bic(Xs, lab, k):
+            nj = np.bincount(lab, minlength=k); ss = sum(((Xs[lab == j] - Xs[lab == j].mean(0)) ** 2).sum() for j in range(k)); n = len(Xs)
+            if ss <= 0 or nj.min() == 0: return -np.inf
+            return float((nj * np.log(nj / n)).sum() - n * d / 2 * (np.log(2 * np.pi * ss / (n * d)) + 1) - (k * d + k) / 2 * np.log(n))
+        while stack:
+            i, idx = stack.pop(); Xs = X[idx]
+            if len(idx) < 2: continue
+            k2 = KMeans(2, n_init=3, random_state=seed).fit(Xs)
+            if bic(Xs, k2.labels_, 2) <= bic(Xs, np.zeros(len(idx), int), 1): continue
+            kids[i] = []
+            for j in range(2): kids[i].append(len(cen)); cen.append(k2.cluster_centers_[j]); stack.append((len(cen) - 1, idx[k2.labels_ == j]))
+        dep = {0: 0}; q = [0]
+        while q:
+            c = q.pop()
+            for k in kids.get(c, ()): dep[k] = dep[c] + 1; q.append(k)
+        return np.array(cen), kids, max(dep.values())
+    def descend(X, cen, kids, D):   # the Tree search: nearest child at every node -> [n, D] node ids, column 0 = the finest level
+        X = X.astype(np.float64); cur = np.zeros(len(X), int); path = []
+        for _ in range(D):
+            nxt = cur.copy()
+            for c in np.unique(cur):
+                if c not in kids: continue
+                m = cur == c; a, b = kids[c]; nxt[m] = np.where(((X[m] - cen[b]) ** 2).sum(1) < ((X[m] - cen[a]) ** 2).sum(1), b, a)
+            cur = nxt; path.append(cur.copy())
+        return np.stack(path, 1)[:, ::-1]
     hS = lambda S: [x for s in S for x in s[4]]
     pcaH = PCA(64, random_state=0).fit(np.stack([x[1] for x in hS(tr)]))
     Htr, Hte = pcaH.transform(np.stack([x[1] for x in hS(tr)])), pcaH.transform(np.stack([x[1] for x in hS(te)]))
     def hyb_run(rules, tag, Hfit, chain="off"):
-        km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit); Cw = km.cluster_centers_
-        if os.environ.get("LADDER_HPARENT") == "role":   # (FOREST, ledger 11-12) same L1 classes; L2/L3 cut in an op-discriminant space
+        if TREE == "bic":
+            hk = hash(Hfit.tobytes())
+            if hk not in XM: XM[hk] = xmeans(Hfit, KSEED)
+            xcen, xkids, NLEV = XM[hk]; maps = None
+            levpaths = lambda H, C=None: descend(H, xcen, xkids, NLEV)
+            xtree = dict(nodes=len(xcen), leaves=len(xcen) - len(xkids), depth=NLEV)
+        else:
+          km = MiniBatchKMeans(KS[0], random_state=KSEED, n_init=3, batch_size=4096).fit(Hfit); Cw = km.cluster_centers_; xtree = None
+          if os.environ.get("LADDER_HPARENT") == "role":   # (FOREST, ledger 11-12) same L1 classes; L2/L3 cut in an op-discriminant space
             from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
             Cw = LinearDiscriminantAnalysis().fit(Hfit, np.array([s[2] for s in tr for _ in s[4]])).transform(Cw)
-        maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(Cw).labels_ for k in KS[1:]]
-        def junctions(S, H, C=None):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1, L2, L3]
-            c = km.predict(H) if C is None else np.argmin((H ** 2).sum(1)[:, None] - 2 * H @ C.T + (C ** 2).sum(1)[None], 1); out, i = [], 0
+          maps = [np.arange(KS[0])] + [AgglomerativeClustering(k, linkage="ward").fit(Cw).labels_ for k in KS[1:]]; NLEV = len(maps)
+          def levpaths(H, C=None):
+              c = km.predict(H) if C is None else np.argmin((H ** 2).sum(1)[:, None] - 2 * H @ C.T + (C ** 2).sum(1)[None], 1)
+              return np.stack([m[c] for m in maps], 1)
+        def junctions(S, H, C=None):   # per step: the volatile junction rows -> (A path, B path) by role; path = [leaf key, L1 .. L_NLEV]
+            P = levpaths(H, C); out, i = [], 0
             for s in S:
                 ab = [None, None]
-                for j, (k, _, _, r) in enumerate(s[4]): ab[r] = [k] + [int(m[c[i + j]]) for m in maps]
+                for j, (k, _, _, r) in enumerate(s[4]): ab[r] = [k] + [int(x) for x in P[i + j]]
                 out.append(ab); i += len(s[4])
             return out
-        def ekey(ab, kd, l): return (l, kd) if l == 4 else (l, kd) + tuple(None if x is None else x[l] for x in ab)
+        def ekey(ab, kd, l): return (l, kd) if l == NLEV + 1 else (l, kd) + tuple(None if x is None else x[l] for x in ab)
         Jtr, Jte = junctions(tr, Hfit), junctions(te, Hte)   # (placebo) TRAIN sides take shuffled vectors
         # (CHAIN, ledger 11-11) a side fed by an earlier step gets that step's RESULT CLASS: a bounded symbol = its op + its inputs'
         # classes (256 at L1, 32 at L2, op alone at L3); a nested result collapses to its op, so the symbol set stays finite
         nst = lambda sp: [min(len(it["prog"]), K) for it in D[sp]]
-        cl = lambda y, l: None if y is None else (y[3] if isinstance(y[3], tuple) else y[l])
-        refpath = lambda x, op: [("s", op, tuple(None if y is None else y[0] for y in x)), ("s", op, cl(x[0], 2), cl(x[1], 2)), ("s", op, cl(x[0], 3), cl(x[1], 3)), ("s", op)]
+        cl = lambda y, l: None if y is None else (y[NLEV] if isinstance(y[NLEV], tuple) else y[l])
+        refpath = lambda x, op: [("s", op, tuple(None if y is None else y[0] for y in x))] + [("s", op, cl(x[0], l + 1), cl(x[1], l + 1)) for l in range(1, NLEV)] + [("s", op)]
         def fill(ab, st, dab, dop):
             if chain == "off": return ab
             ab = [None, None] if st[6] and any(r is not None for r in st[5]) else list(ab)   # a no-text step reads its inputs, not the question
@@ -230,18 +329,18 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 for _ in range(n): ab = fill(Jtr[g], tr[g], dab, dop); out_.append(ab); dab.append(ab); dop.append(int(ytr_ref[g])); g += 1
             Jtr = out_
         cnt = defaultdict(lambda: np.zeros(len(OPS))); lp_ = defaultdict(set); pr_ = defaultdict(set); eev = defaultdict(list)
-        levels = (4, 3, 2, 1) if rules else (4, 3, 2, 1, 0)
+        levels = tuple(range(NLEV + 1, 0, -1)) + (() if rules else (0,))
         for ab, s, q in zip(Jtr, tr, pid):
             for l in levels:
                 e = ekey(ab, s[1], l); cnt[e][s[2]] += 1; eev[e].append((int(s[2]), int(q))); lp_[e].add(tuple(None if x is None else x[0] for x in ab)); pr_[e].add(int(q))
         if rules:   # admission top-down: the top always; below, diversity AND a split (impure) admitted parent
-            adm = {e for e in cnt if e[0] == 4}
-            for l in (3, 2, 1):
+            adm = {e for e in cnt if e[0] == NLEV + 1}
+            for l in range(NLEV, 0, -1):
                 for ab, s in zip(Jtr, tr):
                     e = ekey(ab, s[1], l)
                     if e in adm: continue
                     par = ekey(ab, s[1], l + 1); c = cnt[par]
-                    if len(lp_[e]) >= HK and len(pr_[e]) >= HM and par in adm and (l == 3 or c.max() / c.sum() < PURE): adm.add(e)
+                    if len(lp_[e]) >= HK and len(pr_[e]) >= HM and par in adm and (l == NLEV or LAW or c.max() / c.sum() < PURE): adm.add(e)
         else: adm = set(cnt)
         def dist(ab, kd):
             p = np.ones(len(OPS)) / len(OPS)
@@ -258,7 +357,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                     ab = fill(J[g], S[g], dab, dop); q = desc(ab, S[g][1]); out.append(q); dab.append(ab); dop.append(q if mode == "pred" else int(yg[g])); g += 1
             return np.array(out)
         BEAM = int(os.environ.get("LADDER_BEAM", "0")); MOTIF = os.environ.get("LADDER_MOTIF", "")   # "" | on | placebo
-        LAM = float(os.environ.get("LADDER_MOTIF_LAM", "1.0")); MPROB = 3
+        LAM = float(os.environ.get("LADDER_MOTIF_LAM", "1.0")); MPROB = 2 if LAW else 3   # (BIC-TREE) the law's 2
         # (MOTIF, ledger 11-12) the motif table: recurring parse FRAGMENTS over classes, mined from TRAIN junctions (gold ops = key-verified).
         # key = (ops of the previous two steps, the link signature: how far back each side's feeding step is (cap 3) + no-text flag,
         # kinds); backoff M2 -> M1 (one previous op) -> M0 (shape only); a row needs >= MPROB distinct problems (no leaf ever enters)
@@ -282,7 +381,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
             for r in (0, 1):
                 if not isref(ab[r]): continue
                 o = ab[1 - r]; lf = (ab[r][0][2], None if o is None else o[0])
-                for pl, ol in ((2, 3), (1, 2)):   # coarse: producer inputs at 32 classes (refpath[2]) + other side at 32; fine: 256 / 256
+                for pl, ol in [(ol - 1, ol) for ol in range(NLEV, 1, -1)]:   # coarse -> fine (KS: producer inputs at 32 + other side at 32; then 256 / 256)
                     oc = None if o is None else ("s" if isref(o) else o[ol])
                     out.append(((ol, kd, r) + tuple(strip(c) for c in ab[r][pl][2:]) + (oc,), lf))
             return out
@@ -294,9 +393,9 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
         cadm = {mk for mk in ccnt if len(cpr[mk]) >= MPROB and len(clf[mk]) >= 2}
         def cscore(ab, kd):   # sum over linked sides of (log p_motif - log base), each a 32 -> 256 shrinkage descent over admitted rows
             tot, ks = 0.0, ckeys(ab, kd)
-            for i in range(0, len(ks), 2):
+            for i in range(0, len(ks), NLEV - 1):
                 p = np.ones(len(OPS)) / len(OPS)
-                for mk, _ in ks[i:i + 2]:
+                for mk, _ in ks[i:i + NLEV - 1]:
                     if mk in cadm: c = ccnt[mk]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
                 tot = tot + np.log(p + 1e-12) - lbase
             return tot
@@ -368,7 +467,7 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
         per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
-                    edges={l: per[l] for l in sorted(per)}, tdb=tdb, pj=pj)
+                    edges={l: per[l] for l in sorted(per)}, tdb=tdb, pj=pj, xtree=xtree, nadm=len(adm), ncadm=len(cadm))
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
         CM = os.environ["LADDER_MOTIF"] == "class"
@@ -411,12 +510,14 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     if os.environ.get("LADDER_EXEC") == "on":
         for g in (hEX, hEP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f}")
         out.append(f"EXEC-x (STACK+EXEC - STACK >= +0.020): {hEX['U'] - hCH['U']:+.4f} | EXEC-PLACEBO (EXEC - placebo >= +0.020): {hEX['U'] - hEP['U']:+.4f} | seen {hEX['S'] - hCH['S']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ("_hrole" if os.environ.get("LADDER_HPARENT") == "role" else "") + ".txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ("_hrole" if os.environ.get("LADDER_HPARENT") == "role" else "") + ("_bic" if TREE == "bic" else "") + ("_law" if LAW else "") + ".txt"
+    out.append(f"  TREE {TREE} {hCH['xtree']} | admission {'law' if LAW else 'banked'}: edges admitted {hCH['nadm']}, motifs admitted {hCH['ncadm']}")
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
                f"RULES (HYB - CROSS >= +0.020): {hR['U'] - hC['U']:+.4f} | HYB-PLACEBO (HYB - placebo >= +0.020): {hR['U'] - hP['U']:+.4f} | seen HYB - JOIN {hR['S'] - R['S']:+.4f}")
     OUTF = OUTF[:-4] + "_hyb.txt"
+OUTF = os.environ.get("LADDER_OUTF", OUTF)
 txt = "\n".join(out); print(txt); open(OUTF, "w").write(txt + "\n")
 
 if os.environ.get("LADDER_DIAG") == "1":   # (unbarred attribution, ledger 11-10) is it the states or the ladder? flat 1-NN on the same vectors

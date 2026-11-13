@@ -1,0 +1,1 @@
+TREE-SEG build: EM 9 iterations (fixed point), lexicon 45286 pieces (alpha = N1 = 36102, longest 9), TRAIN cut agreement with impulse 0.9508 over 217305 free positions, TEST mean span 1.65 words -> .cache/gsmb_treeseg.npy
