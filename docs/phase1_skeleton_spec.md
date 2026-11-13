@@ -58788,3 +58788,41 @@ Artifact: `.cache/rel_dsl_unit_verdict.txt` (`scripts/rel_dsl_unit_verdict.py`).
   (HURTS, the ~30% path I gave U1).
 - DAMP chain: unitb ended 13:07, the patch applied, **witness 1/2: the NOMLP s0 rerun reproduces the banked FINAL exactly** (0.997 /
   0.955 / 0.860, by depth identical); tinygrad scorer agrees 1.0 with RB.score.
+
+### 2026-11-13 14:20 -- DAMP + POLE VERDICTS: witness PASS; U3 EQUIVALENT (+0.006), U4 CEILING (+0.012); POLE-x MIXED (the trained breath EXPANDS)
+
+Artifact: `.cache/rel_dsl_damp_verdict.txt` (`scripts/rel_dsl_damp_verdict.py`; chain `.cache/run_damp.sh`, done 13:58). Tinygrad on
+PCI+AMD, depth2 split, NB 10, 8000 steps.
+- **WITNESS: PASS.** Both `_pole` control reruns reproduce the banked per-item DEEP reads exactly (NOMLP s0 0.8603 = 0.8603; NOMLPU s0
+  0.7510 = 0.7510); the tinygrad scorer agrees 1.0 with RB.score on the controls. Everything below banks.
+| arm | SHALLOW s0/s1 | MID s0/s1 | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) | norms b1 -> b10 |
+|---|---|---|---|---|---|
+| NOMLP (cov 0.25) | 0.997 / 1.000 | 0.955 / 0.952 | 0.860 / 0.856 | 0.877 / 0.848 / 0.764 / 0.679 / 0.500 | 40.6 -> 203.8 |
+| NOMLP+DAMP | 0.997 / 0.992 | 0.960 / 0.948 | 0.883 / 0.846 | 0.886 / 0.839 / 0.793 / 0.679 / 0.500 | 38.3 -> 133.5 |
+| NOTEBOOK (cov 0.0625) | 1.000 / 1.000 | 0.997 / 0.995 | 0.973 / 0.983 | 0.990 / 0.961 / 0.943 / 0.893 / 0.625 | 42.6 -> 228.0 |
+| NOTEBOOK+DAMP | 1.000 / 1.000 | 0.998 / 0.999 | 0.986 / 0.994 | 0.995 / 0.986 / 0.979 / 0.929 / 0.750 | 39.7 -> 160.5 |
+- **U3: EQUIVALENT** (DEEP +0.006; seeds +0.022 / -0.010; paired SE 0.008 / 0.010).
+- **U4: CEILING** (DEEP +0.012; seeds +0.013 / +0.011; paired SE 0.005 / 0.004; both arms >= 0.97). Beside, no claim: same sign on both
+  seeds at ~2.5 paired SE, the long depths carry it (d7 +0.036, d9 +0.125 on n small); below the pinned +0.03, and the frame reads CEILING.
+- **The learned poles did not learn.** Radius quartiles 0.948-0.951 on all four runs, share < 0.9 = 0.0; init is sigmoid(3.0) = 0.9526.
+  Angles median 0.47-0.62 deg (init 0). So DAMP as run is a FIXED ~0.95 per-breath decay on every plane, not a learned pole: the
+  verdicts close "a uniform 0.95 leak", not "learned poles". Cause unread (lr 1e-3-scale steps on a scalar whose grad is a sum over
+  all tokens and breaths should move it; a grad census on damp_a is the first read if the form is reopened). Prediction "learned radii
+  mostly in (0.8, 1.0)": hit, but trivially -- they sat at init.
+- **POLE-V: PASS** (R^2 0.955-0.994 on every arm; the breath is ~linear in the carried state at this read).
+- **POLE-x (NOMLP control): MIXED** (inside 0.027, on 0.082, outside 0.891; |lambda| quartiles 1.040 / 1.127 / 1.164; top 1.218). The
+  pinned rule anticipated contracting vs marginal; the trained additive breath is neither -- it EXPANDS (89% of poles outside the
+  circle, consistent with the 5x norm growth). Prediction MIXED-to-CONTRACTS: MIXED hit by the letter, the mechanism missed.
+| arm | |lambda| q1/med/q3 | inside / on / outside | top | R^2 |
+|---|---|---|---|---|
+| NOMLP s0 (control) | 1.040 / 1.127 / 1.164 | 0.027 / 0.082 / 0.891 | 1.218 | 0.994 |
+| NOMLP+U s0 | 0.939 / 0.975 / 1.012 | 0.629 / 0.109 / 0.262 | 1.072 | 0.955 |
+| NOMLP+DAMP s0 / s1 | 1.005 / 1.085 / 1.122 ; 1.003 / 1.081 / 1.123 | 0.195-0.219 / 0.059-0.074 / 0.723-0.730 | 1.170 | 0.991 / 0.990 |
+| NOTEBOOK+DAMP s0 / s1 | 0.982 / 1.083 / 1.123 ; 0.984 / 1.089 / 1.123 | 0.281-0.285 / 0.035-0.043 / 0.672-0.684 | 1.218 / 1.212 | 0.994 / 0.992 |
+- Reading: the fixed 0.95 leak moves the fitted spectrum only partly inward (outside 0.89 -> ~0.70): the breath re-grows most of what
+  the leak takes (0.95 x median 1.08 ~ 1.03 net). Norm growth falls 5.0x -> 3.5-4.0x; DEEP is unmoved (NOMLP) or ceiling-bound
+  (NOTEBOOK). Neither all-on-the-circle (UNITARY: hurts) nor a uniform leak buys depth on this fixture; the trained breath WANTS to
+  expand. Z-view: the residual's integrator pole at z = 1 is pushed outward by training, not held.
+- Dither: the hold was "until POLE reads"; POLE has read. Not fired -- it needs its own pin and the word.
+- Named next forms (not pinned): DAMP with the pole actually trained (grad census first, then a per-plane lr or init sweep); NOTEBOOK
+  DAMP at a harder coverage (below 0.0625) so the frame can see past the ceiling.
