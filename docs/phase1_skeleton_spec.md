@@ -58727,3 +58727,40 @@ exactly) and every DAMP run.
   top 5 |lambda|, R^2. Prediction: NOMLP MIXED-to-CONTRACTS with a cluster near 1 (the stamp directions); U all near 1 by construction
   (a norm-preserving map's linearization); DAMP's spectrum tracks its learned radii.
 Witness rule: if either rerun's FINAL differs from the banked line, the DAMP build changed the control path -> stop, nothing banks.
+
+### 2026-11-13 12:58 -- HEAT-ZOOM: HEAT-x FAIL, HEAT-P PASS, HEAT-B HURTS (grid edge); SNAP-FLOW PASS (derivation); the port's optimizer bug
+
+Artifacts: `.cache/heat_verdict.txt` (`scripts/heat_verdict.py`), `.cache/gsm_ladder*_heat*.txt`, `.cache/snap_flow_check.txt`.
+| arm (STACK TEST-U, k0/k1/k2/k3) | local | full | t* (STACK arm) |
+|---|---|---|---|
+| banked STACK | 0.5631 / 0.5682 / 0.5703 / 0.5728 (0.5686) | 0.5707 / 0.5821 / 0.5847 / 0.5737 (0.5778) | -- |
+| **HEAT** (KS Tree) | 0.5483 / 0.5373 / 0.5491 / 0.5529 (0.5469) | 0.5453 / 0.5686 / 0.5521 / 0.5449 (0.5527) | 63-100 |
+| HEAT-PLACEBO | 0.5254 / 0.4941 / 0.5229 / 0.5148 (0.5143) | 0.5262 / 0.5262 / 0.5161 / 0.5135 (0.5205) | 100-158 |
+| BIC (11-12) | (0.5586) | (0.5747) | -- |
+| **HEAT-BIC** | 0.5322 / 0.5385 / 0.5491 / 0.5533 (0.5433) | 0.5550 / 0.5656 / 0.5690 / 0.5686 (0.5645) | 1000 (EDGE, all 8) |
+- **HEAT-x FAIL** (-0.0217 / -0.0251): one LOO-fitted t replacing kappa + three cuts + admission loses ~0.02 on both sources.
+- **HEAT-P PASS** (+0.0326 / +0.0322): the kernel reads the Tree (scrambling the L1 addresses costs 0.03 and pushes t* up).
+- **HEAT-B HURTS** (-0.0154 / -0.0102) -- **with the pinned flag raised: t* sat on the grid's upper edge (1000) in all 8 BIC runs**, so the
+  likelihood wanted more smoothing than the grid allowed on the 16.7k-17.8k-node x-means tree (paths 21-23 deep: heat needs longer to
+  cross them). The verdict stands as pinned; its scope: "HEAT at t <= 1000 on the x-means Tree". On the KS Tree t* was interior everywhere.
+- Reading (not a claim): the heat zoom reads the Tree (HEAT-P) but a likelihood-fitted global t is not the argmax-accuracy optimum, and
+  admission (the law: >= 2 leaf pairs, >= 2 problems) carries what the LOO guard does not. The continuous mirror of the zoom is real,
+  its single-t form loses to the discrete descent. Named next forms: a per-node t (the heat time as a function of n, which is what the
+  shrinkage already is: SNAP-FLOW's t = log(1 + n/kappa)); heat restricted to admitted rows.
+- Predictions: HEAT-x PASS ~50% -- miss (the FAIL path, ~40%, came in); HEAT-P PASS ~80% ✓; HEAT-B EQUIVALENT ~55% -- miss; t* interior --
+  right on KS, wrong on BIC.
+- **SNAP-FLOW PASS** (derivation): max |shrinkage - flow| 2.2e-16 over every admitted descent in the 8 banked stores (~8.1k descent
+  steps per store; result-class rows descend root -> row). One shrinkage step IS the snap flow stopped at t = log(1 + n/kappa).
+- Housekeeping: a thread-capped first smoke (OMP_NUM_THREADS=4) did NOT reproduce the banked file (sklearn clustering depends on the
+  thread count); the uncapped regression guard reproduced it exactly (one info line added). Rule: ladder reads never cap BLAS threads.
+  The BIC arm's first chain was OOM-killed at 4-way parallel (8.9k-leaf dense eigh); rerun two at a time.
+
+**The rel-DSL tinygrad port (Sonnet agent; reviewed).** Gates: CPU parity max |d| 1.1e-6 (both arms; notebook flags exact); GPU parity
+(PCI+AMD) 8.9e-7 / 1.25e-6 PASS; unit checks (a)-(d) PASS (NOTEBOOK (b)-(d) from the agent's run; its rerun timed out under CPU load).
+**The smoke gate caught a real bug:** NOTEBOOK's 40-step loss missed torch by 1.4e-3 (gate: 3 decimals). The agent called it float noise;
+measured, it was not: torch is bit-stable at 40 steps under thread count, padding, 1e-6 init perturbation and 1e-6 x max gradient noise
+(<= 5e-6). With IDENTICAL gradients, tinygrad's AdamW (decay folded into one expression, float32 bias corrections) drifts ~1 ulp per step
+from torch's (decay first, addcdiv, float64 bias corrections) -- on the phase params |theta| up to 2 pi that is 4.8e-7/step, which flipped
+a notebook argmax tie at step 25. Fix: the port's AdamW rebuilt in torch's op order (bias corrections host-side, fed to the JIT); smoke
+then matched to 5 decimals at every checkpoint, both arms. **A lead, not a claim:** `gsm_breath_tg.py` uses tinygrad's AdamW; G0's
+unexplained -0.0108 ORIG gap (11-04, "training dynamics, not a kernel") may be this drift. A future G0 rerun with the torch-order AdamW tests it.
