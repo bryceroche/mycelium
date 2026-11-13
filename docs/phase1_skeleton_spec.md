@@ -58688,3 +58688,42 @@ before the pointer stays).
 derivation above; the check is CPU, zero GPU; a FAIL means the algebra in this entry is wrong (no theory claim either way).
 
 Builds: HEAT-ZOOM + SNAP-FLOW by Claude; the rel-DSL tinygrad port delegated to a Sonnet agent (reviewed, gated, before any run).
+
+### 2026-11-13 12:15 -- Bryce: "excellent. word given for the queue -- Salute!" -- THE Z QUEUE PINNED: DAMP + POLE (dither held)
+
+Source: the Z-transform brainstorm (11-13). The breath is a sampled flow; each plane's per-breath multiplier is a POLE: on the unit
+circle = holds (identity, the clock: the T6 gears are poles e^{i omega_k}, the 180 deg gear at Nyquist; the clock-range rule is an
+anti-aliasing / unambiguous-range condition), inside = decays toward something (consolidation; the snap's shrinkage is the pole
+kappa/(n+kappa) = e^{-t}, SNAP-FLOW), outside = blows up. The additive residual x + d is a pole AT z = 1 (a marginal integrator: the
+U runs' census shows NOMLP's norms growing linearly 41 -> 204 over ten breaths); the unitary breath put every pole ON the circle and
+U1 read HURTS on both seeds (s0 -0.109, s1 -0.199; banked with the UNITARY verdict). The reading to test: content needs poles INSIDE the circle.
+Dither (quantization-noise theory for the commit) is HELD until POLE reads the poles (my recommendation, 11-13).
+
+**1. DAMP (the damped rotation; UNITARY's next form)** -- theory lines: "radius = confidence / consolidation" (angle = identity,
+radius = consolidation) + "the payoff: long chains without degrading". Form (`RD_DAMP=1` in `scripts/rel_dsl_tg.py`, built after the
+running `unitb` chain ends -- it re-reads the script): at the start of every breath the carried state is multiplied per complex plane
+(D/2 = 128 planes, adjacent dims paired) by a LEARNED pole p_k = sigmoid(a_k) e^{i phi_k} (init a_k = 3 -> radius 0.953, phi_k = 0);
+every write after it is unchanged (additive, as the control). 256 new parameters; no gain, no bypass (the pole multiplies the whole
+carry: a road). Scope: in this fixture the T6 clock enters as an additive input, so there are no clock planes in the carried state
+to pin on the circle; the "clock on the circle" half is not testable here.
+- Runs (DEV=PCI+AMD, depth2, NB 10, 8000 steps): NOMLP+DAMP s0/s1 at cov 0.25; NOTEBOOK+DAMP s0/s1 at cov 0.0625. Controls = the
+  `unitb` tinygrad arms (same engine, same seeds).
+- **U3 (NOMLP pair) / U4 (NOTEBOOK pair, LOW):** the fixture's frame: DAMP - control on DEEP >= +0.03 with both seeds positive ->
+  HELPS (poles inside the circle carry depth); <= -0.02 -> HURTS; else EQUIVALENT (CEILING if both >= 0.97); C0 SHALLOW < 0.95 VOID.
+  Reported: the learned pole radii / angles (median, quartiles, share < 0.9) at the end.
+- PREDICTIONS: U3 EQUIVALENT ~55% (LN before attention removes scale; a leak mainly bounds the norm), HELPS ~20%, HURTS ~25%;
+  U4 EQUIVALENT ~65%. Learned radii: mostly in (0.8, 1.0), not collapsing to 1.
+
+**2. POLE (inference only; the Jacobian's spectrum)** -- theory lines: "radius = consolidation", "SNAP cleans the state between
+hops" (contraction). Form: a `pole` census at the end of every `train` run (256 DEEP items, the final weights): per-breath states of
+the real tokens, centered per breath, pooled least squares x_{b+1} ~ A x_b over breaths 1..NB-1 -> eigenvalues of A (a local
+linearization around the trajectory, NOT a transfer function: R^2 reported). Read on: NOMLP s0 and NOMLP+U s0 (deterministic reruns
+of the `unitb` runs -- also the witness that the DAMP edit left RD_DAMP=0 unchanged: their FINAL lines must match the banked ones
+exactly) and every DAMP run.
+- **POLE-V:** R^2 < 0.5 -> VOID (the breath is not locally linear enough to have poles).
+- **POLE-x (on NOMLP, the control):** share of |lambda| < 0.99 >= 0.5 -> CONTENT CONTRACTS (the trained additive breath already places
+  most poles inside the circle; the integrator is undone by learning); share of |lambda| in [0.99, 1.01] >= 0.5 -> MARGINAL (an
+  integrator: content is carried, not consolidated); otherwise MIXED. Reported for every arm: radius quartiles, share outside (> 1.01),
+  top 5 |lambda|, R^2. Prediction: NOMLP MIXED-to-CONTRACTS with a cluster near 1 (the stamp directions); U all near 1 by construction
+  (a norm-preserving map's linearization); DAMP's spectrum tracks its learned radii.
+Witness rule: if either rerun's FINAL differs from the banked line, the DAMP build changed the control path -> stop, nothing banks.
