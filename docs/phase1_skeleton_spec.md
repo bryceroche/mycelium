@@ -58595,3 +58595,33 @@ tiers + raw storage); "how much overlap do the Tiers have". Form (a measurement,
 - PREDICTION: PASS ~70%; O ~0.3-0.6; additivity small.
 Builds: BIC-TREE + TREE-SEG by Claude in `gsm_ladder_read.py`; TIER-LATTICE delegated to a Sonnet agent (`scripts/tier_lattice_read.py`,
 reviewed before any read). GPU: two inference passes, serialized on `.cache/gpu.lock`.
+
+### 2026-11-12 20:11 -- THE QUEUE: BIC-x PASS (on the line), TSEG-x FAIL, LAT-x PASS
+Artifacts: `.cache/queue_verdict.txt` (`scripts/queue_verdict.py`), `.cache/gsm_ladder*_bic_law.txt`, `*_law.txt`, `*_tree*.txt`,
+`.cache/gsmb_treeseg.{npy,txt}`, `.cache/tier_lattice.txt`. Regression guard (generalized levels, KS + banked admission, seed 0 local):
+the banked file reproduced exactly (one info line added).
+
+| arm (STACK TEST-U, k0/k1/k2/k3) | local | full | mean diff local / full |
+|---|---|---|---|
+| banked STACK | 0.5631 / 0.5682 / 0.5703 / 0.5728 | 0.5707 / 0.5821 / 0.5847 / 0.5737 | -- |
+| **BIC** (x-means Tree + law admission) | 0.5576 / 0.5533 / 0.5601 / 0.5635 | 0.5690 / 0.5813 / 0.5804 / 0.5682 | **-0.0100 / -0.0031** |
+| LAW (KS + law admission; unbarred) | 0.5673 / 0.5639 / 0.5724 / 0.5711 | 0.5677 / 0.5847 / 0.5809 / 0.5690 | +0.0001 / -0.0022 |
+| **TREE-SEG** (Tree spans, KS + banked) | 0.5588 / 0.5521 / 0.5652 / 0.5517 | 0.5728 / 0.5728 / 0.5749 / 0.5690 | **-0.0117 / -0.0054** |
+
+- **BIC-x: PASS** by the pinned rule (local -0.009975 >= -0.010; full -0.0031). The local margin is 0.000025, inside the 4-decimal
+  rounding of the per-seed reads: a pass ON THE LINE, not comfortably inside it. Prediction (PASS ~55%) right.
+  Attribution: **LAW is parity** (+0.0001 / -0.0022): PURE 0.9 and MPROB 3 were dead knobs; the law alone (>= 2 leaf pairs, >= 2 problems)
+  carries admission. The residual cost lives in the TREE: x-means made 7.9k-8.9k leaves at depth 21-23 (vs 2048 / 3 levels), the known
+  over-split of spherical-BIC on non-Gaussian data (each leaf ~4 TRAIN sides). Next form named: a BIC with a per-node (not pooled) or a
+  full-covariance likelihood, or MDL on the edge table itself (split iff the children's op distributions pay for their bits).
+- **TSEG-x: FAIL** (-0.0117 / -0.0054). Hard EM reached a fixed point in 9 iterations (lexicon 45,286 pieces, alpha = N1 = 36,102,
+  longest 9); TRAIN cuts agree with IMPULSE2 at 0.9508, but TEST spans SHORTEN (1.65 vs 2.21 words): unseen phrases back off to single
+  words. Prediction FAIL right; its mechanism (lengthening) WRONG -- the cost is the opposite failure, over-fragmentation of novel text.
+  Third span form to lose to IMPULSE2 (MRI -0.010, AGREE -0.018, TREE -0.012 local): the leaves' cut point is still not the limit, and
+  a lexicon segmenter needs a backoff for unseen phrases that is not "words". Next form named: Viterbi over CLASS-level pieces (a span
+  scores by its nearest node's density, not its string count).
+- **LAT-x: PASS.** n = 3,091 problems (51 skipped: N or W no-op), dim 2048. O(N,W) 0.1227 (SE 0.0030) vs ceiling 0.9892 (SE 0.0022);
+  diff 0.8665 vs 2SE 0.0075. Sensitivities s_N 0.0116, s_W 0.0303, s_NW 0.0440; BL share (survives both) 0.956; additivity 0.093
+  (near-separable). The reader's number-sensitive and name-sensitive directions are nearly orthogonal: UI and DL are separate faces;
+  three cells are real. Scope (pinned): two transforms, so not "3 vs 7"; W = names only. Prediction PASS ~70% right; O 0.12 below the
+  predicted 0.3-0.6 (more separable than guessed).
