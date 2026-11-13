@@ -58625,3 +58625,66 @@ the banked file reproduced exactly (one info line added).
   (near-separable). The reader's number-sensitive and name-sensitive directions are nearly orthogonal: UI and DL are separate faces;
   three cells are real. Scope (pinned): two transforms, so not "3 vs 7"; W = names only. Prediction PASS ~70% right; O 0.12 below the
   predicted 0.3-0.6 (more separable than guessed).
+
+### 2026-11-13 08:46 -- Bryce: "incredible. word given for the whole queue!" -- THE EXPONENTIAL QUEUE PINNED (bars before builds)
+
+Source: the matrix-exponential brainstorm (11-12, after the queue verdicts): every rotor we own is exp(t A) with A block-diagonal skew
+(one 2x2 block per plane); the conjugate unbind is exp(-tA); radius = a damping term. Three items were offered; critique first:
+- **SNAP-FLOW collapses to an identity on inspection, so it is NOT an experiment.** The shrinkage step p_child = (c + kappa p_par) /
+  (n + kappa) = p_par + (1 - e^{-t})(c/n - p_par) with t = log(1 + n/kappa): one step of the contracting flow x(t) = c + e^{-t}(x - c),
+  stopping time set by the evidence. Banked as a DERIVATION with a numeric check on the banked stack's rows (`scripts/snap_flow_check.py`:
+  max |shrinkage - flow| over every admitted descent < 1e-12, else the derivation is wrong). The "rotation + damping in one generator"
+  half is dropped: the rotation has no job inside a shrinkage (it would turn a probability residual).
+- **UNITARY BREATH is not new in form**: SPHR (11-05, the turning breath on GSM8K) closed the per-plane rotation form TEST-neutral. What
+  it never got is the question the theory line asks: DEPTH. The rel-DSL hard depth split measures exactly "long chains run without
+  degrading" (train depth <= 2, read depth 5-9), so the item moves there, as a different form (the whole-vector sphere, not the torus).
+
+**1. HEAT-ZOOM** -- theory lines: "Abstract reasoning = zooming out on the Tree DB"; zero handcrafted heuristics (11-12: the Tree's
+reading is built with math); the Cross Join, bottom and top (11-11). Form (`LADDER_ZOOM=heat`, inside the HYB stack; only the EDGE
+read `dist` changes; CMOTIF, CHAIN, BEAM 4, the motif table untouched):
+- The Tree as a graph (unweighted, combinatorial Laplacian L): KS = 2048 L1 + 256 L2 + 32 L3 + one root (parent links); BIC = the x-means
+  binary tree. Heat kernel K_t = exp(-tL) (eigendecomposition, exact). A step's side token: None | a Tree node (its finest node) | a
+  result class (CHAIN: op + its inputs' level-2 nodes / nested ops). Pair similarity w_t(query, event) = sim(A, A') sim(B, B') -- the
+  Kronecker identity exp(-t(L(+)L)) = exp(-tL) (x) exp(-tL), so a pair's kernel is the product of its sides' kernels; None~None = 1, a
+  node pair = K_t, a result class = [op equal] x the product of its input kernels; mismatched token types = 0. Same kinds only.
+- p_t(op | query) = (sum_e w_t e_op + eps p_kd) / (sum_e w_t + eps), eps = 1e-9 (a numerical floor; p_kd = the kinds-only row, the
+  root). **One parameter, t, fit by leave-one-PROBLEM-out log-likelihood on TRAIN** (3,000 TRAIN events, fixed rng; grid t in
+  logspace(-2, 3, 26); the chosen t and whether it sits on the grid edge are reported). No kappa, no level cut, no admission: the LOO
+  fit (a problem never votes for itself) is the guard against leaf-pair memorization; events live at class nodes, never at leaves.
+- Arms (4 k-seeds x local / full, as the queue): **HEAT** (KS Tree), **HEAT-PLACEBO** (KS, the L1 node identities permuted inside the
+  kernel: same graph, wrong addresses), **HEAT-BIC** (the x-means Tree; its discrete comparator = the banked BIC arm, 11-12).
+- **HEAT-x:** mean over 4 seeds of STACK(HEAT) - banked STACK >= +0.020 on BOTH sources -> GAIN (a continuous zoom beats the level
+  cuts); >= -0.010 on both -> PASS (one fitted t replaces kappa + three cuts + admission at no cost); otherwise FAIL.
+- **HEAT-P:** HEAT - HEAT-PLACEBO >= +0.020 on both sources -> the Tree's geometry carries the zoom; otherwise the kernel is not reading
+  the Tree (HEAT-x is then void as a Tree claim).
+- **HEAT-B:** HEAT-BIC - BIC >= +0.020 on both -> RECOVERS (the x-means cost was the discrete reading of a deep tree); <= -0.010 on
+  either -> HURTS; else EQUIVALENT.
+- PREDICTIONS: HEAT-x PASS ~50% (GAIN ~10%; FAIL ~40%: admission was load-bearing at the leaf-pair grain and LOO may not replace it);
+  HEAT-P PASS ~80%; HEAT-B EQUIVALENT ~55%, RECOVERS ~20%. Chosen t: interior of the grid.
+
+**2. UNITARY BREATH (U)** -- theory line: "the payoff: clean binding, unbinding and snap-to-centroid let long chains of reasoning run
+without degrading the representation". Form: every additive write inside a breath (the T6 stamp, the notebook's known/stamp rows,
+the attention output, the snap) enters through the sphere's exponential map instead of `x + d`: d_perp = d - (d.x^)x^, theta =
+|d_perp| / |x|, x <- cos(theta) x + (sin(theta)/theta) d_perp = exp(A) x with A = (d_perp x^T - x^ d_perp^T)/|x| (rank-2 skew: a
+rotation in the plane of x and d). Every token's norm is fixed at breath 0, exactly. Nothing else changes (LN before attention and
+before the pointer stays).
+- **Platform:** the rel-DSL fixture is torch CPU (10-28, before the 11-03/04 platform ruling), and G0 showed tinygrad training is its own
+  trajectory, so the arms AND their controls run in tinygrad on the GPU: a port, `scripts/rel_dsl_tg.py` (NOMLP + NOTEBOOK +
+  `RD_UNIT=1`; data, batches, executor and scoring imported from the torch scripts, never edited). **Port gates (CPU, before any
+  training read):** forward from a shared init vs torch, max |d logits| <= 1e-3 for NOMLP and NOTEBOOK; a 40-step smoke, losses agree to
+  3 decimals; U=1 at zero update = identity; per-token norm drift under U over NB breaths <= 1e-4 relative.
+- Runs (DEV=PCI+AMD, depth2 split, NB 10, 8000 steps, the fixture's defaults): **cov 0.25** NOMLP / U-NOMLP x s0/s1 (NOMLP carries no
+  notebook: the arm whose representation can degrade); **cov 0.0625** (the 10-29 LOW) NOTEBOOK / U-NOTEBOOK x s0/s1.
+- Bars (the fixture's own frame, 10-29; `scripts/rel_dsl_unit_verdict.py`): **C0** SHALLOW seed mean < 0.95 -> VOID (per arm).
+  **U1 (NOMLP pair):** U-NOMLP - NOMLP on DEEP >= +0.03 with both seed pairs positive -> NORM-PRESERVING BREATHS CARRY DEPTH; <= -0.02
+  -> HURTS; else EQUIVALENT (CEILING if both seed means >= 0.97). **U2 (NOTEBOOK pair, LOW):** the same frame.
+  Reported: by depth d5-d9, MID, paired SE, the per-breath mean token norm census for both arms (the pre/post knob law), and the
+  tinygrad controls beside the banked torch reads (no bar: G0's lesson).
+- PREDICTIONS: U1 EQUIVALENT ~50% (HELPS ~20%, HURTS ~30%: LN already removes scale before attention, so norm growth is not what
+  degrades; a breath that cannot change magnitude writes less); U2 EQUIVALENT ~60% (the notebook already re-injects exact state; SPHR
+  and ROTQ both landed neutral-to-hurt).
+
+**3. SNAP-FLOW** -- theory line: "SNAP cleans the state between hops" + the Bridge (shrinkage is the snap's continuous mirror). The
+derivation above; the check is CPU, zero GPU; a FAIL means the algebra in this entry is wrong (no theory claim either way).
+
+Builds: HEAT-ZOOM + SNAP-FLOW by Claude; the rel-DSL tinygrad port delegated to a Sonnet agent (reviewed, gated, before any run).
