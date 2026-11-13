@@ -253,7 +253,8 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
     pid = np.concatenate([[i] * min(len(it["prog"]), K) for i, it in enumerate(D["TRAIN"])]); assert len(pid) == len(tr)
     TREE = os.environ.get("LADDER_TREE", "ks"); LAW = os.environ.get("LADDER_ADMIT", "banked") == "law"   # (BIC-TREE, ledger 11-12)
     assert TREE in ("ks", "bic") and not (TREE == "bic" and (os.environ.get("LADDER_TDB") or os.environ.get("LADDER_PJ") or os.environ.get("LADDER_HPARENT")))
-    XM = {}
+    XM = {}; HEAT = {}; ZOOM = os.environ.get("LADDER_ZOOM", "")   # (HEAT-ZOOM, ledger 11-13) "" | heat | heatplacebo
+    assert ZOOM in ("", "heat", "heatplacebo") and not (ZOOM == "heatplacebo" and TREE == "bic")
     def xmeans(X, seed):   # (BIC-TREE) x-means from the root: a node splits in two iff BIC improves (spherical Gaussian, pooled variance)
         from sklearn.cluster import KMeans
         X = X.astype(np.float64); d = X.shape[1]; cen = [X.mean(0)]; kids = {}; stack = [(0, np.arange(len(X)))]
@@ -348,6 +349,71 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
                 e = ekey(ab, kd, l)
                 if e in adm: c = cnt[e]; p = (c + KAPPA * p) / (c.sum() + KAPPA)
             return p
+        heat = None
+        if ZOOM:   # (HEAT-ZOOM, ledger 11-13) the edge read as heat flow exp(-tL) on the Tree; t by leave-one-problem-out on TRAIN
+            hk2 = (hash(Hfit.tobytes()), chain, ZOOM)
+            if hk2 not in HEAT:
+                if TREE == "bic":
+                    N = len(xcen); par = [(c, k) for c, ks_ in xkids.items() for k in ks_]; gid = lambda l, v: v
+                else:
+                    off = [None, 0, KS[0], KS[0] + KS[1]]; N = sum(KS) + 1; gid = lambda l, v: off[l] + v
+                    for c in range(KS[1]): assert len(set(maps[2][maps[1] == c].tolist())) == 1, "the KS cuts are not nested"
+                    par = ([(KS[0] + int(maps[1][c]), c) for c in range(KS[0])] + [(off[3] + int(maps[2][np.flatnonzero(maps[1] == c)[0]]), KS[0] + c) for c in range(KS[1])]
+                           + [(N - 1, off[3] + c) for c in range(KS[2])])
+                Lp = np.zeros((N, N))
+                for a_, b_ in par: Lp[a_, b_] = Lp[b_, a_] = -1
+                Lp[np.arange(N), np.arange(N)] = -Lp.sum(1); lam, U = np.linalg.eigh(Lp); del Lp
+                if ZOOM == "heatplacebo":   # same graph, the L1 addresses permuted (exact self-matches keep their diagonal)
+                    pm = np.arange(N); pm[:KS[0]] = np.random.default_rng(19).permutation(KS[0]); U = U[pm]
+                def tok(x):   # a side -> (type, node, op, then per ref input: type, node, op); type 0 None / 1 node / 2 ref (or 's' input)
+                    if x is None: return (0,) * 9
+                    if not isref(x): return (1, gid(1, x[1]), 0) + (0,) * 6
+                    t_ = (2, 0, x[1][1])
+                    for c in x[1][2:]: t_ += (0, 0, 0) if c is None else ((2, 0, c[1]) if isinstance(c, tuple) else (1, gid(2, c), 0))
+                    return t_
+                isref = lambda x: x is not None and isinstance(x[0], tuple)
+                Etok = np.array([tok(ab[0]) + tok(ab[1]) for ab in Jtr]); kds = [s[1] for s in tr]
+                Te = [ab for ab in Jte if ab is not None]
+                S = np.unique(np.concatenate([Etok[:, [1, 4, 7, 10, 13, 16]].ravel(), [gid(l, int(x[l])) for ab in Te for x in ab if x is not None and not isref(x) for l in (1, 2)]]))
+                sidx = np.zeros(N, int); sidx[S] = np.arange(len(S)); Us = U[S]
+                Kt = lambda t: np.maximum((Us * np.exp(-t * lam)) @ Us.T, 0)
+                def side(Q, E, K_):   # Q [nq, 9], E [ne, 9] -> [nq, ne] side similarity
+                    nd = lambda qn, en: K_[sidx[qn]][:, sidx[en]]
+                    def ins(o):
+                        qt, et = Q[:, o][:, None], E[:, o][None]
+                        return ((qt == 0) & (et == 0)) + ((qt == 1) & (et == 1)) * nd(Q[:, o + 1], E[:, o + 1]) + ((qt == 2) & (et == 2) & (Q[:, o + 2][:, None] == E[:, o + 2][None]))
+                    qt, et = Q[:, 0][:, None], E[:, 0][None]
+                    return (((qt == 0) & (et == 0)) + ((qt == 1) & (et == 1)) * nd(Q[:, 1], E[:, 1])
+                            + ((qt == 2) & (et == 2) & (Q[:, 2][:, None] == E[:, 2][None])) * ins(3) * ins(6))
+                grp = defaultdict(list)
+                for i, kd in enumerate(kds): grp[kd].append(i)
+                grp = {kd: np.array(v) for kd, v in grp.items()}; Y = np.eye(len(OPS))[ytr]
+                pkd = {kd: (cnt[(NLEV + 1, kd)] + 1e-9) / (cnt[(NLEV + 1, kd)].sum() + 1e-9 * len(OPS)) for kd in grp}
+                EPS = 1e-9
+                def pmix(W, ev, kd): return (W @ Y[ev] + EPS * pkd[kd]) / (W.sum(1, keepdims=True) + EPS)
+                smp = np.random.default_rng(0).choice(len(Jtr), min(3000, len(Jtr)), replace=False)
+                grid = np.logspace(-2, 3, 26); ll = []
+                for t in grid:
+                    K_ = Kt(t); tot = 0.0
+                    for kd in set(kds[i] for i in smp):
+                        q = smp[[kds[i] == kd for i in smp]]; ev = grp[kd]
+                        for c0 in range(0, len(q), 256):
+                            qq = q[c0:c0 + 256]
+                            W = side(Etok[qq, :9], Etok[ev, :9], K_) * side(Etok[qq, 9:], Etok[ev, 9:], K_) * (pid[qq][:, None] != pid[ev][None])
+                            tot += np.log(pmix(W, ev, kd)[np.arange(len(qq)), ytr[qq]] + 1e-12).sum()
+                    ll.append(tot / len(smp))
+                tb = float(grid[int(np.argmax(ll))]); HEAT[hk2] = dict(K=Kt(tb), t=tb, edge=int(np.argmax(ll)) in (0, len(grid) - 1),
+                                                                       ll=[round(float(x), 4) for x in ll], side=side, tok=tok, grp=grp, pmix=pmix, n=N, E=Etok)
+                print(f"[heat] {ZOOM} tree {TREE} nodes {N} | t* {tb:.4g} (grid edge {HEAT[hk2]['edge']}) | LOO ll {max(ll):.4f}", flush=True)
+            heat = HEAT[hk2]; hc = {}
+            def dist(ab, kd):
+                key = (repr(ab), kd)
+                if key not in hc:
+                    if kd not in heat["grp"]: hc[key] = np.ones(len(OPS)) / len(OPS); return hc[key]
+                    q = np.array([heat["tok"](ab[0]) + heat["tok"](ab[1])]); ev = heat["grp"][kd]; E_ = heat["E"]
+                    W = heat["side"](q[:, :9], E_[ev, :9], heat["K"]) * heat["side"](q[:, 9:], E_[ev, 9:], heat["K"])
+                    hc[key] = heat["pmix"](W, ev, kd)[0]
+                return hc[key]
         desc = lambda ab, kd: int(dist(ab, kd).argmax())
         def pred(J, S, sp="TEST", mode="pred"):   # sequential per problem: mode pred = the parse feeds its OWN ops forward; tf = gold ops
             out, g = [], 0; yg = yte if sp == "TEST" else ytr
@@ -467,7 +533,8 @@ if HYB:   # (ledger 11-11 HYBRID) three tables: nodes (IS-A over single phrases)
         per = Counter(e[0] for e in adm); rf = np.array([any(r is not None for r in st[5]) for st in te])
         return dict(tag=tag, U=float((pe[u] == yte[u]).mean()), S=float((pe[~u] == yte[~u]).mean()), REC=float((pr == ytr).mean()),
                     TF=float((ptf[u] == yte[u]).mean()), UREF=float((pe[u & rf] == yte[u & rf]).mean()), nref=int((u & rf).sum()),
-                    edges={l: per[l] for l in sorted(per)}, tdb=tdb, pj=pj, xtree=xtree, nadm=len(adm), ncadm=len(cadm))
+                    edges={l: per[l] for l in sorted(per)}, tdb=tdb, pj=pj, xtree=xtree, nadm=len(adm), ncadm=len(cadm),
+                    heat=None if heat is None else dict(t=heat["t"], edge=heat["edge"], ll=heat["ll"], nodes=heat["n"]))
     hR = hyb_run(True, "HYBRID", Htr)
     if os.environ.get("LADDER_MOTIF"):   # (MOTIF) arms: BEAM (motif off) is hR's role; CHAIN = BEAM + motifs; CHAIN-PLACEBO = BEAM + shuffled motifs
         CM = os.environ["LADDER_MOTIF"] == "class"
@@ -510,8 +577,9 @@ if HYB and os.environ.get("LADDER_CHAIN") == "1":
     if os.environ.get("LADDER_EXEC") == "on":
         for g in (hEX, hEP): out.append(f"  {g['tag']:13s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | TEST-U steps fed by a step (n={g['nref']}) {g['UREF']:.4f}")
         out.append(f"EXEC-x (STACK+EXEC - STACK >= +0.020): {hEX['U'] - hCH['U']:+.4f} | EXEC-PLACEBO (EXEC - placebo >= +0.020): {hEX['U'] - hEP['U']:+.4f} | seen {hEX['S'] - hCH['S']:+.4f}")
-    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ("_hrole" if os.environ.get("LADDER_HPARENT") == "role" else "") + ("_bic" if TREE == "bic" else "") + ("_law" if LAW else "") + ".txt"
+    OUTF = OUTF[:-4] + "_chain" + (f"_beam{os.environ['LADDER_BEAM']}" if os.environ.get("LADDER_BEAM") else "") + (f"_{'c' if os.environ.get('LADDER_MOTIF') == 'class' else ''}motif{os.environ.get('LADDER_MOTIF_LAM', '1.0')}" if os.environ.get("LADDER_MOTIF") else "") + ("_tdb" if os.environ.get("LADDER_TDB") == "1" else "") + ("_exec" if os.environ.get("LADDER_EXEC") else "") + (f"_pj{os.environ['LADDER_PJ']}" if os.environ.get("LADDER_PJ") else "") + ("_hrole" if os.environ.get("LADDER_HPARENT") == "role" else "") + ("_bic" if TREE == "bic" else "") + ("_law" if LAW else "") + (f"_{ZOOM}" if ZOOM else "") + ".txt"
     out.append(f"  TREE {TREE} {hCH['xtree']} | admission {'law' if LAW else 'banked'}: edges admitted {hCH['nadm']}, motifs admitted {hCH['ncadm']}")
+    if hCH.get("heat"): out.append(f"  ZOOM {ZOOM}: t* {hCH['heat']['t']:.4g} (grid edge {hCH['heat']['edge']}; nodes {hCH['heat']['nodes']}) | LOO ll over logspace(-2,3,26): {hCH['heat']['ll']}")
 elif HYB:
     for g in (hR, hC, hP): out.append(f"  {g['tag']:12s}: TEST-U {g['U']:.4f} | seen {g['S']:.4f} | RECALL {g['REC']:.4f} | edges per level {g['edges']}")
     out.append(f"HYB-NOLOSS (HYB - JOIN >= -0.010): {hR['U'] - R['U']:+.4f} | HYB-x (>= +0.020): {hR['U'] - R['U']:+.4f} | "
