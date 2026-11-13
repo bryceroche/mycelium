@@ -6,7 +6,7 @@ The rulings it encodes (ledger 2026-10-25, T2p/T2q/T2r):
     truth; every leaf aggregate (Welford n / mean / m2) is a materialization, always rebuildable from the events.
   - PROVENANCE: every event names its source (episode/mention), its batch, its certifier and its generation, so a bad
     batch is rolled back by dropping it from the fold and re-folding the keys it touched.
-  - CUSTODY TIERS: 'permanent' (answer-key-certified) events enter the aggregates; 'provisional' (test-time) events are
+  - CUSTODY: 'permanent' (answer-key-certified) events enter the aggregates; 'provisional' (test-time) events are
     stored but stay OUT of the aggregates until their batch is promoted.
   - CENTROIDS ARE REBUILT PER RUN (never mix generations' coordinates): interior BIRCH cluster features may be cached
     tagged by generation, and a load for any other generation raises.
@@ -48,7 +48,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 DB = os.path.join(os.path.dirname(__file__), "..", ".cache", "tree.db")
-TIERS = ("permanent", "provisional")
+CUSTODY = ("permanent", "provisional")
 VERSION = "3"
 KINDS = ("node", "name", "type", "macro")
 
@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS meta(k TEXT PRIMARY KEY, v TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS spaces(
   name TEXT PRIMARY KEY, kind TEXT NOT NULL, dim INTEGER NOT NULL, meaning TEXT NOT NULL, created TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS batches(
-  bid INTEGER PRIMARY KEY, batch TEXT UNIQUE NOT NULL, tier TEXT NOT NULL, certifier TEXT NOT NULL,
+  bid INTEGER PRIMARY KEY, batch TEXT UNIQUE NOT NULL, custody TEXT NOT NULL, certifier TEXT NOT NULL,
   generation TEXT NOT NULL, space TEXT NOT NULL REFERENCES spaces(name), note TEXT, created TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'live', n_events INTEGER NOT NULL, sha256 TEXT NOT NULL);     -- live | rolled_back | superseded
 CREATE TABLE IF NOT EXISTS summaries(
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS checkpoints(
   first_seen TEXT, last_seen TEXT) WITHOUT ROWID;                                -- compaction: the fold's accumulator at upto
 CREATE TABLE IF NOT EXISTS leaves(
   key TEXT PRIMARY KEY, dim INTEGER NOT NULL, n INTEGER NOT NULL, mean BLOB NOT NULL, m2 BLOB NOT NULL,
-  first_seen TEXT, last_seen TEXT);                                              -- permanent-tier aggregates only
+  first_seen TEXT, last_seen TEXT);                                              -- permanent-custody aggregates only
 CREATE TABLE IF NOT EXISTS nodes(
   id INTEGER PRIMARY KEY, parent INTEGER REFERENCES nodes(id), level INTEGER NOT NULL, name TEXT NOT NULL,
   batch TEXT NOT NULL REFERENCES batches(batch), kind TEXT NOT NULL DEFAULT 'node');   -- shape persists only with provenance
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS macros(
   node INTEGER PRIMARY KEY REFERENCES nodes(id), body TEXT NOT NULL, grammar_version TEXT NOT NULL,
   batch TEXT NOT NULL REFERENCES batches(batch)) WITHOUT ROWID;                  -- a macro node's primitive body
 """
-LIVE = "b.tier='permanent' AND b.status='live'"
+LIVE = "b.custody='permanent' AND b.status='live'"
 
 
 def _now():
@@ -176,6 +176,11 @@ class TreeDB:
                 self.c.execute("UPDATE meta SET v=? WHERE k='schema_version'", (VERSION,))
                 self.c.execute("INSERT OR REPLACE INTO meta VALUES ('upgraded_from_2', ?)", (_now(),))
             v = VERSION
+        if "tier" in [r[1] for r in self.c.execute("PRAGMA table_info(batches)")]:   # the custody rename (11-12): batches.tier -> custody, in place
+            assert sqlite3.sqlite_version_info >= (3, 25, 0), f"RENAME COLUMN needs sqlite >= 3.25, have {sqlite3.sqlite_version}"
+            with self.c:
+                self.c.execute("ALTER TABLE batches RENAME COLUMN tier TO custody")
+                self.c.execute("INSERT OR REPLACE INTO meta VALUES ('renamed_tier_to_custody', ?)", (_now(),))
         self.c.executescript(SCHEMA_V3); self.c.executescript(SCHEMA_CHARTS)      # additive tables: created on open, nothing rewritten
         assert v == VERSION, f"{path}: schema version {v}, this code is {VERSION}"
 
@@ -213,15 +218,15 @@ class TreeDB:
                 raise ValueError(f"keys already live in another space: {clash[:3]}")
 
     # ---- writes ---------------------------------------------------------------------------------------------------
-    def add_evidence(self, batch, rows, tier, certifier, generation, space, note=None):
+    def add_evidence(self, batch, rows, custody, certifier, generation, space, note=None):
         """rows: iterable of (key, vec, source) in a registered SYMBOLIC space. One batch = one transaction; a batch
         name is never reused; a key lives in one space only. (= prepare_shard + add_prepared, in this process.)"""
-        return self.add_prepared(batch, prepare_shard(rows, self.cold), tier, certifier, generation, space, note)
+        return self.add_prepared(batch, prepare_shard(rows, self.cold), custody, certifier, generation, space, note)
 
-    def add_prepared(self, batch, prep, tier, certifier, generation, space, note=None, created=None):
+    def add_prepared(self, batch, prep, custody, certifier, generation, space, note=None, created=None):
         """THE SINGLE WRITER: commit one prepared shard as one batch (atomic: the batch row, its summaries and its cold
         file land together or not at all)."""
-        assert tier in TIERS, tier
+        assert custody in CUSTODY, custody
         dst = None
         try:
             if _sha(prep["path"]) != prep["sha256"]:
@@ -229,13 +234,13 @@ class TreeDB:
             self._check_space(space, prep["dim"], prep["summaries"])
             with self.c:
                 now = created or _now()
-                bid = self.c.execute("INSERT INTO batches(batch, tier, certifier, generation, space, note, created, n_events, sha256) "
+                bid = self.c.execute("INSERT INTO batches(batch, custody, certifier, generation, space, note, created, n_events, sha256) "
                                      "VALUES (?,?,?,?,?,?,?,?,?)",
-                                     (batch, tier, certifier, generation, space, note, now, prep["n"], prep["sha256"])).lastrowid
+                                     (batch, custody, certifier, generation, space, note, now, prep["n"], prep["sha256"])).lastrowid
                 self.c.executemany("INSERT INTO summaries VALUES (?,?,?,?,?)",
                                    [(k, bid, n, _blob(m), _blob(s)) for k, (n, m, s) in prep["summaries"].items()])
                 self.c.executemany("INSERT OR IGNORE INTO key_space VALUES (?,?)", [(k, space) for k in prep["summaries"]])
-                if tier == "permanent":
+                if custody == "permanent":
                     self._refold(list(prep["summaries"]))
                 dst = self._cold_path(bid); os.replace(prep["path"], dst)
         except BaseException:
@@ -284,7 +289,7 @@ class TreeDB:
             self.c.execute(f"DELETE FROM checkpoints WHERE upto >= ? AND key IN ({','.join('?' * len(ch))})", (bid, *ch))
 
     def _batch(self, batch):
-        r = self.c.execute("SELECT bid, tier, status FROM batches WHERE batch=?", (batch,)).fetchone()
+        r = self.c.execute("SELECT bid, custody, status FROM batches WHERE batch=?", (batch,)).fetchone()
         assert r is not None, f"no batch {batch!r}"
         return r
 
@@ -298,8 +303,8 @@ class TreeDB:
         assert min_sources >= 1, min_sources
         rows, spaces = [], set()
         for b in from_batches:
-            bid, tier, status = self._batch(b)
-            assert (tier, status) == ("provisional", "live"), f"cannot fold {b}: {(tier, status)}"
+            bid, custody, status = self._batch(b)
+            assert (custody, status) == ("provisional", "live"), f"cannot fold {b}: {(custody, status)}"
             spaces.add(self.c.execute("SELECT space FROM batches WHERE bid=?", (bid,)).fetchone()[0]); rows += self.batch_rows(b)
         assert len(spaces) == 1, f"promote_recurrent folds one space at a time: {sorted(spaces)}"
         src = {}
@@ -321,20 +326,20 @@ class TreeDB:
 
     def promote(self, batch):
         """provisional -> permanent: the batch's summaries enter the fold."""
-        bid, tier, status = self._batch(batch)
-        assert (tier, status) == ("provisional", "live"), f"cannot promote {batch}: {(tier, status)}"
+        bid, custody, status = self._batch(batch)
+        assert (custody, status) == ("provisional", "live"), f"cannot promote {batch}: {(custody, status)}"
         with self.c:
-            self.c.execute("UPDATE batches SET tier='permanent' WHERE bid=?", (bid,))
+            self.c.execute("UPDATE batches SET custody='permanent' WHERE bid=?", (bid,))
             keys = self._batch_keys(bid); self._drop_checkpoints(bid, keys); self._refold(keys)
 
     def rollback(self, batch):
         """Drop a batch from the fold and refold every key it touched. The batch row and its cold file stay, marked
         rolled_back; a key no live batch still holds releases its space claim."""
-        bid, tier, status = self._batch(batch)
+        bid, custody, status = self._batch(batch)
         assert status == "live", f"cannot roll back {batch}: {status}"
         keys = self._batch_keys(bid)
         with self.c:
-            if tier == "permanent":
+            if custody == "permanent":
                 self._drop_checkpoints(bid, keys)
             self.c.execute("UPDATE batches SET status='rolled_back' WHERE bid=?", (bid,))
             self.c.execute("DELETE FROM macros WHERE batch=?", (batch,))
@@ -406,20 +411,20 @@ class TreeDB:
                 self.c.execute("SELECT key, n, mean, m2 FROM summaries WHERE bid=?", (self._batch(batch)[0],))}
 
     def batches(self):
-        return self.c.execute("SELECT batch, tier, certifier, generation, space, status FROM batches ORDER BY created, batch").fetchall()
+        return self.c.execute("SELECT batch, custody, certifier, generation, space, status FROM batches ORDER BY created, batch").fetchall()
 
     def n_events(self, live_only=True):
         return self.c.execute(f"SELECT COALESCE(SUM(n_events), 0) FROM batches {'WHERE status=' + repr('live') if live_only else ''}").fetchone()[0]
 
     def provenance(self, key):
-        """[(source, batch, tier, certifier, generation, recorded)] of every live event behind `key` (cold read of only
+        """[(source, batch, custody, certifier, generation, recorded)] of every live event behind `key` (cold read of only
         the batches whose summaries hold it)."""
         out = []
-        for bid, batch, tier, cert, gen, created in self.c.execute(
-                """SELECT b.bid, b.batch, b.tier, b.certifier, b.generation, b.created FROM summaries s JOIN batches b
+        for bid, batch, custody, cert, gen, created in self.c.execute(
+                """SELECT b.bid, b.batch, b.custody, b.certifier, b.generation, b.created FROM summaries s JOIN batches b
                    ON s.bid=b.bid WHERE s.key=? AND b.status='live' ORDER BY b.bid""", (key,)).fetchall():
             keys, _, src = _read_cold(self._cold_path(bid))
-            out += [(s, batch, tier, cert, gen, created) for k, s in zip(keys, src) if k == key]
+            out += [(s, batch, custody, cert, gen, created) for k, s in zip(keys, src) if k == key]
         return out
 
     # ---- shape ----------------------------------------------------------------------------------------------------
@@ -492,12 +497,12 @@ def migrate_v1(src, dst):
     old = sqlite3.connect(f"file:{os.path.abspath(src)}?mode=ro", uri=True); db = TreeDB(dst)
     for name, kind, dim, meaning, _ in old.execute("SELECT * FROM spaces ORDER BY rowid"):
         db.register_space(name, kind, dim, meaning)
-    for batch, tier, cert, gen, space, note, created, status in old.execute(
+    for batch, custody, cert, gen, space, note, created, status in old.execute(
             "SELECT batch, tier, certifier, generation, space, note, created, status FROM batches ORDER BY rowid").fetchall():
         rows = [(k, _arr(v), s) for k, v, s in old.execute("SELECT key, vec, source FROM events WHERE batch=? ORDER BY id", (batch,))]
         if not rows:
             assert status == "rolled_back", f"v1 batch {batch!r} is live with no events"
-        db.add_prepared(batch, prepare_shard(rows, db.cold), tier, cert, gen, space, note, created=created)
+        db.add_prepared(batch, prepare_shard(rows, db.cold), custody, cert, gen, space, note, created=created)
         if status == "rolled_back":
             db.rollback(batch)
     with db.c:

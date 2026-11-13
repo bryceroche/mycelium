@@ -58535,3 +58535,15 @@ Prediction FAIL ~80%: right (7/8 reads negative; local k0 +0.004).
   edges: the edges already condition on the op pair, so an op-sorted parent duplicates the label and loses the geometry that tells
   unseen phrases apart. Answer to "different Tree DB tables per tier?": per-tier FACT tables over ONE shared node forest (the
   geometric cut), as proposed at 13:01. Scope: the business tier's cut on the step-op read; a surface-tier cut is not read.
+
+### 2026-11-12 19:05 -- NAMING: "tier" = the Tree DB tiers (UI / BL / DL); custody renamed (Bryce: "keep the word Tiers")
+The word "tier" is Bryce's for the .NET-style tiers. `tree_db`'s custody concept ('permanent' / 'provisional') is now **custody**
+everywhere (`batches.custody`, `CUSTODY`, the `custody` parameter; `TreeTables.record(custody=)`). Old stores migrate in place on open
+(`ALTER TABLE batches RENAME COLUMN tier TO custody`, meta row `renamed_tier_to_custody`). Parity: `load_stack` on copies of
+`tree_stack_full_k1.db` / `tree_stack_local_k3.db`, old code vs new = IDENTICAL (centers, maps, edges, motifs);
+`test_breathing_transformer.py` 80/80 PASS. Pre-existing, unrelated: `tree_db_check.py`'s `v2_upgrade_check` asserts a v2 store but
+`.cache/gsmb_tree.db` is already v3 (fails identically on the old code; a stale check, not fixed here). Built by a Sonnet agent, diff reviewed.
+Brainstorm positions given (not rulings): one node Tree (Edge = Tree x Tree, Motif = Tree^n, induced, never built separately); tier count
+from the invariance lattice (t honest transformations -> 2^t - 1 tiers + raw storage; N, W -> UI / DL / BL + DB); MDL as the one
+construction principle (BIC splits replace KS and BIRCH's T; n_eff shrinkage replaces the admission thresholds; Viterbi segmentation over
+the leaf lexicon). Candidate pins: BIC-TREE, TREE-SEG, TIER-LATTICE.

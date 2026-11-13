@@ -44,7 +44,7 @@ def compare(a, b):
 def live_events(path):
     c = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
     q = """SELECT e.key, e.vec, e.source FROM events e JOIN batches b ON e.batch=b.batch
-           WHERE b.tier='permanent' AND b.status='live' ORDER BY e.id""" + (f" LIMIT {CAP}" if CAP else "")
+           WHERE b.custody='permanent' AND b.status='live' ORDER BY e.id""" + (f" LIMIT {CAP}" if CAP else "")
     return [(k, T._arr(v), s) for k, v, s in c.execute(q)]
 
 

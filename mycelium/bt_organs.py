@@ -13,7 +13,7 @@ The BT (`mycelium/breathing_transformer.py`) is the compute engine; everything t
     projection) and BIRCH math (the clustering features N, LS, SS; the threshold T grows from 0 by rebuild: a point beyond T
     spawns a chart, a full partition merges its two closest charts first). Only CERTIFIED points feed it (custody: a correct chain). Centroids are MODEL-space,
     so they live only in the store's generation-tagged chart tables (never mixed across generations); the symbolic write-back
-    (which chart a certified key took) goes through the custody tiers as evidence ('provisional' until the answer key promotes
+    (which chart a certified key took) goes through custody as evidence ('provisional' until the answer key promotes
     it). The breath never queries SQLite: a run loads its tables into memory and hands them to the BT as data.
   - Solver (Protocol) + TierPort (Protocol) + Conductor: THE ALTERNATION. Each breath, every tier's BT proposes (coarse tier
     first), the solver disposes and writes back to the notebook, the clock ticks, the temperature falls. Tiers talk only through
@@ -405,12 +405,12 @@ class TreeTables:
     def space(self, part):
         tier, p = part; return f"chart-evidence|{tier}|{p}"
 
-    def record(self, part, batch, rows, certifier, tier="provisional", note=None):
+    def record(self, part, batch, rows, certifier, custody="provisional", note=None):
         """rows: [(symbolic key, chart index, source)] -> one evidence batch (one-hot over the partition's charts)"""
         n = self.tables[part].C
         self.db.register_space(self.space(part), "symbolic", n, f"one-hot chart of a certified key, partition {part}")
         ev = [(k, np.eye(n, dtype=np.float32)[c], s) for k, c, s in rows]
-        return self.db.add_evidence(batch, ev, tier, certifier, self.gen, self.space(part), note)
+        return self.db.add_evidence(batch, ev, custody, certifier, self.gen, self.space(part), note)
 
 
 # ---- THE ALTERNATION -------------------------------------------------------------------------------------------------------------------
