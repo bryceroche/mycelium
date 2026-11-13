@@ -58764,3 +58764,27 @@ from torch's (decay first, addcdiv, float64 bias corrections) -- on the phase pa
 a notebook argmax tie at step 25. Fix: the port's AdamW rebuilt in torch's op order (bias corrections host-side, fed to the JIT); smoke
 then matched to 5 decimals at every checkpoint, both arms. **A lead, not a claim:** `gsm_breath_tg.py` uses tinygrad's AdamW; G0's
 unexplained -0.0108 ORIG gap (11-04, "training dynamics, not a kernel") may be this drift. A future G0 rerun with the torch-order AdamW tests it.
+
+### 2026-11-13 13:20 -- UNITARY BREATH VERDICT: U1 VOID (C0), U2 HURTS (-0.175); a correction to the 12:15 pin's preamble
+
+Artifact: `.cache/rel_dsl_unit_verdict.txt` (`scripts/rel_dsl_unit_verdict.py`). Tinygrad on PCI+AMD, depth2 split, NB 10, 8000 steps.
+| arm | SHALLOW s0/s1 | MID s0/s1 | DEEP s0/s1 | by depth d5/d6/d7 (seed means) | norms b1 -> b10 |
+|---|---|---|---|---|---|
+| NOMLP (cov 0.25) | 0.997 / 1.000 | 0.955 / 0.952 | 0.860 / 0.856 | 0.877 / 0.848 / 0.764 | 40.6 -> 203.8 |
+| NOMLP+U | 0.969 / 0.878 | 0.867 / 0.795 | 0.751 / 0.657 | 0.735 / 0.680 / 0.521 | 31.06 -> 31.06 |
+| NOTEBOOK (cov 0.0625) | 1.000 / 1.000 | 0.997 / 0.995 | 0.973 / 0.983 | 0.990 / 0.961 / 0.943 | 42.6 -> 228.0 |
+| NOTEBOOK+U | 0.974 / 0.982 | 0.873 / 0.947 | 0.757 / 0.848 | 0.836 / 0.777 / 0.643 | 34.58 -> 34.58 |
+- **U1: VOID by C0** (NOMLP+U SHALLOW seed mean 0.924 < 0.95): the unitary NOMLP does not fit even the in-range split. Beside (no
+  verdict): DEEP -0.154 (seeds -0.109 / -0.199; paired SE 0.012 / 0.014), MID -0.123.
+- **U2: HURTS** (-0.175; seeds -0.216 / -0.135; paired SE 0.013 / 0.011; MID -0.086). C0 holds for both NOTEBOOK arms.
+- **Correction:** the 12:15 pin's preamble says "U1 read HURTS on both seeds" -- written from the per-seed DEEP diffs before the verdict
+  script ran; by the pinned frame U1 is VOID (C0). The DAMP pin's form and bars are unaffected (they never used U1's verdict); its
+  motivation stands on U2 HURTS and on U1's VOID being a failure to fit, not a pass.
+- The tinygrad controls beside the banked torch NOTEBOOK (0.959 / 0.991): 0.973 / 0.983 (no bar, G0's lesson).
+- Reading: a breath whose every write is a rotation (all poles on the unit circle, norms exactly fixed) fits worse and chains much
+  worse; the additive controls grow norms ~5x over ten breaths and chain fine. "Long chains without degrading" is not bought by
+  norm preservation here; the cost is what a magnitude-blind breath cannot write. Second rotation-only form closed (SPHR 11-05 on
+  GSM8K: TEST-neutral; here: hurts depth). Predictions: U1 EQUIVALENT ~50% -- miss (VOID; HURTS beside); U2 EQUIVALENT ~60% -- miss
+  (HURTS, the ~30% path I gave U1).
+- DAMP chain: unitb ended 13:07, the patch applied, **witness 1/2: the NOMLP s0 rerun reproduces the banked FINAL exactly** (0.997 /
+  0.955 / 0.860, by depth identical); tinygrad scorer agrees 1.0 with RB.score.

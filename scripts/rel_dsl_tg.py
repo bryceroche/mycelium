@@ -26,11 +26,13 @@ import rel_dsl_organs as RO          # reads RB.ARM
 from tinygrad import Tensor, TinyJit, dtypes
 
 ARM = os.environ.get("RD_ARM", "NOMLP"); UNIT = int(os.environ.get("RD_UNIT", "0")); COV = float(os.environ["RD_COV"])
+DAMP = int(os.environ.get("RD_DAMP", "0"))   # (DAMP, ledger 11-13) a learned pole per complex plane on the carried state, each breath
 assert ARM in ("NOMLP", "NOTEBOOK"), f"arm {ARM} not ported"
 assert RB.ARM == ARM and RO.ARM == ARM and RO.SPLIT == "depth2" and RB.NB == int(os.environ["RD_NB"]) and RB.COV == COV, "config mismatch"
 D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{'U' if UNIT else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
+assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 
 
 # ---- net ----------------------------------------------------------------------------------------------------------------------
@@ -62,6 +64,17 @@ def expmap(x, d):
     dp = d - (d * xh).sum(-1, keepdim=True) * xh
     th = ((dp * dp).sum(-1, keepdim=True) / (xn * xn) + 1e-12).sqrt()
     return x - 2 * (th * 0.5).sin() ** 2 * x + (th.sin() / th) * dp          # cos(th) x as x + (cos-1) x: exact at d = 0 (a float32 cos(1e-6) is 1 ulp off)
+
+
+def damp(P, x):
+    """(DAMP) the carried state times a learned pole per complex plane (adjacent dims paired): p_k = sigmoid(a_k) e^{i phi_k}"""
+    r = P["damp_a"].sigmoid(); c, sn = r * P["damp_phi"].cos(), r * P["damp_phi"].sin(); re, im = x[..., 0::2], x[..., 1::2]
+    return Tensor.stack(re * c - im * sn, re * sn + im * c, dim=-1).reshape(*x.shape)
+
+
+def add_damp(P):
+    P["damp_a"] = Tensor.full((D // 2,), 3.0).contiguous().realize(); P["damp_phi"] = Tensor.zeros(D // 2).contiguous().realize()
+    return P
 
 
 def write(x, d, unit):
@@ -105,8 +118,9 @@ def forward(P, bt, ids, unit=False, ex=False):
         Fz = emb(P, fo, "op", 4) + lin(P, A @ S, "w_arg", False) + lin(P, Rz @ S, "w_res", False) + lin(P, Mz @ S, "w_min", False) + P["kind.weight"][1]
         mask = pad[:, None, None, :].where(-1e4, 0.0)
     x = Tensor.cat(V, Fz, dim=1); valid = pad.logical_not().cast(dtypes.float)
-    out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []
+    out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []; xs = [x] if ex else []
     for b in range(NB):
+        if DAMP: x = damp(P, x)
         x = write(x, lin(P, P["bst"][b], "bproj").reshape(1, 1, D), unit)
         if NOTE:                                                                  # THE NOTEBOOK: what is derived so far, and when
             kd = emb(P, known.cast(dtypes.int), "known", 2) + (kt.one_hot(NB + 1).cast(dtypes.float) @ Tk) * known.unsqueeze(-1)
@@ -123,9 +137,9 @@ def forward(P, bt, ids, unit=False, ex=False):
             fire = dv & (known == 0) & (missc <= 0.5)
             kt = fire.where(b + 1, kt); known = fire.where(1.0, known)
             if ex: kn.append(known); ktl.append(kt)
-        if ex: nrm.append((x * x).sum(-1).sqrt())
+        if ex: nrm.append((x * x).sum(-1).sqrt()); xs.append(x)
     r = dict(lg=Tensor.stack(*out, dim=1))
-    if ex: r.update(known=kn, kt=ktl, nrm=nrm, valid=valid)
+    if ex: r.update(known=kn, kt=ktl, nrm=nrm, valid=valid, xs=xs)
     return r
 
 
@@ -219,6 +233,33 @@ def census(P, items, unit):
     return res
 
 
+def pole_census(P, items, unit):
+    """(POLE, ledger 11-13) per-breath states of the real tokens (256 DEEP items, the census batch), centered per breath, pooled least
+    squares x_{b+1} ~ x_b A over breaths 1..NB-1 -> eigenvalues of A: a local linearization around the trajectory, R^2 reported"""
+    rng = np.random.default_rng(777); its = [items[i % len(items)] for i in range(256)]
+    arrs, ids = make_batch(its, rng); bt, idt = tens(arrs, ids); r = forward(P, bt, idt, unit, ex=True); val = r["valid"].numpy() > 0
+    X = [x.numpy()[val].astype(np.float64) for x in r["xs"]]; X = [x - x.mean(0) for x in X]
+    Xa, Xb = np.concatenate(X[1:-1]), np.concatenate(X[2:]); A, *_ = np.linalg.lstsq(Xa, Xb, rcond=None)
+    r2 = 1 - ((Xb - Xa @ A) ** 2).sum() / (Xb ** 2).sum(); lam = np.abs(np.linalg.eigvals(A))
+    out = dict(r2=float(r2), q=[float(x) for x in np.quantile(lam, [0.25, 0.5, 0.75])], inside=float((lam < 0.99).mean()),
+               on=float(((lam >= 0.99) & (lam <= 1.01)).mean()), outside=float((lam > 1.01).mean()), top=[float(x) for x in np.sort(lam)[::-1][:5]])
+    if DAMP:
+        rad = 1 / (1 + np.exp(-P["damp_a"].numpy().astype(np.float64))); ph = np.degrees(np.abs(P["damp_phi"].numpy()))
+        out["learned"] = dict(radius_q=[float(x) for x in np.quantile(rad, [0.25, 0.5, 0.75])], share_lt_0p9=float((rad < 0.9).mean()),
+                              angle_deg_q=[float(x) for x in np.quantile(ph, [0.25, 0.5, 0.75])])
+    return out
+
+
+def tg_score(P, items, unit, seed=0):
+    """RB.score on the tinygrad forward (same batches: RB.batch with the same rng; the last breath's argmax plan, the executor grades);
+    needed for DAMP (the torch net has no poles); checked equal to RB.score on the control path"""
+    rng = np.random.default_rng(10_000 + seed); ok = []
+    for s0 in range(0, len(items), 256):
+        its = items[s0:s0 + 256]; arrs, ids = make_batch(its, rng); bt, idt = tens(arrs, ids); lg = forward(P, bt, idt, unit)["lg"].numpy()[:, -1]
+        for k, t in enumerate(its): ok.append(RB.RC.execute(t["facs"], {v: int(lg[k, v].argmax()) for v in t["der"]}, t["query"]) == t["gold"])
+    return np.asarray(ok)
+
+
 def torch_flags(lgT, vf, A, Rz, Mz, dv):
     """replay the torch notebook's fire rule (rel_dsl_organs.make_net) from the torch logits -> per-breath known, kt"""
     import torch
@@ -284,6 +325,8 @@ if __name__ == "__main__":
         print(f"[tg] unit (d) UNIT=1 vs UNIT=0 logits: max |d| {dd:.3e} -> {'PASS' if dd > 1e-3 else 'FAIL'}", flush=True)
     elif MODE == "train":
         torch.manual_seed(SEED); rng = np.random.default_rng(SEED); tn = mk(); P = from_torch(tn.state_dict()); npar = sum(p.numel() for p in tn.parameters())
+        if DAMP: P = add_damp(P); npar += D
+        SC = (lambda its: tg_score(P, its, UNIT)) if DAMP else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
         un = unused_params(tn, [train[int(i)] for i in np.random.default_rng(1).integers(0, len(train), 8)], np.random.default_rng(12345))
         tr = Trainer(P, RB.LR, UNIT, un)
         rp = lambda its: float(np.mean([RB.RC.execute(t["facs"], RB.RC.result_plan(t), t["query"]) == t["gold"] for t in its]))
@@ -294,18 +337,22 @@ if __name__ == "__main__":
             its = [train[int(i)] for i in rng.integers(0, len(train), RB.BATCH)]; ts = time.time(); lo = tr.step(*make_batch(its, rng)); tstep += time.time() - ts
             if step == 20: t20 = tstep
             if step % 2000 == 0 or step == STEPS:
-                to_torch(P, tn); tn.eval(); s_ = RB.score(tn, shallow).mean(); d_ = RB.score(tn, deep).mean(); tn.train()
+                s_ = SC(shallow).mean(); d_ = SC(deep).mean()
                 curve.append(dict(step=step, loss=lo, shallow=float(s_), deep=float(d_)))
                 print(f"[tg] {TAG} step {step} loss {lo:.4f} SHALLOW {s_:.3f} DEEP {d_:.3f} ({time.time() - t0:.0f}s)", flush=True)
         sps = tstep / STEPS; steady = (tstep - t20) / (STEPS - 20) if t20 is not None and STEPS > 20 else float("nan")
         print(f"[tg] {TAG} train s/step {sps:.3f} (steps only, incl. JIT compiles over buckets {sorted(tr.jits)}); steady (21..{STEPS}) {steady:.3f}", flush=True)
-        to_torch(P, tn); tn.eval(); S = {k: RB.score(tn, v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
+        S = {k: SC(v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
+        agree = None if DAMP else float((tg_score(P, deep, UNIT) == S["deep"]).mean())   # the tinygrad scorer's witness on the control path
+        pc = pole_census(P, deep, UNIT)
         bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
         nc = census(P, deep, UNIT)
         json.dump(dict(tag=TAG, arm=ARM, seed=SEED, split="depth2", n_train=len(train), params=npar, steps=STEPS, curve=curve,
                        **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
                        deep_by_depth=bydepth, cov=COV, tree=None, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep)),
-                       engine="tinygrad", unit=UNIT, norm_census=nc, s_per_step=sps), open(f".cache/rel_dsl_{TAG}.json", "w"))
+                       engine="tinygrad", unit=UNIT, damp=DAMP, norm_census=nc, s_per_step=sps, pole=pc, tg_score_agree=agree), open(f".cache/rel_dsl_{TAG}.json", "w"))
         print(f"[tg] {TAG} FINAL SHALLOW {S['shallow'].mean():.3f} MID {S['mid'].mean():.3f} DEEP {S['deep'].mean():.3f} | by depth "
               + " ".join(f"d{d} {v:.3f}" for d, v in bydepth.items()) + " | norms(all) " + " ".join(f"{x:.2f}" for x in nc["all"]), flush=True)
+        print(f"[tg] {TAG} POLE R2 {pc['r2']:.3f} | |lambda| q25/50/75 " + "/".join(f"{x:.3f}" for x in pc["q"]) + f" | inside {pc['inside']:.3f} on {pc['on']:.3f} "
+              f"outside {pc['outside']:.3f} | top " + " ".join(f"{x:.3f}" for x in pc["top"]) + (f" | learned {pc['learned']}" if DAMP else f" | tg-score agree {agree}"), flush=True)
     else: raise SystemExit(f"unknown TG_MODE {MODE}")
