@@ -58547,3 +58547,51 @@ Brainstorm positions given (not rulings): one node Tree (Edge = Tree x Tree, Mot
 from the invariance lattice (t honest transformations -> 2^t - 1 tiers + raw storage; N, W -> UI / DL / BL + DB); MDL as the one
 construction principle (BIC splits replace KS and BIRCH's T; n_eff shrinkage replaces the admission thresholds; Viterbi segmentation over
 the leaf lexicon). Candidate pins: BIC-TREE, TREE-SEG, TIER-LATTICE.
+
+### 2026-11-12 19:22 -- THE QUEUE PINNED (Bryce: "word given for the queue"): BIC-TREE, TREE-SEG, TIER-LATTICE
+Bars pinned before any build or read. Baseline everywhere = **STACK** (BEAM4+CMOTIF, the banked `gsm_ladder{_local}{_kN}_chain_beam4_cmotif1.0.txt`),
+TEST-U, 4 k-seeds (0-3) x both state sources (local, full). Seed spread of STACK ~0.01 (FOREST table), so a 4-seed mean has SE ~0.005.
+
+**1. BIC-TREE** -- theory lines: the Live Oak (BIRCH decides when to add children; "Tree centroids built with math, not our intuition";
+zero handcrafted heuristics) + the carved cross join (the bottom stays a trap). Form (`LADDER_TREE=bic LADDER_ADMIT=law`):
+- The node Tree by **x-means**: from the root, a node splits into two (2-means, k-seed) iff BIC improves under a spherical Gaussian with
+  POOLED variance (Pelleg-Moore; params k*d + 1 + (k-1), penalty (params/2) log n); recurse until no split. No K, no level sizes:
+  KS = (2048, 256, 32) is gone. Levels = depth from the root (a shallow leaf stands in for its deeper levels); TEST sides DESCEND by the
+  nearest child centroid (the Tree search), never a flat argmin.
+- Admission = **the law only**: an edge row needs >= 2 distinct leaf pairs from >= 2 problems; a motif row >= 2 problems and >= 2 leaf
+  sets (the cross-join ban as its definition: a row one pairing backs IS that pairing). Removed knobs: PURE 0.9 (shrinkage already
+  discounts a pure parent's child) and MPROB 3 (-> the law's 2). kappa 0.5 stays (the data chose it). CHAIN result classes and CMOTIF
+  keys generalize from "levels 2/3" to every level (coarse -> fine descent over all of them).
+- Attribution arm (unbarred): **LAW** = KS levels + law-only admission.
+- **BIC-x:** mean over 4 seeds of STACK(BIC) - STACK(banked) >= -0.010 on BOTH sources -> PASS (the heuristics come out at no cost);
+  >= +0.020 on both -> GAIN; otherwise FAIL. Regression guard first: the generalized code with KS + banked admission reproduces the
+  banked seed-0 file exactly.
+- PREDICTIONS: BIC-x PASS (parity) ~55%, GAIN ~10%. Leaves 500-3000, depth 10-25.
+
+**2. TREE-SEG** -- theory lines: spans map to Tree leaves ("segmentation for free from the Tree"); MDL as the construction principle;
+one road (no separate segmenter at read time). Form (`LADDER_SPANS=tree`):
+- Lexicon = TRAIN IMPULSE2 spans with counts (bootstrapped from the banked segmenter ONCE). Hard-EM unigram: Viterbi within the forced
+  segments (punctuation, sentence ends -- unchanged) minimizing sum of -log(c/N); a single word outside the lexicon costs -log(N1/N)
+  (Good-Turing unseen mass); multi-word pieces must be in the lexicon; recount and repeat on TRAIN to a fixed point (iterations
+  reported; cap 20 = a budget). Then TRAIN + TEST segmented by the final lexicon; no IMPULSE2 at read time. Local states for the new
+  spans by the RB8 reader (`distill_reader.py --local`, inference).
+- **TSEG-x:** mean over 4 seeds of STACK(tree spans) - STACK(impulse) >= -0.010 on BOTH sources -> PASS (the segmenter folds into the
+  Tree at no cost); >= +0.020 on both -> GAIN; otherwise FAIL. Reported: mean span length, TRAIN cut agreement with impulse, EM iterations.
+- PREDICTION: FAIL ~60% (hard EM is rich-get-richer: leaves lengthen, and longer leaves lost TEST-U twice: MRI -0.010, AGREE -0.018).
+
+**3. TIER-LATTICE** -- theory lines: tiers = invariance contracts (11-07); the tier count from the lattice (t transforms -> 2^t - 1
+tiers + raw storage); "how much overlap do the Tiers have". Form (a measurement, zero training):
+- TRAIN problems with >= 1 number AND >= 1 name. Views: **N** = every digit re-drawn (same length and format, leading digit nonzero),
+  **W** = every name swapped for another name from the data's name lexicon (consistent within a problem), **NW** = both. Never sentence
+  reordering; never the CF fixture. Each text's pooled state by the RB8 reader (`--local`, each text alone; inference).
+- Sensitivity covariances Sigma_T = cov(h - h_T), T in {N, W, NW}. **Overlap O(N,W)** = tr(Sigma_N Sigma_W) / sqrt(tr Sigma_N^2 tr Sigma_W^2)
+  (no threshold). Ceiling = O(N_A, N_B) (Sigma_N on two disjoint problem halves); SE by bootstrap over problems.
+  Also reported: sensitivities s_T = E|h - h_T|^2 / E|h - h'|^2 (h' = another problem: the scale), BL share 1 - s_NW, and additivity
+  |Sigma_NW - Sigma_N - Sigma_W|_F / |Sigma_NW|_F (separable faces -> ~0).
+- **LAT-x:** O(N,W) < ceiling - 2 SE -> PASS (number- and name-sensitivity live in distinguishable directions: UI and DL are separate
+  faces of the reader's state, so the 3-cell lattice holds); otherwise FAIL (the two faces are one direction set: merge).
+- SCOPE (stated before the read): two transforms only, so this tests "are the three tiers real", NOT "3 vs 7"; W is name swap only
+  (paraphrase is not mechanically available). The third transform (units / scale) is the named next form.
+- PREDICTION: PASS ~70%; O ~0.3-0.6; additivity small.
+Builds: BIC-TREE + TREE-SEG by Claude in `gsm_ladder_read.py`; TIER-LATTICE delegated to a Sonnet agent (`scripts/tier_lattice_read.py`,
+reviewed before any read). GPU: two inference passes, serialized on `.cache/gpu.lock`.
