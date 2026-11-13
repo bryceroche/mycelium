@@ -31,8 +31,13 @@ assert ARM in ("NOMLP", "NOTEBOOK"), f"arm {ARM} not ported"
 assert RB.ARM == ARM and RO.ARM == ARM and RO.SPLIT == "depth2" and RB.NB == int(os.environ["RD_NB"]) and RB.COV == COV, "config mismatch"
 D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
+SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
+assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
+if SCHED:                                        # n = the same-arm control's banked seed-mean norm census (norm after breath k), fixed constants
+    _n = np.mean([json.load(open(f".cache/rel_dsl_TG{ARM}_depth2c{COV:g}_s{s}.json"))["norm_census"]["all"] for s in (0, 1)], axis=0)
+    G = [1.0] + [float(_n[0] / _n[b - 1]) for b in range(1, NB)]
 
 
 # ---- net ----------------------------------------------------------------------------------------------------------------------
@@ -77,7 +82,7 @@ def add_damp(P):
     return P
 
 
-def write(x, d, unit):
+def _write(x, d, unit):
     return expmap(x, d) if unit else x + d
 
 
@@ -121,6 +126,7 @@ def forward(P, bt, ids, unit=False, ex=False):
     out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []; xs = [x] if ex else []
     for b in range(NB):
         if DAMP: x = damp(P, x)
+        write = (lambda x_, d_, u_, g_=G[b]: _write(x_, d_ * g_, u_)) if SCHED and b > 0 else _write
         x = write(x, lin(P, P["bst"][b], "bproj").reshape(1, 1, D), unit)
         if NOTE:                                                                  # THE NOTEBOOK: what is derived so far, and when
             kd = emb(P, known.cast(dtypes.int), "known", 2) + (kt.one_hot(NB + 1).cast(dtypes.float) @ Tk) * known.unsqueeze(-1)
@@ -226,10 +232,14 @@ def census(P, items, unit):
     """mean token L2 norm over real var / factor / all tokens after each breath (one fixed batch, eager)"""
     rng = np.random.default_rng(777); its = [items[i % len(items)] for i in range(256)]
     arrs, ids = make_batch(its, rng); bt, idt = tens(arrs, ids); r = forward(P, bt, idt, unit, ex=True)
-    nv = arrs[0].shape[1]; val = r["valid"].numpy() > 0; res = dict(all=[], var=[], fac=[])
+    nv = arrs[0].shape[1]; val = r["valid"].numpy() > 0; res = dict(all=[], var=[], fac=[], angle=[])
     for n in r["nrm"][1:]:
         n = n.numpy(); res["all"].append(float(n[val].mean())); res["var"].append(float(n[:, :nv][val[:, :nv]].mean()))
         res["fac"].append(float(n[:, nv:][val[:, nv:]].mean()))
+    xs = [x.numpy().astype(np.float64) for x in r["xs"]]; xs = [x - x.mean(-1, keepdims=True) for x in xs]   # LayerNorm-centered
+    for a, c in zip(xs[:-1], xs[1:]):                # (STEP-A, ledger 11-13 15:12) mean angle (deg) between consecutive breath states
+        cs = (a * c).sum(-1) / np.maximum(np.linalg.norm(a, axis=-1) * np.linalg.norm(c, axis=-1), 1e-12)
+        res["angle"].append(float(np.degrees(np.arccos(np.clip(cs, -1, 1)))[val].mean()))
     return res
 
 
@@ -346,7 +356,7 @@ if __name__ == "__main__":
         agree = None if DAMP else float((tg_score(P, deep, UNIT) == S["deep"]).mean())   # the tinygrad scorer's witness on the control path
         pc = pole_census(P, deep, UNIT)
         bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
-        nc = census(P, deep, UNIT)
+        nc = census(P, deep, UNIT); np.savez(f".cache/rel_dsl_{TAG}_P.npz", **{k: v.numpy() for k, v in P.items()})
         json.dump(dict(tag=TAG, arm=ARM, seed=SEED, split="depth2", n_train=len(train), params=npar, steps=STEPS, curve=curve,
                        **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
                        deep_by_depth=bydepth, cov=COV, tree=None, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep)),
