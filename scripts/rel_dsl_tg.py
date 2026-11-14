@@ -32,12 +32,15 @@ assert RB.ARM == ARM and RO.ARM == ARM and RO.SPLIT == "depth2" and RB.NB == int
 D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
 DIAL = int(os.environ.get("RD_DIAL", "0"))     # (DIAL, ledger 11-13 19:09) the confidence dial: radius = the only step-size road
+GPLACEBO = int(os.environ.get("RD_GPLACEBO", "0"))   # (GRAPH PLACEBO, ledger 11-14) route along a relabelled graph
 GRAPH = int(os.environ.get("RD_GRAPH", "0"))   # (GRAPH, ledger 11-14) heads 0..GRAPH-1 routed by the factor graph
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
 assert 0 <= GRAPH <= NH, "RD_GRAPH = the number of routed heads"
+assert not GPLACEBO or GRAPH, "GPLACEBO is a form of the routed heads"
+PRNG = np.random.default_rng(1000 + RB.SEED)       # the placebo's own stream (the item / symbol rng is untouched)
 TORCH_OK = not (UNIT or DAMP or GRAPH)          # the torch net has none of these: every other form is scored on the tinygrad forward
 assert not DIAL or (UNIT and not SCHED), "DIAL is a form of the unitary breath"
 assert DIAL in (0, 1, 2, 3), "RD_DIAL: 1 free (19:09), 2 relative + harmonic schedule, 3 bounded (11-14 09:00)"
@@ -121,7 +124,7 @@ def mha(P, y, mask):
 
 def forward(P, bt, ids, unit=False, ex=False):
     """-> dict(lg (B, NB, V, F) [, known/kt per breath, token norms per breath]); bt = the 10 arrays of RB.batch (as Tensors)"""
-    vf, vm, fo, fm, A, Rz, Mz, pm, tg, dv = bt
+    vf, vm, fo, fm, A, Rz, Mz, pm, tg, dv = bt[:10]
     B, nv, nf = vf.shape[0], vf.shape[1], fo.shape[1]; L = nv + nf; pad = Tensor.cat(vm, fm, dim=1).logical_not()
     if NOTE:
         th = ids.one_hot(NID).cast(dtypes.float) @ P["theta"]; Er, Ei = th.cos(), th.sin(); Rr, Ri = P["rho"].cos(), P["rho"].sin()
@@ -149,6 +152,7 @@ def forward(P, bt, ids, unit=False, ex=False):
     x = Tensor.cat(V, Fz, dim=1); valid = pad.logical_not().cast(dtypes.float)
     if GRAPH:                                                                     # THE ROUTED HEADS: attend only along factor-graph edges
         ig = ((A + Rz + Mz) > 0).cast(dtypes.float).transpose(1, 2)              # B x V x F
+        if GPLACEBO: ig = ig @ bt[10]                                            # the placebo: var -> the wrong factors (same degrees)
         nbr = Tensor.cat(Tensor.cat(Tensor.eye(nv).reshape(1, nv, nv).expand(B, nv, nv), ig, dim=2),
                          Tensor.cat(ig.transpose(1, 2), Tensor.eye(nf).reshape(1, nf, nf).expand(B, nf, nf), dim=2), dim=1)   # B x L x L
         gm = (nbr > 0).where(0.0, -1e4).reshape(B, 1, L, L)
@@ -207,6 +211,11 @@ def pad_np(arrs, ids, bk=BUCKET):
     nv, nf = arrs[0].shape[1], arrs[2].shape[1]; NV, NF = -(-nv // bk) * bk, -(-nf // bk) * bk
     dims = ["V", "V", "F", "F", "FV", "FV", "FV", "VF", "VF", "V"]; tgt = {"V": NV, "F": NF}
     out = [np.pad(a, [(0, 0)] + [(0, tgt[c] - a.shape[i + 1]) for i, c in enumerate(d)]) for a, d in zip(arrs, dims)]
+    if GPLACEBO:                                                                 # per item: a random permutation of its real factors
+        Pm = np.zeros((out[2].shape[0], NF, NF), np.float32)
+        for i, f in enumerate(out[3]):
+            r = np.nonzero(f)[0]; q = np.arange(NF); q[r] = PRNG.permutation(r); Pm[i, np.arange(NF), q] = 1.0
+        out.append(Pm)
     return out, np.pad(ids, [(0, 0), (0, NV - nv)])
 
 
@@ -246,7 +255,7 @@ class Trainer:
         return s.params + s.m + s.v
 
     def _step(s, *a):
-        bt, ids, ss, bc2s = list(a[:10]), a[10], a[11], a[12]
+        bt, ids, ss, bc2s = list(a[:-3]), a[-3], a[-2], a[-1]
         with Tensor.train():
             for v in s.params: v.grad = None
             lo = loss_fn(forward(s.P, bt, ids, s.unit)["lg"], bt[8], bt[9]); lo.backward()
