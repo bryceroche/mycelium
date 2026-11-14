@@ -59001,3 +59001,30 @@ the WRONG ones; the one basin that kept turning was the best arm.
   all -> NO; else MIXED.
 - Predictions: Q-R HELPS NOTEBOOK ~45% / NOMLP ~40%; Q-U EQUIVALENT ~50%; B-R HELPS ~35%; Q-C ~30%; ANGLE STILL-TURNING ~45%; COMM
   WRONG TOKENS STOP LISTENING ~35% (MIXED ~40%).
+
+### 2026-11-14 09:08 -- ANGLE: NOT (split by arm); COMM: NO by the pinned rule -- but beside it, attention is NOT routed by the graph (own-factor mass BELOW uniform)
+
+Artifacts: `.cache/spin_reads/*.json`, `.cache/spin_reads.log` (`scripts/spin_reads.py`; CPU, the census batch, 14 checkpoints). Self-
+check: the dial runs' radius AUROC reproduces the banked dial_census (0.259 / 0.269 / 0.865 / 0.310). Qualifying runs (>= 20 wrong
+picks): the NOMLP family + NOTEBOOK+R s1; the other NOTEBOOK checkpoints have 1-14 wrong derived vars (reported, not counted).
+| run | right / wrong | ANGLE AUROC | turn right / wrong (deg) | own-factor mass right / wrong (diff) |
+|---|---|---|---|---|
+| NOMLP s0 (additive) | 2385 / 65 | 0.790 | 2.76 / 3.29 | 0.044 / 0.062 (+0.018) |
+| NOMLP+U s0 / s1 | 2376 / 74 ; 2382 / 68 | 0.719 / 0.695 | 10.5 / 13.2 ; 8.7 / 10.1 | +0.021 / +0.019 |
+| NOMLP+R s0 / s1 | 2370 / 80 ; 2368 / 82 | 0.246 / 0.284 | 0.05 / 0.02 ; 0.08 / 0.06 | +0.020 / +0.018 |
+| NOTEBOOK+R s1 (cov 0.03125) | 2383 / 67 | 0.280 | 0.20 / 0.10 | +0.013 |
+- **ANGLE: NOT** (U / R qualifying runs 0.719 / 0.695 / 0.246 / 0.284 / 0.280; any <= 0.55). Beside, the split is by arm: on the
+  breaths that keep turning (U, and the additive control 0.790, not in the bar's set) **a wrong token is still turning** (AUROC
+  0.70-0.79: turning = uncertainty, as the inverted R-C suggested); on the frozen dial arms (turns 0.02-0.2 deg) it inverts. "Still
+  turning = uncertainty" holds where the breath is alive, not under a freeze. Prediction STILL-TURNING ~45%: the bar missed.
+- **COMM: NO** (diff +0.013 .. +0.021 on all six qualifying runs: wrong-pick vars put MORE mass on their own factors, not less). The
+  gut's form "wrong tokens stop listening" is not what happens. Prediction WRONG TOKENS STOP LISTENING ~35%: miss.
+- **Beside -- the gut's drawer had something else in it (no bar; three checkpoints, the uniform baseline added after the bars):** a
+  derived var's last-breath attention mass on its OWN incident factors is 0.044 / 0.056 / 0.063 (right picks; NOMLP, NOMLP+U, NOTEBOOK
+  cov 0.03125) against a **uniform-attention baseline of 0.076** -- BELOW chance -- while 0.56-0.68 of its mass goes to other VAR tokens.
+  Attention is not routed by the factor graph; the graph reaches a var through the snap (the chosen factor's state), not through
+  attention. The June engine (byte-identical to the KenKen oracle) carried per-head masks from MEMBERSHIP; this BT carries none. This
+  is the "communication failure" in measurable form: not deafness on wrong tokens, but message passing that never follows the edges.
+- Named next form (not pinned): **graph-routed heads** -- some heads masked to each token's factor-graph neighbors (the June
+  engine's membership masks; the structural-entry law: binding enters as masks; Bryce's "KNN message passing" with the graph as the
+  neighborhood), the other heads free. Census first: own-factor mass per head, per breath.
