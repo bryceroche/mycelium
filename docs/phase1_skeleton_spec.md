@@ -58975,3 +58975,29 @@ the hard-rung controls 1.0 / 1.0; U / R arms tinygrad-scored by construction.
   the uniform freeze mode is removed), with a fixed harmonic radius growth r_b = r0 (1 + b c) from STEP-R carrying the global
   schedule; (2) a bounded sigma (|sigma| <= 0.2) as the cheap control; (3) the inverted AUROC as a read in its own right: is
   "still turning" a better confidence than radius? (an angle-based dial).
+
+### 2026-11-14 09:00 -- KEEP-SPINNING QUEUE PINNED: the RELATIVE dial, the BOUNDED dial, ANGLE (zero-GPU), COMM (zero-GPU: Bryce's gut); the word given
+
+Theory lines: "radius = confidence" + the Bridge's confidence dial + the payoff (long chains without degrading); COMM serves Bryce's
+11-14 gut ("a communication failure and possibly a messy internal state") -- the gut gets an audit before any organ (KNN message
+passing) is built for it. Origin: DIAL (11-13 21:00) -- the dial's free uniform mode became a geometric freezer; the frozen tokens were
+the WRONG ones; the one basin that kept turning was the best arm.
+- **RELATIVE DIAL (RD_DIAL=2, tag letter Q):** the 19:09 dial with (a) sigma MEAN-FREE over each problem's real tokens (confidence is
+  relative; the uniform freeze mode is gone by construction) and (b) the global schedule FIXED to the trained additive breath's
+  harmonic one: after breath b (1..9) every token's radius is multiplied by n_{b+1} / n_b, n = the same-arm control's banked seed-mean
+  norm census (NOMLP cov 0.25: 1.367 .. 1.110; NOTEBOOK cov 0.03125: 1.279 .. 1.117). Read from banked artifacts now; nothing learned.
+- **BOUNDED DIAL (RD_DIAL=3, tag letter B):** the 19:09 dial with sigma = 0.2 tanh(.) (uniform mode allowed, capped: the cheap control).
+- Runs: Q and B on NOMLP cov 0.25 and NOTEBOOK cov 0.03125, s0/s1 (8 runs; tinygrad PCI+AMD, depth2, NB 10, 8000 steps; tinygrad scorer).
+- Bars (fixture frame: C0 VOID; >= +0.03 both seeds positive HELPS; <= -0.02 HURTS; else EQUIVALENT / CEILING):
+  **Q-R** (Q - R, per arm: does removing the freeze repair the dial); **Q-U** (Q - U); **Q-A** (Q - additive); **B-R** (B - R).
+  **Q-C:** R-C's AUROC (final log-radius, derived vars, correct pick) on the four Q runs with >= 20 wrong picks: >= 0.60 on all ->
+  RADIUS = CONFIDENCE; any <= 0.55 -> NOT; else WEAK.
+- **ANGLE (zero-GPU, now):** on every saved U / R checkpoint (census batch), the AUROC of MINUS the derived var's last-breath turn
+  angle (LayerNorm-centered states, breath 9 -> 10) for a correct pick, on runs with >= 20 wrong picks: >= 0.60 on all ->
+  STILL-TURNING = UNCERTAINTY; any <= 0.55 -> NOT; else WEAK.
+- **COMM (zero-GPU, now):** on every saved checkpoint of the additive, U and R arms (census batch), the attention mass (head mean,
+  last breath) a derived var puts on ITS OWN incident factors; diff = mean over wrong-pick vars - mean over right-pick vars, on runs
+  with >= 20 wrong picks: <= -0.05 on all -> WRONG TOKENS STOP LISTENING (the gut confirmed: a communication failure); >= -0.01 on
+  all -> NO; else MIXED.
+- Predictions: Q-R HELPS NOTEBOOK ~45% / NOMLP ~40%; Q-U EQUIVALENT ~50%; B-R HELPS ~35%; Q-C ~30%; ANGLE STILL-TURNING ~45%; COMM
+  WRONG TOKENS STOP LISTENING ~35% (MIXED ~40%).
