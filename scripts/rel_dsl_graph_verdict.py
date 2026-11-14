@@ -25,7 +25,7 @@ for arm, cov in (("NOMLP", "0.25"), ("NOTEBOOK", "0.03125")):
     for tag, X in ((arm, A), (arm + "+G8", G[8]), (arm + "+G4", G[4])):
         bd = {d: np.mean([r["deep_by_depth"][d] for r in X]) for d in X[0]["deep_by_depth"]}
         out.append(f"  {tag:12s} SHALLOW {X[0]['shallow']:.3f}/{X[1]['shallow']:.3f} MID {X[0]['mid']:.3f}/{X[1]['mid']:.3f} DEEP {X[0]['deep']:.3f}/{X[1]['deep']:.3f} | by depth "
-                   + " ".join(f"d{d} {v:.3f}" for d, v in bd.items()) + " | angles s0 " + " ".join(f"{a:.1f}" for a in X[0]["norm_census"]["angle"]))
+                   + " ".join(f"d{d} {v:.3f}" for d, v in bd.items()) + " | angles s0 " + (" ".join(f"{a:.1f}" for a in X[0]["norm_census"]["angle"]) if "angle" in X[0]["norm_census"] else "n/a (pre-census json)"))
     for h in (8, 4):
         for s in (0, 1):
             f = f".cache/spin_reads/TG{arm}G{h}_depth2c{cov}_s{s}.json"

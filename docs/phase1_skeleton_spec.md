@@ -59071,3 +59071,50 @@ construction (agree None on all 8, as designed).
   negative throughout, angles 15-25 deg through all ten breaths) and matched the control (0.950 / 0.997 vs 0.953 / 0.986). Three
   sightings now (R NOTEBOOK s0, B NOTEBOOK s0/s1): a dial breath that keeps turning lands at or above the control; one that cools does not.
 - Predictions: Q-R HELPS ~45 / 40% -- miss; Q-U EQUIVALENT ~50% -- miss (HURTS); B-R HELPS ~35% -- miss (EQUIVALENT); Q-C ~30% -- NOT.
+
+### 2026-11-14 11:51 -- GRAPH-ROUTED HEADS VERDICTS: G-8 NOMLP HELPS +0.137, G-4 NOMLP HELPS +0.133; NOTEBOOK EQUIVALENT x2
+
+Artifact: `.cache/rel_dsl_graph_verdict.txt` (`scripts/rel_dsl_graph_verdict.py`; chain graph 10:24-11:50). G arms tinygrad-scored by
+construction (agree None on all 8, as designed). The verdict script died once on a beside (the banked control jsons predate the angle
+census: KeyError 'angle'); fixed to print n/a there -- the frame is untouched.
+| arm | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) | angle b1 -> b10 (s0, deg) |
+|---|---|---|---|
+| NOMLP (cov 0.25) | 0.860 / 0.856 | 0.877 / 0.848 / 0.764 / 0.679 / 0.500 | (pre-census) |
+| NOMLP+G8 | **0.993 / 0.998** | 0.999 / 0.998 / 1.000 / 0.821 / 0.875 | 56.1 -> 2.8 |
+| NOMLP+G4 | **0.992 / 0.991** | 0.999 / 0.993 / 0.971 / 0.821 / 0.625 | 61.4 -> 2.8 |
+| NOTEBOOK (cov 0.03125) | 0.953 / 0.986 | 0.982 / 0.959 / 0.929 / 0.821 / 0.750 | 40.8 -> 6.1 |
+| NOTEBOOK+G8 | 0.969 / 0.978 | 0.992 / 0.980 / 0.879 / 0.643 / 0.250 | 59.4 -> 1.9 |
+| NOTEBOOK+G4 | 0.974 / 0.940 | 0.983 / 0.952 / 0.829 / 0.607 / 0.250 | 53.7 -> 2.0 |
+- **G-8 NOMLP: HELPS +0.137** (seeds +0.133 / +0.142; paired SE 0.011 / 0.011). **G-4 NOMLP: HELPS +0.133** (+0.132 / +0.135).
+- **G-8 NOTEBOOK: EQUIVALENT +0.004** (+0.015 / -0.008; not CEILING: control mean 0.9695 < 0.97). **G-4 NOTEBOOK: EQUIVALENT -0.013**
+  (+0.020 / -0.046).
+- **NOT YET ATTRIBUTED.** Routing changes two things at once: WHICH tokens a head may see (the edges) and HOW MANY (sparsity). The
+  claim "attention along the factor graph" waits for the placebo (pinned below). Until then the banked claim is only: masked heads on the
+  NOMLP arm at cov 0.25 lift DEEP by +0.13 on two seeds.
+- Census beside: COMM on the routed checkpoints -- own-factor mass 0.217-0.558 (uniform 0.076): the routed heads do read the graph (by
+  construction); right vs wrong is uninformative (0-19 wrong tokens per run). The mandatory-road prediction for G4 (free heads out-vote
+  the routed ones) MISSED: half the heads routed buys the full gain on NOMLP.
+- Beside, NOTEBOOK: the routed arms lose the longest chains (d8 0.643 / 0.607 vs 0.821; d9 0.250 vs 0.750 -- small n at d8/d9, read as
+  texture, not a claim) and cool hardest (b10 ~2 deg vs 6.1). Fourth sighting of the keep-spinning pattern: the breath that cools does
+  not beat the control. On NOTEBOOK the notebook already carries knownness along the edges; the mask adds nothing it lacked.
+- Predictions: G-8 NOMLP HELPS ~35% -- HIT; G-8 NOTEBOOK HELPS ~30% -- miss (EQUIVALENT); G-4 EQUIVALENT ~50% -- miss on NOMLP
+  (HELPS), hit on NOTEBOOK.
+
+### 2026-11-14 11:51 -- GRAPH PLACEBO PINNED (attribution for G-8 NOMLP; NEEDS THE WORD)
+
+Theory line: "LLMs have a solver inside" (the June engine's membership masks = message passing along the GIVEN graph) -- the placebo
+decides whether the lift is the graph or the sparsity.
+- **The form (RD_GPLACEBO=1 with RD_GRAPH=8, tag G8P):** patch `scripts/patches/rel_dsl_gplacebo.py`. Each item's real factors are
+  relabelled by a uniform random permutation (fresh per read, its own rng: the item / symbol stream is untouched) before the routing mask
+  is built. The routing graph keeps the exact degree sequence and shape of the true one; each var is pointed at the wrong factors. The
+  factor tokens' content (A, Rz, Mz) is untouched -- only where the routed heads may look moves. Rides as an 11th batch array.
+- CPU test (scratch copy, 11:46): permutation matrices valid on real factors and identity on pads; var and factor degrees preserved;
+  true-edge overlap 0.174 (chance); forward finite; 4 JIT train steps run.
+- Runs: NOMLP cov 0.25, G8P, s0 / s1 (2 runs, tinygrad PCI+AMD, depth2, NB 10, 8000 steps; ~7 min each). Patch applied to the live
+  trainer only when no chain re-reads it.
+- **Bar (G-P = G8P - G8, per seed, NOMLP):** fixture frame C0 as before. **EDGES** iff G8P - additive <= +0.03 (the placebo keeps at
+  most the bar's worth of the +0.137): the lift is the graph. **SPARSITY** iff G8 - G8P < 0.03 (the placebo keeps the lift): the
+  lift is the mask's sparsity, not the edges. Between: **MIXED** (both carry), quote the split.
+- **Prediction:** EDGES ~60%, MIXED ~25%, SPARSITY ~15%. EDGES carries "route attention along the factor graph" forward (named next
+  forms: routed heads on the unitary breath; KNN routing in the Tree's centroid space). SPARSITY closes the edge reading of this form
+  and names the next: a sparsity-matched learned top-k.

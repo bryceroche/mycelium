@@ -32,10 +32,13 @@ assert RB.ARM == ARM and RO.ARM == ARM and RO.SPLIT == "depth2" and RB.NB == int
 D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
 DIAL = int(os.environ.get("RD_DIAL", "0"))     # (DIAL, ledger 11-13 19:09) the confidence dial: radius = the only step-size road
+GRAPH = int(os.environ.get("RD_GRAPH", "0"))   # (GRAPH, ledger 11-14) heads 0..GRAPH-1 routed by the factor graph
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
+assert 0 <= GRAPH <= NH, "RD_GRAPH = the number of routed heads"
+TORCH_OK = not (UNIT or DAMP or GRAPH)          # the torch net has none of these: every other form is scored on the tinygrad forward
 assert not DIAL or (UNIT and not SCHED), "DIAL is a form of the unitary breath"
 assert DIAL in (0, 1, 2, 3), "RD_DIAL: 1 free (19:09), 2 relative + harmonic schedule, 3 bounded (11-14 09:00)"
 if DIAL == 2:                                    # the relative dial's global schedule: the same-arm control's banked norm ratios n_{b+1} / n_b
@@ -144,6 +147,12 @@ def forward(P, bt, ids, unit=False, ex=False):
         Fz = emb(P, fo, "op", 4) + lin(P, A @ S, "w_arg", False) + lin(P, Rz @ S, "w_res", False) + lin(P, Mz @ S, "w_min", False) + P["kind.weight"][1]
         mask = pad[:, None, None, :].where(-1e4, 0.0)
     x = Tensor.cat(V, Fz, dim=1); valid = pad.logical_not().cast(dtypes.float)
+    if GRAPH:                                                                     # THE ROUTED HEADS: attend only along factor-graph edges
+        ig = ((A + Rz + Mz) > 0).cast(dtypes.float).transpose(1, 2)              # B x V x F
+        nbr = Tensor.cat(Tensor.cat(Tensor.eye(nv).reshape(1, nv, nv).expand(B, nv, nv), ig, dim=2),
+                         Tensor.cat(ig.transpose(1, 2), Tensor.eye(nf).reshape(1, nf, nf).expand(B, nf, nf), dim=2), dim=1)   # B x L x L
+        gm = (nbr > 0).where(0.0, -1e4).reshape(B, 1, L, L)
+        mask = mask + Tensor.cat(*([gm] * GRAPH + [gm * 0] * (NH - GRAPH)), dim=1)
     out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []; xs = [x] if ex else []; sgl = []
     r0 = (x * x).sum(-1, keepdim=True).sqrt() if DIAL else None
     for b in range(NB):
@@ -384,7 +393,7 @@ if __name__ == "__main__":
         torch.manual_seed(SEED); rng = np.random.default_rng(SEED); tn = mk(); P = from_torch(tn.state_dict()); npar = sum(p.numel() for p in tn.parameters())
         if DAMP: P = add_damp(P); npar += D
         if DIAL: P = add_dial(P); npar += D + 5
-        SC = (lambda its: tg_score(P, its, UNIT)) if DAMP or UNIT else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
+        SC = (lambda its: tg_score(P, its, UNIT)) if not TORCH_OK else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
         un = unused_params(tn, [train[int(i)] for i in np.random.default_rng(1).integers(0, len(train), 8)], np.random.default_rng(12345))
         tr = Trainer(P, RB.LR, UNIT, un)
         rp = lambda its: float(np.mean([RB.RC.execute(t["facs"], RB.RC.result_plan(t), t["query"]) == t["gold"] for t in its]))
@@ -401,7 +410,7 @@ if __name__ == "__main__":
         sps = tstep / STEPS; steady = (tstep - t20) / (STEPS - 20) if t20 is not None and STEPS > 20 else float("nan")
         print(f"[tg] {TAG} train s/step {sps:.3f} (steps only, incl. JIT compiles over buckets {sorted(tr.jits)}); steady (21..{STEPS}) {steady:.3f}", flush=True)
         S = {k: SC(v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
-        agree = None if DAMP or UNIT else float((tg_score(P, deep, UNIT) == S["deep"]).mean())   # the tinygrad scorer's witness on the control path
+        agree = None if not TORCH_OK else float((tg_score(P, deep, UNIT) == S["deep"]).mean())   # the tinygrad scorer's witness on the control path
         dpt = [int(x) for x in (to_torch(P, tn), tn.eval(), RB.score(tn, deep))[2]] if UNIT else None   # torch-scored: the pre-fix witness only
         pc = pole_census(P, deep, UNIT)
         bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
