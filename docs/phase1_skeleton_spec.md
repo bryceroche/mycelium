@@ -59028,3 +59028,23 @@ picks): the NOMLP family + NOTEBOOK+R s1; the other NOTEBOOK checkpoints have 1-
 - Named next form (not pinned): **graph-routed heads** -- some heads masked to each token's factor-graph neighbors (the June
   engine's membership masks; the structural-entry law: binding enters as masks; Bryce's "KNN message passing" with the graph as the
   neighborhood), the other heads free. Census first: own-factor mass per head, per breath.
+
+### 2026-11-14 09:35 -- GRAPH-ROUTED HEADS PINNED (Bryce: "word given for graph-routed heads KNN message passing to force attention heads to respect factor graph connections")
+
+Theory lines: "LLMs have a solver inside" (the June engine = learned BP over per-head MEMBERSHIP masks) + the structural-entry law
+(binding enters as structure: masks) + Bryce's 11-14 gut (communication). Origin: COMM beside (09:08): a derived var's last-breath
+attention on its own incident factors is BELOW the uniform baseline (0.044-0.063 vs 0.076); 0.56-0.68 goes to other vars.
+- **The form (RD_GRAPH=h, tag letter G{h}):** the first h of the 8 heads are masked to each token's factor-graph neighbourhood -- a var
+  attends itself + its incident factors (args, result, min), a factor attends itself + its incident vars (additive -1e4 outside;
+  pads as before); the other 8-h heads unchanged. Every breath is one round of message passing on the graph. Base breath: the ADDITIVE
+  one (one change against the banked controls). Two forms: **G8** (all heads routed: pure message passing, a road with no bypass --
+  var-var information must travel var -> factor -> var across breaths) and **G4** (half routed, half free).
+- Scorer: the tinygrad forward for ANY form the torch net lacks (UNIT, DAMP, GRAPH) -- yesterday's lesson closed by construction.
+- Runs: G8 / G4 x NOMLP cov 0.25 / NOTEBOOK cov 0.03125 x s0 / s1 (8 runs, tinygrad PCI+AMD, depth2, NB 10, 8000 steps), queued after
+  the spin chain. Controls = the banked additive arms (agree 1.0).
+- **Bars** (fixture frame: C0 SHALLOW seed mean < 0.95 -> VOID; >= +0.03 with both seeds positive -> HELPS; <= -0.02 -> HURTS; else
+  EQUIVALENT / CEILING >= 0.97): **G-8** (G8 - additive, per arm); **G-4** (G4 - additive, per arm).
+- Census beside: the COMM read on the new checkpoints (own-factor mass vs the uniform baseline; head mean) and STEP-A's angles.
+- **Predictions:** G-8 NOMLP HELPS ~35% / HURTS ~30%; G-8 NOTEBOOK HELPS ~30%; G-4 EQUIVALENT ~50% per arm (free heads are a bypass:
+  the mandatory-road law predicts the routed heads get out-weighted). A FAIL closes these mask forms; named next form: routed heads on
+  the unitary breath, and KNN routing in the TREE's neighbourhood (centroid space) rather than the problem graph.
