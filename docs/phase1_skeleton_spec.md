@@ -59118,3 +59118,24 @@ decides whether the lift is the graph or the sparsity.
 - **Prediction:** EDGES ~60%, MIXED ~25%, SPARSITY ~15%. EDGES carries "route attention along the factor graph" forward (named next
   forms: routed heads on the unitary breath; KNN routing in the Tree's centroid space). SPARSITY closes the edge reading of this form
   and names the next: a sparsity-matched learned top-k.
+
+### 2026-11-14 13:06 -- GRAPH PLACEBO VERDICT: EDGES. The lift is the factor graph, not the sparsity (G8 - G8P +0.272)
+
+Artifact: `.cache/rel_dsl_gplacebo_verdict.txt` (`scripts/rel_dsl_gplacebo_verdict.py`; chain gplacebo 12:50-13:05; word given 12:49).
+G8P tinygrad-scored by construction (agree None, as designed).
+| arm (NOMLP cov 0.25) | SHALLOW s0/s1 | MID | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) |
+|---|---|---|---|---|
+| additive | 0.997 / 1.000 | 0.955 / 0.952 | 0.860 / 0.856 | 0.877 / 0.848 / 0.764 / 0.679 / 0.500 |
+| +G8 (true graph) | 1.000 / 1.000 | 1.000 / 1.000 | 0.993 / 0.998 | 0.999 / 0.998 / 1.000 / 0.821 / 0.875 |
+| +G8P (relabelled graph, same degrees) | 0.979 / 0.979 | 0.891 / 0.883 | **0.733 / 0.714** | 0.755 / 0.700 / 0.543 / 0.536 / 0.375 |
+- **G-P: EDGES.** G8P - additive **-0.135** (seeds -0.128 / -0.143): the placebo keeps none of the lift and falls BELOW the free
+  control. G8 - G8P **+0.272** (seeds +0.260 / +0.284). Equal sparsity, equal degrees, wrong partners: the +0.137 of G-8 belongs to the
+  edges. **Banked claim: routing attention along the given factor graph lifts DEEP by +0.137 on the NOMLP arm (two seeds, placebo-
+  attributed).** The June engine's membership masks re-earn their place in the breath.
+- COMM beside: the placebo's mass on the TRUE own factors 0.107 / 0.081 (uniform 0.076) -- it reaches the real edges only by chance
+  (true-edge overlap 0.17 by construction); the routed true-graph arms put 0.411-0.544 there.
+- Census beside: the placebo breath barely grows (token norm b10 ~120-128 vs 553-791 on G8) and its angles stay ~5.4 deg at the end --
+  wrong edges give the writes nothing coherent to accumulate.
+- Prediction: EDGES ~60% -- HIT. Named next forms (theory line "LLMs have a solver inside" + structural entry): routed heads on the
+  unitary breath; KNN routing in the Tree's centroid space; and the bridge to the discovered structure -- the routing graph must come
+  from the parser's pointers, not the fixture, before it carries toward GSM8K (Bryce 11-04: "discover the structure, then solve over it").
