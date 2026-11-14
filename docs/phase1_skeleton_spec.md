@@ -58940,3 +58940,38 @@ HURTS; else EQUIVALENT, CEILING if both arms >= 0.97):
 **Predictions:** U-H EQUIVALENT ~50% (HURTS ~25%); R-U NOMLP EQUIVALENT ~45% / HURTS ~35% / HELPS ~20%; R-U NOTEBOOK the same; R-C
 RADIUS = CONFIDENCE ~40% (temperature ⊥ truth warns against it). A FAIL closes the road form; named next form: the dial as a
 radius the reads CAN see (attention keys scaled by radius: confident tokens heard more).
+
+### 2026-11-13 21:00 -- DIAL VERDICTS: U-H HURTS (-0.024); R-U NOMLP EQUIVALENT / NOTEBOOK HURTS; R-A HURTS x2; R-C NOT -- the dial became a uniform FREEZER, and big radius marks WRONG picks
+
+Artifact: `.cache/rel_dsl_dial_verdict.txt` (`scripts/rel_dsl_dial_verdict.py`; chain `.cache/run_dial.sh` 19:19-20:51). Agree lines:
+the hard-rung controls 1.0 / 1.0; U / R arms tinygrad-scored by construction.
+| arm | SHALLOW s0/s1 | MID s0/s1 | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) |
+|---|---|---|---|---|
+| NOMLP (cov 0.25) | 0.997 / 1.000 | 0.955 / 0.952 | 0.860 / 0.856 | 0.877 / 0.848 / 0.764 / 0.679 / 0.500 |
+| NOMLP+U | 1.000 / 1.000 | 0.962 / 0.939 | 0.864 / 0.823 | 0.869 / 0.839 / 0.671 / 0.607 / 0.625 |
+| NOMLP+R | 0.995 / 1.000 | 0.925 / 0.939 | 0.812 / 0.841 | 0.850 / 0.816 / 0.693 / 0.607 / 0.500 |
+| NOTEBOOK (cov 0.03125) | 1.000 / 0.997 | 0.994 / 0.999 | 0.953 / 0.986 | 0.982 / 0.959 / 0.929 / 0.821 / 0.750 |
+| NOTEBOOK+U | 0.997 / 0.995 | 0.989 / 0.993 | 0.939 / 0.952 | 0.976 / 0.895 / 0.864 / 0.750 / 0.750 |
+| NOTEBOOK+R | 1.000 / 0.984 | 0.996 / 0.976 | 0.991 / 0.781 | 0.913 / 0.859 / 0.757 / 0.714 / 0.625 |
+- **U-H: HURTS** (-0.024; seeds -0.014 / -0.033; paired SE 0.009 / 0.007). With headroom the unitary breath pays a small cost on
+  NOTEBOOK; the 17:20 parity holds at cov 0.0625 / NOMLP 0.25, not at the hard rung. Prediction EQUIVALENT ~50%: miss (HURTS ~25%).
+- **R-U NOMLP: EQUIVALENT** (-0.017; seeds -0.053 / +0.018). **R-A NOMLP: HURTS** (-0.032; seeds -0.049 / -0.015).
+- **R-U NOTEBOOK: HURTS** (-0.060; seeds +0.052 / -0.171). **R-A NOTEBOOK: HURTS** (-0.084; seeds +0.037 / -0.204).
+- **R-C: NOT** (AUROC 0.259 / 0.269 / 0.865 / 0.310; the 0.865 run has ONE wrong pick -- no information). Beside: the three
+  informative runs read BELOW 0.5 -- **a large final radius marks a WRONG pick** (inverted AUROC ~0.70-0.74, 67-82 wrong picks each).
+  The tokens that froze were the confidently wrong ones; the right ones were still turning. Prediction ~40%: the bar missed, and the
+  sign is the opposite of the theory's.
+- **Mechanism (census):** in 3 of 4 runs sigma went NEGATIVE for 1-2 breaths (grow the step: explore), then SATURATED uniform at
+  0.82-0.97 per breath (tanh near 1): the radius grows ~2.3-2.7x per breath (POLE |lambda| median 2.34-2.54; norms 20-34 -> 17,500-
+  65,000) and the turn angle falls 25 -> 0.1 deg by breath 10. **The dial became a uniform geometric FREEZER** -- the breath stops
+  thinking by breath 5-6, which is what depth needs least (NOTEBOOK s1: d9 0.250). The fourth run (NOTEBOOK s0) took the other basin:
+  sigma small and mixed (-0.45 .. +0.26), angles held 19-34 deg through all ten breaths, and DEEP **0.991 -- the best read of any arm
+  at this rung** (d9 1.000). Beside, no claim: one seed.
+- Reading: the road worked (sigma is alive, the only brake), and the model drove it to a global freeze -- geometric cooling, which
+  STEP-R said the trained additive breath does NOT do (it anneals harmonically). Per-token confidence did not emerge; the one basin
+  that kept thinking was the best arm. Theory line stands (a FAIL closes the form): radius = confidence was not learned under a dial
+  whose uniform mode is free.
+- **Named next forms (not pinned):** (1) **the relative dial** -- sigma mean-free over a problem's tokens (confidence is RELATIVE;
+  the uniform freeze mode is removed), with a fixed harmonic radius growth r_b = r0 (1 + b c) from STEP-R carrying the global
+  schedule; (2) a bounded sigma (|sigma| <= 0.2) as the cheap control; (3) the inverted AUROC as a read in its own right: is
+  "still turning" a better confidence than radius? (an angle-based dial).
