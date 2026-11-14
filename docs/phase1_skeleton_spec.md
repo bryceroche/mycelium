@@ -59139,3 +59139,26 @@ G8P tinygrad-scored by construction (agree None, as designed).
 - Prediction: EDGES ~60% -- HIT. Named next forms (theory line "LLMs have a solver inside" + structural entry): routed heads on the
   unitary breath; KNN routing in the Tree's centroid space; and the bridge to the discovered structure -- the routing graph must come
   from the parser's pointers, not the fixture, before it carries toward GSM8K (Bryce 11-04: "discover the structure, then solve over it").
+
+### 2026-11-14 13:17 -- THE ROUTING QUEUE PINNED (Bryce: "word given for the whole queue"): GU / GN10 / GN30 / GK
+
+Theory lines: "LLMs have a solver inside" (the breath as message passing, THE GRAPH-ROUTING RULING) + "discover the structure, then
+solve over it" (the routing graph is GIVEN on the fixture; GSM8K must DISCOVER it) + the Breathing Transformer's "MHA searches by KNN".
+All NOMLP cov 0.25, s0 / s1, tinygrad PCI+AMD, depth2, NB 10, 8000 steps, routed heads h = 8. Patch `scripts/patches/rel_dsl_gqueue.py`
+(CPU-tested on a scratch copy 13:12: G8 bit-identical to the live file (max |d| 0.0); N30 keeps var degrees, pads clean, 0.687 of
+the true edges kept; K3 picks self + 3 per real row, knn_w gets a gradient; UG8 trains). 8 runs, then CPU reads, then the verdict.
+- **GU (RD_UNIT=1 RD_GRAPH=8, tag UG8):** routed heads on the UNITARY breath (the exp map, norm fixed). Bar: UG8 - U (the 17:20
+  corrected U reads), fixture frame (C0 VOID; >= +0.03 both seeds positive HELPS; <= -0.02 HURTS; else EQUIVALENT / CEILING >= 0.97).
+  Beside: UG8 - G8. Prediction: HELPS ~80%.
+- **GN10 / GN30 (RD_GNOISE=10 / 30, tag G8N{r}):** the routing graph is the true one with r% of each var's edges rewired to a random
+  real factor it does not touch (var degrees kept, fresh per read). How much of the +0.137 survives an imperfect (discovered) graph.
+  Bar: G8N{r} - additive, the frame with KEEPS for HELPS; retention = that / G8's +0.137 quoted beside. Predictions: GN10 KEEPS ~85%
+  (retention ~0.8); GN30 KEEPS ~55% (retention ~0.4).
+- **GK (RD_GKNN=3, tag G8K3):** KNN MESSAGE PASSING -- the routed heads attend to themselves + their 3 nearest tokens (k = 3 ~ the
+  mean true degree 2.3-2.4) by a learned similarity of the breath's normalized state (knn_w D x 32, weight-tied across breaths);
+  hard top-k on the detached similarity, the similarity also biases the routed scores (the gradient road). NO graph in the mask: the
+  structure is discovered from state (the incidence still enters the factor tokens' content, as on every arm). Bar: G8K3 - additive,
+  the frame. Census bar **DISCOVERS** iff the last breath's true-neighbour share of the k picks >= 3x chance on both seeds
+  (`scripts/routing_reads.py`). Predictions: GK HELPS ~25%; DISCOVERS ~40%. A FAIL closes this KNN form; named next: KNN over Tree
+  centroids, or graph distillation (supervise the KNN picks with the given edges during training, test without them).
+- Beside: COMM (mass on the true own factors) on all eight checkpoints. Verdict: `scripts/rel_dsl_gqueue_verdict.py`.

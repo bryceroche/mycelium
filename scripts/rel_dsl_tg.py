@@ -32,14 +32,19 @@ assert RB.ARM == ARM and RO.ARM == ARM and RO.SPLIT == "depth2" and RB.NB == int
 D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
 DIAL = int(os.environ.get("RD_DIAL", "0"))     # (DIAL, ledger 11-13 19:09) the confidence dial: radius = the only step-size road
+GNOISE = int(os.environ.get("RD_GNOISE", "0"))     # (ROUTING QUEUE, ledger 11-14) percent of each var's routing edges rewired
+GKNN = int(os.environ.get("RD_GKNN", "0"))         # (ROUTING QUEUE) routed heads by learned-state KNN, k neighbours (no graph in the mask)
+KD = 32
 GPLACEBO = int(os.environ.get("RD_GPLACEBO", "0"))   # (GRAPH PLACEBO, ledger 11-14) route along a relabelled graph
 GRAPH = int(os.environ.get("RD_GRAPH", "0"))   # (GRAPH, ledger 11-14) heads 0..GRAPH-1 routed by the factor graph
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'K{GKNN}' if GKNN else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
 assert 0 <= GRAPH <= NH, "RD_GRAPH = the number of routed heads"
 assert not GPLACEBO or GRAPH, "GPLACEBO is a form of the routed heads"
+assert not (GNOISE or GKNN) or GRAPH, "GNOISE / GKNN are forms of the routed heads"
+assert (GPLACEBO > 0) + (GNOISE > 0) + (GKNN > 0) <= 1, "one routing form at a time"
 PRNG = np.random.default_rng(1000 + RB.SEED)       # the placebo's own stream (the item / symbol rng is untouched)
 TORCH_OK = not (UNIT or DAMP or GRAPH)          # the torch net has none of these: every other form is scored on the tinygrad forward
 assert not DIAL or (UNIT and not SCHED), "DIAL is a form of the unitary breath"
@@ -103,6 +108,11 @@ def dial_turn(x, d, g, r0):
     return x - 2 * (th * 0.5).sin() ** 2 * x + th.sin() * xn * u
 
 
+def add_knn(P):
+    P["knn_w"] = Tensor(np.random.default_rng(4242 + RB.SEED).standard_normal((D, KD)).astype(np.float32) / math.sqrt(D)).contiguous().realize()
+    return P
+
+
 def add_dial(P):
     P["dial_l"] = Tensor.full((4,), math.log(0.2)).contiguous().realize(); P["dial_w"] = Tensor.zeros(D).contiguous().realize()
     P["dial_b"] = Tensor.zeros(1).contiguous().realize()
@@ -153,10 +163,13 @@ def forward(P, bt, ids, unit=False, ex=False):
     if GRAPH:                                                                     # THE ROUTED HEADS: attend only along factor-graph edges
         ig = ((A + Rz + Mz) > 0).cast(dtypes.float).transpose(1, 2)              # B x V x F
         if GPLACEBO: ig = ig @ bt[10]                                            # the placebo: var -> the wrong factors (same degrees)
+        if GNOISE: ig = bt[10]                                                   # the noisy graph (r% of each var's edges rewired)
         nbr = Tensor.cat(Tensor.cat(Tensor.eye(nv).reshape(1, nv, nv).expand(B, nv, nv), ig, dim=2),
                          Tensor.cat(ig.transpose(1, 2), Tensor.eye(nf).reshape(1, nf, nf).expand(B, nf, nf), dim=2), dim=1)   # B x L x L
         gm = (nbr > 0).where(0.0, -1e4).reshape(B, 1, L, L)
-        mask = mask + Tensor.cat(*([gm] * GRAPH + [gm * 0] * (NH - GRAPH)), dim=1)
+        if not GKNN: mask = mask + Tensor.cat(*([gm] * GRAPH + [gm * 0] * (NH - GRAPH)), dim=1)
+    if GKNN:                                                                      # the routed heads' rows are rebuilt each breath from state
+        eyeL = Tensor.eye(L).reshape(1, L, L); padk = pad.reshape(B, 1, L); knl = []
     out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []; xs = [x] if ex else []; sgl = []
     r0 = (x * x).sum(-1, keepdim=True).sqrt() if DIAL else None
     for b in range(NB):
@@ -168,7 +181,16 @@ def forward(P, bt, ids, unit=False, ex=False):
         if NOTE:                                                                  # THE NOTEBOOK: what is derived so far, and when
             kd = emb(P, known.cast(dtypes.int), "known", 2) + (kt.one_hot(NB + 1).cast(dtypes.float) @ Tk) * known.unsqueeze(-1)
             x = Tensor.cat(write(x[:, :nv], kd, unit, 1), x[:, nv:], dim=1)
-        x = write(x, mha(P, lnorm(P, x, "blocks.0.ln1"), mask), unit, 2)
+        if GKNN:                                                                  # KNN MESSAGE PASSING: neighbours by learned state similarity
+            y = lnorm(P, x, "blocks.0.ln1"); e = y @ P["knn_w"]; sim = (e @ e.transpose(1, 2)) * (1 / math.sqrt(KD))
+            sd = (padk | (eyeL > 0)).where(-1e9, sim.detach())                   # self and pads never compete for the k slots
+            rk = (sd.unsqueeze(2) > sd.unsqueeze(3)).cast(dtypes.float).sum(-1)  # B x L x L: how many keys beat key j for query i
+            sel = ((rk < GKNN) & (sd > -1e8)) | (eyeL > 0)
+            km = (sel.where(0.0, -1e4) + sim).reshape(B, 1, L, L)
+            if ex: knl.append(sel)
+            x = write(x, mha(P, y, mask + Tensor.cat(*([km] * GRAPH + [km * 0] * (NH - GRAPH)), dim=1)), unit, 2)
+        else:
+            x = write(x, mha(P, lnorm(P, x, "blocks.0.ln1"), mask), unit, 2)
         z = lnorm(P, x, "ln"); lg = (lin(P, z[:, :nv], "pq") @ lin(P, z[:, nv:], "pk").transpose(1, 2)) * (1 / math.sqrt(D))
         lg = pm.where(lg, -1e4); out.append(lg)
         p = lg.softmax(-1); ch = lg.argmax(-1); oh = ch.one_hot(nf).cast(dtypes.float)                    # THE SNAP (straight-through)
@@ -189,7 +211,7 @@ def forward(P, bt, ids, unit=False, ex=False):
             if ex: sgl.append(sg)
         if ex: nrm.append((x * x).sum(-1).sqrt()); xs.append(x)
     r = dict(lg=Tensor.stack(*out, dim=1))
-    if ex: r.update(known=kn, kt=ktl, nrm=nrm, valid=valid, xs=xs, sig=sgl)
+    if ex: r.update(known=kn, kt=ktl, nrm=nrm, valid=valid, xs=xs, sig=sgl, knn=knl if GKNN else [])
     return r
 
 
@@ -216,6 +238,16 @@ def pad_np(arrs, ids, bk=BUCKET):
         for i, f in enumerate(out[3]):
             r = np.nonzero(f)[0]; q = np.arange(NF); q[r] = PRNG.permutation(r); Pm[i, np.arange(NF), q] = 1.0
         out.append(Pm)
+    if GNOISE:                                                                   # per var: r% of its edges rewired to a factor it does not touch
+        ig = ((out[4] + out[5] + out[6]) > 0).transpose(0, 2, 1).astype(np.float32)
+        for i in range(ig.shape[0]):
+            rf = np.nonzero(out[3][i])[0]
+            for v in np.nonzero(out[1][i])[0]:
+                nb = np.nonzero(ig[i, v])[0]; free = np.setdiff1d(rf, nb)
+                for f in nb:
+                    if len(free) and PRNG.random() < GNOISE / 100:
+                        g = PRNG.choice(free); ig[i, v, f] = 0.0; ig[i, v, g] = 1.0; free = np.setdiff1d(free, [g])
+        out.append(ig)
     return out, np.pad(ids, [(0, 0), (0, NV - nv)])
 
 
@@ -402,6 +434,7 @@ if __name__ == "__main__":
         torch.manual_seed(SEED); rng = np.random.default_rng(SEED); tn = mk(); P = from_torch(tn.state_dict()); npar = sum(p.numel() for p in tn.parameters())
         if DAMP: P = add_damp(P); npar += D
         if DIAL: P = add_dial(P); npar += D + 5
+        if GKNN: P = add_knn(P); npar += D * KD
         SC = (lambda its: tg_score(P, its, UNIT)) if not TORCH_OK else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
         un = unused_params(tn, [train[int(i)] for i in np.random.default_rng(1).integers(0, len(train), 8)], np.random.default_rng(12345))
         tr = Trainer(P, RB.LR, UNIT, un)
