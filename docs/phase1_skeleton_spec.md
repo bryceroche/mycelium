@@ -59119,7 +59119,7 @@ decides whether the lift is the graph or the sparsity.
   forms: routed heads on the unitary breath; KNN routing in the Tree's centroid space). SPARSITY closes the edge reading of this form
   and names the next: a sparsity-matched learned top-k.
 
-### 2026-11-14 13:06 -- GRAPH PLACEBO VERDICT: EDGES. The lift is the factor graph, not the sparsity (G8 - G8P +0.272)
+### 2026-11-14 13:05 -- GRAPH PLACEBO VERDICT: EDGES. The lift is the factor graph, not the sparsity (G8 - G8P +0.272)
 
 Artifact: `.cache/rel_dsl_gplacebo_verdict.txt` (`scripts/rel_dsl_gplacebo_verdict.py`; chain gplacebo 12:50-13:05; word given 12:49).
 G8P tinygrad-scored by construction (agree None, as designed).
