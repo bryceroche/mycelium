@@ -31,10 +31,12 @@ assert ARM in ("NOMLP", "NOTEBOOK"), f"arm {ARM} not ported"
 assert RB.ARM == ARM and RO.ARM == ARM and RO.SPLIT == "depth2" and RB.NB == int(os.environ["RD_NB"]) and RB.COV == COV, "config mismatch"
 D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
+DIAL = int(os.environ.get("RD_DIAL", "0"))     # (DIAL, ledger 11-13 19:09) the confidence dial: radius = the only step-size road
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{'R' if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
+assert not DIAL or (UNIT and not SCHED), "DIAL is a form of the unitary breath"
 if SCHED:                                        # n = the same-arm control's banked seed-mean norm census (norm after breath k), fixed constants
     _n = np.mean([json.load(open(f".cache/rel_dsl_TG{ARM}_depth2c{COV:g}_s{s}.json"))["norm_census"]["all"] for s in (0, 1)], axis=0)
     G = [1.0] + [float(_n[0] / _n[b - 1]) for b in range(1, NB)]
@@ -82,6 +84,21 @@ def add_damp(P):
     return P
 
 
+def dial_turn(x, d, g, r0):
+    """(DIAL) the write keeps only its direction u = dp / |dp|; the token turns by theta = g r0 / |x| along u (exp map, norm preserved):
+    a token stands still only by growing its radius. Rows with no tangent write (|dp| ~ 0) do not turn."""
+    xn = (x * x).sum(-1, keepdim=True).sqrt().maximum(1e-6); xh = x / xn
+    dp = d - (d * xh).sum(-1, keepdim=True) * xh; dn = (dp * dp).sum(-1, keepdim=True).sqrt()
+    th = g * r0 / xn * (dn > 1e-6).cast(dtypes.float); u = dp / dn.maximum(1e-6)
+    return x - 2 * (th * 0.5).sin() ** 2 * x + th.sin() * xn * u
+
+
+def add_dial(P):
+    P["dial_l"] = Tensor.full((4,), math.log(0.2)).contiguous().realize(); P["dial_w"] = Tensor.zeros(D).contiguous().realize()
+    P["dial_b"] = Tensor.zeros(1).contiguous().realize()
+    return P
+
+
 def _write(x, d, unit):
     return expmap(x, d) if unit else x + d
 
@@ -123,29 +140,35 @@ def forward(P, bt, ids, unit=False, ex=False):
         Fz = emb(P, fo, "op", 4) + lin(P, A @ S, "w_arg", False) + lin(P, Rz @ S, "w_res", False) + lin(P, Mz @ S, "w_min", False) + P["kind.weight"][1]
         mask = pad[:, None, None, :].where(-1e4, 0.0)
     x = Tensor.cat(V, Fz, dim=1); valid = pad.logical_not().cast(dtypes.float)
-    out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []; xs = [x] if ex else []
+    out, kn, ktl, nrm = [], [], [], [(x * x).sum(-1).sqrt()] if ex else []; xs = [x] if ex else []; sgl = []
+    r0 = (x * x).sum(-1, keepdim=True).sqrt() if DIAL else None
     for b in range(NB):
         if DAMP: x = damp(P, x)
-        write = (lambda x_, d_, u_, g_=G[b]: _write(x_, d_ * g_, u_)) if SCHED and b > 0 else _write
-        x = write(x, lin(P, P["bst"][b], "bproj").reshape(1, 1, D), unit)
+        if DIAL: write = lambda x_, d_, u_, k_: dial_turn(x_, d_, P["dial_l"][k_].exp(), r0 if x_.shape[1] == r0.shape[1] else r0[:, :nv])
+        elif SCHED and b > 0: write = lambda x_, d_, u_, k_, g_=G[b]: _write(x_, d_ * g_, u_)
+        else: write = lambda x_, d_, u_, k_: _write(x_, d_, u_)
+        x = write(x, lin(P, P["bst"][b], "bproj").reshape(1, 1, D), unit, 0)
         if NOTE:                                                                  # THE NOTEBOOK: what is derived so far, and when
             kd = emb(P, known.cast(dtypes.int), "known", 2) + (kt.one_hot(NB + 1).cast(dtypes.float) @ Tk) * known.unsqueeze(-1)
-            x = Tensor.cat(write(x[:, :nv], kd, unit), x[:, nv:], dim=1)
-        x = write(x, mha(P, lnorm(P, x, "blocks.0.ln1"), mask), unit)
+            x = Tensor.cat(write(x[:, :nv], kd, unit, 1), x[:, nv:], dim=1)
+        x = write(x, mha(P, lnorm(P, x, "blocks.0.ln1"), mask), unit, 2)
         z = lnorm(P, x, "ln"); lg = (lin(P, z[:, :nv], "pq") @ lin(P, z[:, nv:], "pk").transpose(1, 2)) * (1 / math.sqrt(D))
         lg = pm.where(lg, -1e4); out.append(lg)
         p = lg.softmax(-1); ch = lg.argmax(-1); oh = ch.one_hot(nf).cast(dtypes.float)                    # THE SNAP (straight-through)
         st = (oh + (p - p.detach())) * dv.cast(dtypes.float).unsqueeze(-1)
-        x = Tensor.cat(write(x[:, :nv], lin(P, st @ x[:, nv:], "snap"), unit), x[:, nv:], dim=1)
+        x = Tensor.cat(write(x[:, :nv], lin(P, st @ x[:, nv:], "snap"), unit, 3), x[:, nv:], dim=1)
         if NOTE:                                                                  # fire: the chosen factor's other vars all known
             unk = 1 - known; miss = (inc.transpose(1, 2) @ unk.unsqueeze(-1)).squeeze(-1)
             missc = (oh * miss.unsqueeze(1)).sum(-1) - unk
             fire = dv & (known == 0) & (missc <= 0.5)
             kt = fire.where(b + 1, kt); known = fire.where(1.0, known)
             if ex: kn.append(known); ktl.append(kt)
+        if DIAL:                                                                  # THE DIAL: radius x exp(sigma) per token
+            sg = (x.layernorm(axis=-1, eps=1e-5) @ P["dial_w"] + P["dial_b"]).tanh(); x = x * sg.exp().unsqueeze(-1)
+            if ex: sgl.append(sg)
         if ex: nrm.append((x * x).sum(-1).sqrt()); xs.append(x)
     r = dict(lg=Tensor.stack(*out, dim=1))
-    if ex: r.update(known=kn, kt=ktl, nrm=nrm, valid=valid, xs=xs)
+    if ex: r.update(known=kn, kt=ktl, nrm=nrm, valid=valid, xs=xs, sig=sgl)
     return r
 
 
@@ -260,6 +283,22 @@ def pole_census(P, items, unit):
     return out
 
 
+def dial_census(P, items):
+    """(DIAL) on the census batch: sigma per breath (quartiles over real tokens), the final log-radius log(|x| / r0) spread, the learned
+    site gains, and R-C: the AUROC of the derived vars' final log-radius for "the last breath's pick is a gold target" vs not"""
+    rng = np.random.default_rng(777); its = [items[i % len(items)] for i in range(256)]
+    arrs, ids = make_batch(its, rng); bt, idt = tens(arrs, ids); r = forward(P, bt, idt, True, ex=True)
+    val = r["valid"].numpy() > 0; nv = arrs[0].shape[1]
+    sig = [np.quantile(s_.numpy()[val], [0.25, 0.5, 0.75]).tolist() for s_ in r["sig"]]
+    lr = np.log(r["nrm"][-1].numpy() / r["nrm"][0].numpy())
+    lg = r["lg"].numpy()[:, -1]; pick = lg.argmax(-1); tg, dv = arrs[8].astype(bool), arrs[9].astype(bool)
+    ok = np.take_along_axis(tg[:, :nv], pick[:, :nv, None], -1)[..., 0][dv[:, :nv]]; sc = lr[:, :nv][dv[:, :nv]]
+    rk = np.argsort(np.argsort(sc)) + 1; npos, nneg = int(ok.sum()), int((~ok).sum())
+    auc = float((rk[ok].sum() - npos * (npos + 1) / 2) / (npos * nneg)) if npos and nneg else float("nan")
+    return dict(sigma_q=sig, logr_q=np.quantile(lr[val], [0.05, 0.25, 0.5, 0.75, 0.95]).tolist(), gains=np.exp(P["dial_l"].numpy()).tolist(),
+                auroc=auc, n_pos=npos, n_neg=nneg)
+
+
 def tg_score(P, items, unit, seed=0):
     """RB.score on the tinygrad forward (same batches: RB.batch with the same rng; the last breath's argmax plan, the executor grades);
     needed for DAMP (the torch net has no poles); checked equal to RB.score on the control path"""
@@ -336,6 +375,7 @@ if __name__ == "__main__":
     elif MODE == "train":
         torch.manual_seed(SEED); rng = np.random.default_rng(SEED); tn = mk(); P = from_torch(tn.state_dict()); npar = sum(p.numel() for p in tn.parameters())
         if DAMP: P = add_damp(P); npar += D
+        if DIAL: P = add_dial(P); npar += D + 5
         SC = (lambda its: tg_score(P, its, UNIT)) if DAMP or UNIT else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
         un = unused_params(tn, [train[int(i)] for i in np.random.default_rng(1).integers(0, len(train), 8)], np.random.default_rng(12345))
         tr = Trainer(P, RB.LR, UNIT, un)
@@ -361,7 +401,8 @@ if __name__ == "__main__":
         json.dump(dict(tag=TAG, arm=ARM, seed=SEED, split="depth2", n_train=len(train), params=npar, steps=STEPS, curve=curve,
                        **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
                        deep_by_depth=bydepth, cov=COV, tree=None, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep)),
-                       engine="tinygrad", unit=UNIT, damp=DAMP, norm_census=nc, s_per_step=sps, pole=pc, tg_score_agree=agree, deep_per_torch=dpt), open(f".cache/rel_dsl_{TAG}.json", "w"))
+                       engine="tinygrad", unit=UNIT, damp=DAMP, norm_census=nc, s_per_step=sps, pole=pc, tg_score_agree=agree, deep_per_torch=dpt,
+                       dial=DIAL, dial_census=dial_census(P, deep) if DIAL else None), open(f".cache/rel_dsl_{TAG}.json", "w"))
         print(f"[tg] {TAG} FINAL SHALLOW {S['shallow'].mean():.3f} MID {S['mid'].mean():.3f} DEEP {S['deep'].mean():.3f} | by depth "
               + " ".join(f"d{d} {v:.3f}" for d, v in bydepth.items()) + " | norms(all) " + " ".join(f"{x:.2f}" for x in nc["all"]), flush=True)
         print(f"[tg] {TAG} POLE R2 {pc['r2']:.3f} | |lambda| q25/50/75 " + "/".join(f"{x:.3f}" for x in pc["q"]) + f" | inside {pc['inside']:.3f} on {pc['on']:.3f} "
