@@ -58856,3 +58856,18 @@ angular effect ~ |write| / |x|; growing |x| cools the late breaths), and U2 lost
     rotation line is back). S-REC NONE on both = rotation-only writes lose something a schedule does not restore. A FAIL closes the
     uniform-schedule form; the named next form is a per-token sigma (radius = confidence) read from the state.
   - Predictions: S-REC RECOVERS NOMLP ~40%, NOTEBOOK ~45%; S-PAR EQUIVALENT-or-CEILING ~25% per arm.
+
+### 2026-11-13 16:15 -- RETRACTION: the UNITARY verdict (13:20) was scored on the wrong forward; U1 / U2 struck pending a rescore
+
+Found reading the su chain: `rel_dsl_tg.py` scores with RB.score (the TORCH net, copied weights) unless DAMP; the torch net
+(`rel_dsl_organs.make_net`) has no unit breath, so every UNIT arm's SHALLOW / MID / DEEP was the unit-trained weights run through an
+ADDITIVE breath. The `tg-score agree` witness shows it: 1.0 on the controls, 0.862 (NOMLPU s0) / 0.764 (NOTEBOOKU s0) / 0.921-0.926
+(NOMLPS) on the unit arms. Training, norms, POLE and the STEP-A angles use the tinygrad forward and stand. DAMP scored on tinygrad (stands).
+**Struck:** U1 VOID, U2 HURTS (-0.175), the U rows of the 13:20 table, and "the second rotation-only form closed". My error: the DAMP patch
+gave DAMP the tinygrad scorer because "the torch net has no poles" and I did not ask the same of UNIT.
+**The repair (inference + two reruns; bars unchanged, re-read by the 12:15 / 15:12 frames on corrected scores):**
+- Root fix after the su chain ends (never edit what a running chain re-reads): the scorer is the tinygrad forward whenever UNIT or DAMP.
+- Rescore from the saved checkpoints with the tinygrad scorer: U s0 (both arms, the `_step` reruns), SU s0/s1 (both arms). Self-check:
+  the `_step` controls' tinygrad rescore must equal their banked per-item reads.
+- U s1 has no checkpoint: rerun NOMLPU s1 and NOTEBOOKU s1 (same seed; witness = the torch-scored per-item reads reproduce the banked).
+- Then U1 / U2 and S-REC / S-PAR are read on corrected numbers. STEP-R and STEP-A are unaffected and bank with them.
