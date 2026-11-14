@@ -5,6 +5,13 @@
 **READ FIRST:** CLAUDE.md → this block → the ledger (docs/phase1_skeleton_spec.md) from "2026-10-14 (~16:00) — THE DEPTH PROBE'S
 SAVED PASS IS A SMOKE" to the end → MEMORY.md's board. Reads table: `.venv/bin/python3 scripts/reads.py table wildhold`.
 
+## ★ CARVED 2026-11-14: THE GRAPH-ROUTING RULING (read first; CLAUDE.md §4, ledger 11-14 11:51 / 13:05)
+- Attention routed along the factor graph lifts the breath's deep transfer **+0.137 on two seeds** (NOMLP DEEP 0.860/0.856 ->
+  0.993/0.998, trained on depth <= 2, read at depth 5-9); half the heads routed buys the full lift; **placebo-attributed**: a
+  relabelled graph with identical degrees FALLS to 0.733/0.714 (the edges, not the sparsity). The engine had been ignoring the graph
+  (own-factor attention below uniform). Form: `RD_GRAPH=h` (+ `RD_GPLACEBO=1`) in `scripts/rel_dsl_tg.py`.
+- Open half: the routing graph is GIVEN by the fixture. The queue (word given 11-14) reads how much survives a discovered one.
+
 ## NEW DIRECTION (2026-10-29, two rulings — read before anything below; the 10-15 handoff state follows)
 - **NO MLP, EVER** (except the frozen Llama trunk as teacher, and MLP/vanilla arms as measurement controls). Memory = the SQLite
   tree; binding = phase binding; composition = attention. CLAUDE.md §4; ledger 10-29.

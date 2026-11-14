@@ -110,6 +110,17 @@ pure prose at 340 epochs is poison −243 — tune between).
   reasoning state); the next breath reads it. Evidence: NOTEBOOK 0.994 vs VANILLA
   0.724 at depth 5-9 from depth <= 2 training (rel-DSL). Definition:
   `docs/breathing_transformer.md`.
+- **THE GRAPH-ROUTING RULING (2026-11-14, carved in stone — the campaign's largest single lift)**: attention in the
+  breath is ROUTED ALONG THE FACTOR GRAPH — routed heads attend only to factor-graph neighbours (a var: itself + its incident
+  factors; a factor: itself + its incident vars; `RD_GRAPH=h` in `scripts/rel_dsl_tg.py`), so every breath is one round of
+  message passing (the June engine's membership masks, re-earned). Evidence (rel-DSL, depth <= 2 training, DEEP = depth 5-9):
+  NOMLP 0.860/0.856 -> **G8 0.993/0.998 (+0.137, two seeds, paired SE 0.011)**; G4 (half the heads) +0.133 -- the free heads
+  did NOT out-vote the routed ones; **PLACEBO-ATTRIBUTED**: the same heads routed along a relabelled graph (identical degrees,
+  wrong partners) 0.733/0.714 (-0.135 vs control; true - placebo +0.272) = the lift is the EDGES, not the sparsity. Before the
+  routing, attention on a var's own factors was BELOW uniform (0.044-0.063 vs 0.076: the engine ignored the graph). On the
+  NOTEBOOK arm EQUIVALENT (the notebook already carries knownness along the edges). Scope: the routing graph is GIVEN by the
+  fixture; carrying it to GSM8K needs the graph DISCOVERED (the parser's pointers) -- the open half of "discover the structure,
+  then solve over it." Wrong edges are worse than none. Ledger 11-14 11:51 / 13:05.
 - **THE LLAMA RETIREMENT RULING (2026-10-31)**: Llama is retired from the research line: no new Llama forward passes. The
   reader is the MLP-free student NMDB@30k (`.cache/distill_reader_nmdb768x8_s30000.safetensors`; 22.0M, attention + the Tree's
   DB row; frozen-head wild swap 0.3637 ≥ 0.3593 PASS); benches read ITS states (GSM8K: `RD_STATES=gsmb_student_states.npy`).
@@ -233,7 +244,8 @@ Depth-PARALLEL deduction scales (K_min ≈ D/4). On clean CSPs symbolic search
 dominates (neural-guided clean-CSP search CLOSED — two-death-mode law). The
 deducer's Alternator role (differentiable critic / format-definer / soft-graph
 solver) and the Poincaré tiers remain spec-stage; the perceiver is retired as
-core, sanctioned only as monitor/segmenter. Details: archived CLAUDE
+core, sanctioned only as monitor/segmenter. **Its membership masks are RE-EARNED in the BT (THE GRAPH-ROUTING
+RULING, 11-14: +0.137 DEEP, placebo-attributed).** Details: archived CLAUDE
 (`docs/archive/CLAUDE_2026_07_04.md`) and `docs/state_of_mycelium.md`.
 
 ## 7. Process discipline
@@ -310,6 +322,7 @@ it governs what gets BUILT; bars govern what gets CLAIMED; a FAIL closes a form,
 | BIRCH branches plateau | M-CEIL M3 FAIL; plateau visible at T 0.1 | shrinkage n/(n+κ) |
 | every point on a correct chain updates the Tree | custody: the answer key gates permanent writes | wild entities PROVISIONAL until a correct chain |
 | overfit vs regularize | not a conflict | overfit the TREE; regularize the READER |
+| LLMs have a solver inside (message passing) | GRAPH-ROUTING RULING (11-14): +0.137, placebo EDGES | breath heads routed along the factor graph; next: a DISCOVERED routing graph |
 
 **Data (10-30, standing):** GSM8K text, graded on intermediate gold answers; build something too small to memorize GSM8K that pulls from
 the Tree by binding; train and test on the same set, graded honestly by the counterfactual fixture. **Platform (11-03/04):** 8M is THE
@@ -336,7 +349,7 @@ contradiction may break a branch; soft evidence only ever biases (neural propose
 | **Tree levels / growth** | shrinkage blend n/(n+κ); Welford mean/var | hard deepest-node backoff; BIRCH child creation | κ* = 0.5 (the data chose ~hard) |
 | **Zoom** | p(op)·p(type given op) | fall back to the op-level mask | BT3N: clock + zoom carry 0.45 of BT3's gain |
 | **Binding (T256)** | free phase angles | codebook cleanup | U3 (design) |
-| **Factor graph / solving** | belief propagation; soft-violation energy | the CSP solver (GAC, forced-only commits) | June engine = learned BP; MCBP positive; MCTS/PUCT NEGATIVE on clean CSPs (CLOSED) -- MCTS/beam belongs on the PARSE side (choosing among the BT's top proposals), the solver as reward + certifier |
+| **Factor graph / solving** | belief propagation; soft-violation energy | the CSP solver (GAC, forced-only commits) | June engine = learned BP; **GRAPH-ROUTING RULING (11-14): heads routed along the factor graph +0.137 DEEP, placebo-attributed (EDGES)**; MCBP positive; MCTS/PUCT NEGATIVE on clean CSPs (CLOSED) -- MCTS/beam belongs on the PARSE side (choosing among the BT's top proposals), the solver as reward + certifier |
 | **CSP feedback between cycles** | dynamic attention-mask biases (built: the consumed-marks bias `pc × cnt`) | circuit breaker: one-hot toggle cutting beam branches | breaker fires only on a proof (UNSAT) |
 | **Search** | beam mass | top-k prune | the Nazaré coupling |
 | **Numbers** | magnitude phases (numeral θ) | exact executor values; certificates written back, never raw values | alternation ruling |
