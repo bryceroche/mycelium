@@ -59162,3 +59162,38 @@ the true edges kept; K3 picks self + 3 per real row, knn_w gets a gradient; UG8 
   (`scripts/routing_reads.py`). Predictions: GK HELPS ~25%; DISCOVERS ~40%. A FAIL closes this KNN form; named next: KNN over Tree
   centroids, or graph distillation (supervise the KNN picks with the given edges during training, test without them).
 - Beside: COMM (mass on the true own factors) on all eight checkpoints. Verdict: `scripts/rel_dsl_gqueue_verdict.py`.
+
+### 2026-11-14 14:36 -- THE ROUTING QUEUE VERDICTS: GU HELPS +0.154; GN10 HURTS -0.038; GN30 VOID (C0); GK EQUIVALENT +0.010 (the form shut its own road); DISCOVERS NO
+
+Artifact: `.cache/rel_dsl_gqueue_verdict.txt` (`scripts/rel_dsl_gqueue_verdict.py`; chain gqueue 13:17-14:25). All arms tinygrad-scored by
+construction (agree None, as designed).
+| arm (NOMLP cov 0.25) | SHALLOW s0/s1 | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) |
+|---|---|---|---|
+| additive / U (17:20) | 0.997/1.000 ; 1.000/1.000 | 0.860/0.856 ; 0.864/0.823 | 0.877/0.848/0.764/0.679/0.500 ; 0.869/0.839/0.671/0.607/0.625 |
+| G8 (11:51) | 1.000/1.000 | 0.993/0.998 | 0.999/0.998/1.000/0.821/0.875 |
+| **UG8** (routed, unitary breath) | 1.000/1.000 | **0.999/0.996** | 0.999/1.000/0.993/0.929/0.875 |
+| G8N10 (10% of edges rewired) | 0.987/0.982 | 0.824/0.816 | 0.843/0.814/0.657/0.714/0.500 |
+| G8N30 (30% rewired) | 0.919/0.924 | 0.706/0.725 | 0.745/0.684/0.593/0.536/0.250 |
+| G8K3 (KNN by state, k 3) | 0.997/0.995 | 0.868/0.867 | 0.890/0.852/0.786/0.571/0.500 |
+- **GU: HELPS +0.154** (seeds +0.135 / +0.173) over the unitary breath; UG8 - G8 +0.002 CEILING. The routing ruling holds on the
+  unitary breath too (norm fixed at 29-30 through all ten breaths); UG8 is the best d8 read on the fixture (0.929). Prediction HELPS
+  ~80% -- HIT.
+- **GN10: HURTS -0.038** (seeds -0.036 / -0.040; retention -0.28): rewiring 10% of the edges loses ALL of the +0.137 and lands below
+  the free control. **GN30: VOID** (C0 SHALLOW 0.919 / 0.924 < 0.95; DEEP -0.143). Predictions GN10 KEEPS ~85% / GN30 ~55% -- both
+  MISSED badly. Reading: with all eight heads routed there is no bypass, so one wrong edge on a chain cuts the knownness it carries
+  (~2.3 edges per var: at 10% about a fifth of the vars carry a wrong edge, and a depth-7 chain crosses many). **The routed form is
+  brittle: wrong edges are worse than none (the placebo, 13:05) and a few wrong edges are already worse than none.** Scope: G8, no free
+  heads, noise fresh per read in training AND test. Named next form: GN on G4 (half the heads free -- G4 bought the full lift at
+  11:51; the free heads may be the bypass that absorbs the noise).
+- **GK: EQUIVALENT +0.010** (seeds +0.008 / +0.011); G8K3 - G8 -0.128 HURTS. **DISCOVERS: NO** (last-breath true-neighbour share
+  0.252 / 0.255 vs chance 0.091 = 2.77x / 2.80x, under the 3x bar). AUTOPSY (`scripts/knn_self_read.py`, 14:30): the derived vars'
+  routed attention is 0.98 on SELF and 0.000 on factors at the last breath (COMM 0.000 is real, not an instrument fault: the derived
+  vars' own factors ARE among their picks 0.29-0.31 of the time, the attention just never goes there). The form's gradient road -- the
+  learned similarity added to the routed scores -- contains the self term |e|^2, always the row max, so the model could turn message
+  passing OFF; it did (the mandatory-road law, a gain voted down). **This closes THIS KNN form (a bias road with a self term), not KNN
+  routing.** Named next form: KNN picks with no similarity in the scores (straight-through or the given-edge distillation road) and
+  self kept out of the bias.
+- Census: COMM (mass on the true own factors) UG8 0.407 / 0.471; G8N10 0.421 / 0.449; G8N30 0.305 / 0.286; G8K3 0.000 / 0.000.
+- **Banked together with 11:51 / 13:05:** routing along the factor graph is the largest lift on the fixture and holds on both breaths
+  (additive +0.137, unitary +0.154), but only along the TRUE graph: relabelled -0.135, 10% rewired -0.038. For GSM8K the discovered graph
+  must be near-exact, or the routed form needs a bypass that tolerates its errors.
