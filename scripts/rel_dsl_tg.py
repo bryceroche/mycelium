@@ -336,7 +336,7 @@ if __name__ == "__main__":
     elif MODE == "train":
         torch.manual_seed(SEED); rng = np.random.default_rng(SEED); tn = mk(); P = from_torch(tn.state_dict()); npar = sum(p.numel() for p in tn.parameters())
         if DAMP: P = add_damp(P); npar += D
-        SC = (lambda its: tg_score(P, its, UNIT)) if DAMP else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
+        SC = (lambda its: tg_score(P, its, UNIT)) if DAMP or UNIT else (lambda its: (to_torch(P, tn), tn.eval(), RB.score(tn, its), tn.train())[2])
         un = unused_params(tn, [train[int(i)] for i in np.random.default_rng(1).integers(0, len(train), 8)], np.random.default_rng(12345))
         tr = Trainer(P, RB.LR, UNIT, un)
         rp = lambda its: float(np.mean([RB.RC.execute(t["facs"], RB.RC.result_plan(t), t["query"]) == t["gold"] for t in its]))
@@ -353,14 +353,15 @@ if __name__ == "__main__":
         sps = tstep / STEPS; steady = (tstep - t20) / (STEPS - 20) if t20 is not None and STEPS > 20 else float("nan")
         print(f"[tg] {TAG} train s/step {sps:.3f} (steps only, incl. JIT compiles over buckets {sorted(tr.jits)}); steady (21..{STEPS}) {steady:.3f}", flush=True)
         S = {k: SC(v) for k, v in (("shallow", shallow), ("mid", mid), ("deep", deep))}
-        agree = None if DAMP else float((tg_score(P, deep, UNIT) == S["deep"]).mean())   # the tinygrad scorer's witness on the control path
+        agree = None if DAMP or UNIT else float((tg_score(P, deep, UNIT) == S["deep"]).mean())   # the tinygrad scorer's witness on the control path
+        dpt = [int(x) for x in (to_torch(P, tn), tn.eval(), RB.score(tn, deep))[2]] if UNIT else None   # torch-scored: the pre-fix witness only
         pc = pole_census(P, deep, UNIT)
         bydepth = {d: float(np.mean([o for o, t in zip(S["deep"], deep) if t["depth"] == d])) for d in range(5, 10) if any(t["depth"] == d for t in deep)}
         nc = census(P, deep, UNIT); np.savez(f".cache/rel_dsl_{TAG}_P.npz", **{k: v.numpy() for k, v in P.items()})
         json.dump(dict(tag=TAG, arm=ARM, seed=SEED, split="depth2", n_train=len(train), params=npar, steps=STEPS, curve=curve,
                        **{k: float(v.mean()) for k, v in S.items()}, **{k + "_per": [int(x) for x in v] for k, v in S.items()},
                        deep_by_depth=bydepth, cov=COV, tree=None, result=dict(shallow=rp(shallow), mid=rp(mid), deep=rp(deep)),
-                       engine="tinygrad", unit=UNIT, damp=DAMP, norm_census=nc, s_per_step=sps, pole=pc, tg_score_agree=agree), open(f".cache/rel_dsl_{TAG}.json", "w"))
+                       engine="tinygrad", unit=UNIT, damp=DAMP, norm_census=nc, s_per_step=sps, pole=pc, tg_score_agree=agree, deep_per_torch=dpt), open(f".cache/rel_dsl_{TAG}.json", "w"))
         print(f"[tg] {TAG} FINAL SHALLOW {S['shallow'].mean():.3f} MID {S['mid'].mean():.3f} DEEP {S['deep'].mean():.3f} | by depth "
               + " ".join(f"d{d} {v:.3f}" for d, v in bydepth.items()) + " | norms(all) " + " ".join(f"{x:.2f}" for x in nc["all"]), flush=True)
         print(f"[tg] {TAG} POLE R2 {pc['r2']:.3f} | |lambda| q25/50/75 " + "/".join(f"{x:.3f}" for x in pc["q"]) + f" | inside {pc['inside']:.3f} on {pc['on']:.3f} "

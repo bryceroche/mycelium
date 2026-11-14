@@ -58871,3 +58871,41 @@ gave DAMP the tinygrad scorer because "the torch net has no poles" and I did not
   the `_step` controls' tinygrad rescore must equal their banked per-item reads.
 - U s1 has no checkpoint: rerun NOMLPU s1 and NOTEBOOKU s1 (same seed; witness = the torch-scored per-item reads reproduce the banked).
 - Then U1 / U2 and S-REC / S-PAR are read on corrected numbers. STEP-R and STEP-A are unaffected and bank with them.
+
+### 2026-11-13 17:20 -- CORRECTED READS: U1 EQUIVALENT, U2 CEILING (the unitary breath is at PARITY); STEP-R LINEAR; STEP-A COOLS; SU: S-REC NONE / HURTS, S-PAR EQUIVALENT x2
+
+Artifact: `.cache/rel_dsl_su_verdict2.txt` (`scripts/rel_dsl_su_verdict2.py`; chains su 15:15-16:33, su2 16:16-16:55). Supersedes
+`.cache/rel_dsl_su_verdict.txt` (the su chain's own verdict, torch-scored on the unit arms: void). Scorer fix applied 16:33
+(`scripts/patches/rel_dsl_unit_score.py`: tinygrad scorer whenever UNIT or DAMP).
+- **WITNESS: PASS** (8/8 exact): the four `_step` reruns and the two U s1 reruns reproduce the banked per-item DEEP reads; the
+  control checkpoints' tinygrad rescore equals the banked control reads on both arms (the scorer self-check).
+| arm (DEEP s0/s1, tinygrad-scored) | SHALLOW | MID | DEEP | by depth d5/d6/d7/d8/d9 (seed means) |
+|---|---|---|---|---|
+| NOMLP (cov 0.25) | 0.997 / 1.000 | 0.955 / 0.952 | 0.860 / 0.856 | 0.877 / 0.848 / 0.764 / 0.679 / 0.500 |
+| NOMLP+U | 1.000 / 1.000 | 0.962 / 0.939 | 0.864 / 0.823 | 0.869 / 0.839 / 0.671 / 0.607 / 0.625 |
+| NOMLP+SU | 0.997 / 0.995 | 0.954 / 0.942 | 0.860 / 0.844 | 0.876 / 0.825 / 0.757 / 0.714 / 0.500 |
+| NOTEBOOK (cov 0.0625) | 1.000 / 1.000 | 0.997 / 0.995 | 0.973 / 0.983 | 0.990 / 0.961 / 0.943 / 0.893 / 0.625 |
+| NOTEBOOK+U | 0.997 / 0.997 | 0.996 / 0.997 | 0.983 / 0.996 | 0.996 / 0.989 / 0.964 / 0.857 / 0.875 |
+| NOTEBOOK+SU | 0.997 / 1.000 | 0.989 / 0.993 | 0.947 / 0.985 | 0.977 / 0.952 / 0.950 / 0.821 / 0.625 |
+- **U1 (re-read, 12:15 frame): EQUIVALENT** (DEEP -0.015; seeds +0.004 / -0.033; paired SE 0.011 / 0.011). C0 holds (SHALLOW 1.000).
+- **U2 (re-read): CEILING** (DEEP +0.012; seeds +0.010 / +0.013; paired SE 0.006 / 0.005). Beside, no claim: same sign both seeds.
+- **The unitary breath is at parity with the additive one on this fixture** -- every token's norm held exactly fixed (drift ~1e-6)
+  over ten breaths, no loss of depth. The 13:20 "HURTS -0.175" was the scorer. The rotation line ("long chains without degrading")
+  is OPEN, not closed; SPHR (11-05, GSM8K) remains the one rotation-only form closed. Predictions (12:15): U1 EQUIVALENT ~50% -- hit;
+  U2 EQUIVALENT ~60% -- CEILING (EQUIVALENT-adjacent).
+- **STEP-R: LINEAR** (linear R^2 0.996-0.999 vs geometric 0.966-0.973, 4/4; norm increments ~15-23 per breath). Steps ~ 1/b: the
+  harmonic schedule. Prediction LINEAR ~90% (disclosed seen): hit.
+- **STEP-A: COOLS** (control angle 9->10 / 1->2: NOMLP 0.182, NOTEBOOK 0.293; first breath 44 / 34 deg, last 4.5 / 6.0 deg).
+  Beside: **the unitary arms cool too, with no norm growth** (ratios 0.424 / 0.348; last-breath 11.5 / 11.0 deg): the U breath learns
+  its own cooling in the write size, shallower than the control's. Prediction COOLS ~70%: hit.
+- **SU:** C0 holds both arms. **S-REC NOMLP NONE** (+0.009; seeds -0.004 / +0.021); **S-REC NOTEBOOK HURTS** (-0.023; seeds -0.035 /
+  -0.011). **S-PAR NOMLP EQUIVALENT** (-0.006); **S-PAR NOTEBOOK EQUIVALENT** (-0.012; seeds -0.025 / +0.002). SU s0 angles fall
+  53.6 -> 3.4 (NOMLP) / 47.4 -> 3.7 (NOTEBOOK): the imposed schedule over-cools relative to what U chose (ratio ~0.09 vs ~0.4).
+  Predictions: S-REC RECOVERS ~40/45% -- miss both; S-PAR EQUIVALENT-or-CEILING ~25% -- hit both.
+- **Reading:** the 15:12 hypothesis ("U lost the schedule") rested on the struck U2; its premise is false -- U never lost, and it
+  already cools on its own. What survives: the trained breath anneals (STEP-A), harmonically in the additive arm (STEP-R); under
+  the unit constraint it anneals through the write size instead of the norm. A fixed external schedule copied from the additive arm
+  does not help and over-cools. The confidence dial (radius = confidence) has not been tested: every form today (U, DAMP, SU) acted
+  uniformly on all tokens.
+- The fixture is saturating: U, DAMP and SU all read EQUIVALENT / CEILING at these coverages. Named next forms (not pinned): a harder
+  coverage for NOTEBOOK (below 0.0625) so the frame can separate; per-token sigma (radius = confidence) on the unitary breath.
