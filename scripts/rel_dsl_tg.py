@@ -35,16 +35,18 @@ DIAL = int(os.environ.get("RD_DIAL", "0"))     # (DIAL, ledger 11-13 19:09) the 
 GNOISE = int(os.environ.get("RD_GNOISE", "0"))     # (ROUTING QUEUE, ledger 11-14) percent of each var's routing edges rewired
 GKNN = int(os.environ.get("RD_GKNN", "0"))         # (ROUTING QUEUE) routed heads by learned-state KNN, k neighbours (no graph in the mask)
 KD = 32
+GKNN_ST = int(os.environ.get("RD_GKNN_ST", "0"))   # (GK-ST, ledger 11-14) the similarity in the scores as straight-through only, self excluded
 GPLACEBO = int(os.environ.get("RD_GPLACEBO", "0"))   # (GRAPH PLACEBO, ledger 11-14) route along a relabelled graph
 GRAPH = int(os.environ.get("RD_GRAPH", "0"))   # (GRAPH, ledger 11-14) heads 0..GRAPH-1 routed by the factor graph
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'K{GKNN}' if GKNN else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'K{GKNN}' if GKNN else ''}{'S' if GKNN_ST else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
 assert 0 <= GRAPH <= NH, "RD_GRAPH = the number of routed heads"
 assert not GPLACEBO or GRAPH, "GPLACEBO is a form of the routed heads"
 assert not (GNOISE or GKNN) or GRAPH, "GNOISE / GKNN are forms of the routed heads"
 assert (GPLACEBO > 0) + (GNOISE > 0) + (GKNN > 0) <= 1, "one routing form at a time"
+assert not GKNN_ST or GKNN, "GKNN_ST is a form of the KNN heads"
 PRNG = np.random.default_rng(1000 + RB.SEED)       # the placebo's own stream (the item / symbol rng is untouched)
 TORCH_OK = not (UNIT or DAMP or GRAPH)          # the torch net has none of these: every other form is scored on the tinygrad forward
 assert not DIAL or (UNIT and not SCHED), "DIAL is a form of the unitary breath"
@@ -186,7 +188,7 @@ def forward(P, bt, ids, unit=False, ex=False):
             sd = (padk | (eyeL > 0)).where(-1e9, sim.detach())                   # self and pads never compete for the k slots
             rk = (sd.unsqueeze(2) > sd.unsqueeze(3)).cast(dtypes.float).sum(-1)  # B x L x L: how many keys beat key j for query i
             sel = ((rk < GKNN) & (sd > -1e8)) | (eyeL > 0)
-            km = (sel.where(0.0, -1e4) + sim).reshape(B, 1, L, L)
+            km = (sel.where(0.0, -1e4) + ((sim - sim.detach()) * (1 - eyeL) if GKNN_ST else sim)).reshape(B, 1, L, L)
             if ex: knl.append(sel)
             x = write(x, mha(P, y, mask + Tensor.cat(*([km] * GRAPH + [km * 0] * (NH - GRAPH)), dim=1)), unit, 2)
         else:

@@ -59197,3 +59197,20 @@ construction (agree None, as designed).
 - **Banked together with 11:51 / 13:05:** routing along the factor graph is the largest lift on the fixture and holds on both breaths
   (additive +0.137, unitary +0.154), but only along the TRUE graph: relabelled -0.135, 10% rewired -0.038. For GSM8K the discovered graph
   must be near-exact, or the routed form needs a bypass that tolerates its errors.
+
+### 2026-11-14 15:48 -- ROUTING QUEUE 2 PINNED (Bryce: "word given for the queue"): G4N10 / G4N30 (the bypass) + GK-ST (KNN, no road to shut)
+
+Theory lines: "discover the structure, then solve over it" (a discovered graph will carry errors: can the routed form tolerate them?) +
+the Breathing Transformer's "MHA searches by KNN" + the mandatory-road law (the 14:28 GK autopsy). NOMLP cov 0.25, s0 / s1, tinygrad
+PCI+AMD, depth2, NB 10, 8000 steps; 6 runs, then the KNN census + autopsy, then the verdict (`scripts/rel_dsl_gq2_verdict.py`).
+Base breath: the ADDITIVE one (the banked comparators G4 / G8N / G8K3 live there; UG8 becomes the base after this queue).
+- **G4N10 / G4N30 (RD_GRAPH=4 RD_GNOISE=10 / 30):** the noisy graph on HALF the heads, the other four free (G4 bought the full lift at
+  11:51). Bar: G4N{r} - additive, the frame with KEEPS; retention of G4's +0.133 beside. **BYPASS** iff G4N10 - G8N10 >= +0.03 with
+  both seeds positive (the free heads absorb wrong edges). Predictions: G4N10 KEEPS ~50%; BYPASS ~65%; G4N30 KEEPS ~25%.
+- **GK-ST (RD_GRAPH=8 RD_GKNN=3 RD_GKNN_ST=1, tag G8K3S):** patch `scripts/patches/rel_dsl_gkst.py`. The KNN picks enter the routed
+  scores as a PURE mask; the learned similarity rides only straight-through (sim - sim.detach(): value 0, gradient as a bias), self
+  excluded -- the forward has no road to turn message passing off. CPU test (scratch copy): without the flag bit-identical to the
+  live file (max |d| 0.0); with it the forward drops the similarity (|d| 0.246 vs G8K3's form), knn_w still gets a gradient.
+  Bar: G8K3S - additive, the frame; DISCOVERS iff the last-breath true-neighbour share >= 3x chance on both seeds. Autopsy beside
+  (derived-var routed mass on self / factors, `scripts/knn_self_read.py`). Predictions: GKS HELPS ~25%; DISCOVERS ~35%. A FAIL closes
+  the straight-through KNN form; named next: given-edge distillation (supervise the picks with the edges in training, test without).
