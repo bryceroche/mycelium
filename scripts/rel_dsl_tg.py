@@ -33,10 +33,14 @@ D, NH, NB, NID, PB = RB.D, RB.NH, RB.NB, RB.NID, RO.PB
 DH = D // NH; NOTE = ARM == "NOTEBOOK"; BUCKET = int(os.environ.get("TG_BUCKET", "8"))
 DIAL = int(os.environ.get("RD_DIAL", "0"))     # (DIAL, ledger 11-13 19:09) the confidence dial: radius = the only step-size road
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{'R' if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
 assert not DIAL or (UNIT and not SCHED), "DIAL is a form of the unitary breath"
+assert DIAL in (0, 1, 2, 3), "RD_DIAL: 1 free (19:09), 2 relative + harmonic schedule, 3 bounded (11-14 09:00)"
+if DIAL == 2:                                    # the relative dial's global schedule: the same-arm control's banked norm ratios n_{b+1} / n_b
+    _n = np.mean([json.load(open(f".cache/rel_dsl_TG{ARM}_depth2c{COV:g}_s{s}.json"))["norm_census"]["all"] for s in (0, 1)], axis=0)
+    M = [float(v) for v in _n[1:] / _n[:-1]]
 if SCHED:                                        # n = the same-arm control's banked seed-mean norm census (norm after breath k), fixed constants
     _n = np.mean([json.load(open(f".cache/rel_dsl_TG{ARM}_depth2c{COV:g}_s{s}.json"))["norm_census"]["all"] for s in (0, 1)], axis=0)
     G = [1.0] + [float(_n[0] / _n[b - 1]) for b in range(1, NB)]
@@ -164,7 +168,11 @@ def forward(P, bt, ids, unit=False, ex=False):
             kt = fire.where(b + 1, kt); known = fire.where(1.0, known)
             if ex: kn.append(known); ktl.append(kt)
         if DIAL:                                                                  # THE DIAL: radius x exp(sigma) per token
-            sg = (x.layernorm(axis=-1, eps=1e-5) @ P["dial_w"] + P["dial_b"]).tanh(); x = x * sg.exp().unsqueeze(-1)
+            sg = (x.layernorm(axis=-1, eps=1e-5) @ P["dial_w"] + P["dial_b"]).tanh()
+            if DIAL == 3: sg = sg * 0.2                                           # the bounded dial
+            if DIAL == 2:                                                         # the relative dial: mean-free over the real tokens, + the schedule
+                sg = (sg - (sg * valid).sum(1, keepdim=True) / valid.sum(1, keepdim=True)) + (math.log(M[b]) if b < NB - 1 else 0.0)
+            x = x * sg.exp().unsqueeze(-1)
             if ex: sgl.append(sg)
         if ex: nrm.append((x * x).sum(-1).sqrt()); xs.append(x)
     r = dict(lg=Tensor.stack(*out, dim=1))
