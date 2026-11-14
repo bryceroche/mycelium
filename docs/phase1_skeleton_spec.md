@@ -59048,3 +59048,26 @@ attention on its own incident factors is BELOW the uniform baseline (0.044-0.063
 - **Predictions:** G-8 NOMLP HELPS ~35% / HURTS ~30%; G-8 NOTEBOOK HELPS ~30%; G-4 EQUIVALENT ~50% per arm (free heads are a bypass:
   the mandatory-road law predicts the routed heads get out-weighted). A FAIL closes these mask forms; named next form: routed heads on
   the unitary breath, and KNN routing in the TREE's neighbourhood (centroid space) rather than the problem graph.
+
+### 2026-11-14 10:44 -- KEEP-SPINNING VERDICTS: Q-R HURTS / EQUIVALENT; Q-U HURTS x2; Q-A HURTS x2; B-R EQUIVALENT x2; Q-C NOT -- three dial forms, radius never learned confidence
+
+Artifact: `.cache/rel_dsl_spin_verdict.txt` (`scripts/rel_dsl_spin_verdict.py`; chain spin 09:02-10:24). Q / B arms tinygrad-scored by
+construction (agree None on all 8, as designed).
+| arm | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) |
+|---|---|---|
+| NOMLP / +U / +R | 0.860/0.856 ; 0.864/0.823 ; 0.812/0.841 | (17:20 / 21:00) |
+| NOMLP+Q | 0.754 / 0.833 | 0.821 / 0.775 / 0.650 / 0.571 / 0.500 |
+| NOMLP+B | 0.838 / 0.855 | 0.871 / 0.834 / 0.707 / 0.679 / 0.500 |
+| NOTEBOOK (0.03125) / +U / +R | 0.953/0.986 ; 0.939/0.952 ; 0.991/0.781 | (21:00) |
+| NOTEBOOK+Q | 0.908 / 0.898 | 0.944 / 0.857 / 0.714 / 0.679 / 0.500 |
+| NOTEBOOK+B | 0.950 / 0.997 | 0.990 / 0.959 / 0.914 / 0.821 / 0.625 |
+- **Q-R:** NOMLP HURTS (-0.033; seeds -0.058 / -0.008); NOTEBOOK EQUIVALENT (+0.017; seeds -0.083 / +0.116).
+- **Q-U:** HURTS x2 (NOMLP -0.050; NOTEBOOK -0.043, both seeds negative). **Q-A:** HURTS x2 (-0.065 / -0.067, all four seeds negative).
+- **B-R:** EQUIVALENT x2 (NOMLP +0.020, both seeds positive, under +0.03; NOTEBOOK +0.088, seeds -0.040 / +0.216).
+- **Q-C: NOT** (0.462 / 0.474 / 0.210 / 0.372). With R-C (21:00): **radius never learned confidence in three dial forms** (free,
+  relative, bounded: every AUROC <= 0.5). The sigma-dial form of "radius = confidence" is closed; the theory line stands.
+- Census: Q's harmonic schedule cooled every run steadily (24 -> 3.3-4.5 deg) and Q lost everywhere -- a schedule copied from the
+  additive breath hurts a direction-only breath (SU over-cooled too). B on NOTEBOOK took the keep-spinning basin again (s0: sigma
+  negative throughout, angles 15-25 deg through all ten breaths) and matched the control (0.950 / 0.997 vs 0.953 / 0.986). Three
+  sightings now (R NOTEBOOK s0, B NOTEBOOK s0/s1): a dial breath that keeps turning lands at or above the control; one that cools does not.
+- Predictions: Q-R HELPS ~45 / 40% -- miss; Q-U EQUIVALENT ~50% -- miss (HURTS); B-R HELPS ~35% -- miss (EQUIVALENT); Q-C ~30% -- NOT.
