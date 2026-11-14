@@ -59163,7 +59163,7 @@ the true edges kept; K3 picks self + 3 per real row, knn_w gets a gradient; UG8 
   centroids, or graph distillation (supervise the KNN picks with the given edges during training, test without them).
 - Beside: COMM (mass on the true own factors) on all eight checkpoints. Verdict: `scripts/rel_dsl_gqueue_verdict.py`.
 
-### 2026-11-14 14:36 -- THE ROUTING QUEUE VERDICTS: GU HELPS +0.154; GN10 HURTS -0.038; GN30 VOID (C0); GK EQUIVALENT +0.010 (the form shut its own road); DISCOVERS NO
+### 2026-11-14 14:28 -- THE ROUTING QUEUE VERDICTS: GU HELPS +0.154; GN10 HURTS -0.038; GN30 VOID (C0); GK EQUIVALENT +0.010 (the form shut its own road); DISCOVERS NO
 
 Artifact: `.cache/rel_dsl_gqueue_verdict.txt` (`scripts/rel_dsl_gqueue_verdict.py`; chain gqueue 13:17-14:25). All arms tinygrad-scored by
 construction (agree None, as designed).
@@ -59186,7 +59186,7 @@ construction (agree None, as designed).
   heads, noise fresh per read in training AND test. Named next form: GN on G4 (half the heads free -- G4 bought the full lift at
   11:51; the free heads may be the bypass that absorbs the noise).
 - **GK: EQUIVALENT +0.010** (seeds +0.008 / +0.011); G8K3 - G8 -0.128 HURTS. **DISCOVERS: NO** (last-breath true-neighbour share
-  0.252 / 0.255 vs chance 0.091 = 2.77x / 2.80x, under the 3x bar). AUTOPSY (`scripts/knn_self_read.py`, 14:30): the derived vars'
+  0.252 / 0.255 vs chance 0.091 = 2.77x / 2.80x, under the 3x bar). AUTOPSY (`scripts/knn_self_read.py`, run 14:26-14:27): the derived vars'
   routed attention is 0.98 on SELF and 0.000 on factors at the last breath (COMM 0.000 is real, not an instrument fault: the derived
   vars' own factors ARE among their picks 0.29-0.31 of the time, the attention just never goes there). The form's gradient road -- the
   learned similarity added to the routed scores -- contains the self term |e|^2, always the row max, so the model could turn message

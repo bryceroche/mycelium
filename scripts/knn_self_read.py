@@ -1,4 +1,4 @@
-"""knn_self_read.py -- (ledger 2026-11-14 14:36, zero-GPU) the GK autopsy: routed-head attention mass on self / vars / factors per breath for
+"""knn_self_read.py -- (ledger 2026-11-14 14:28, zero-GPU) the GK autopsy: routed-head attention mass on self / vars / factors per breath for
 derived vars on a GKNN checkpoint (64 DEEP items, rng 777). Env = the run config."""
 import os, sys
 sys.path.insert(0, "scripts")
