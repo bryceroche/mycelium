@@ -58909,3 +58909,34 @@ Artifact: `.cache/rel_dsl_su_verdict2.txt` (`scripts/rel_dsl_su_verdict2.py`; ch
   uniformly on all tokens.
 - The fixture is saturating: U, DAMP and SU all read EQUIVALENT / CEILING at these coverages. Named next forms (not pinned): a harder
   coverage for NOTEBOOK (below 0.0625) so the frame can separate; per-token sigma (radius = confidence) on the unitary breath.
+
+### 2026-11-13 19:09 -- DIAL QUEUE PINNED: the confidence dial on the unitary breath (radius = confidence, as a ROAD) + the hard rung; the word given
+
+Theory lines: "radius = confidence" (the conjugate mirror rule) + the Bridge's CONFIDENCE DIAL (CLAUDE.md §9: when to quantize) + the
+payoff (long chains without degrading). Bryce 17:2x: "turn up the difficulty and build the confidence dial". Today's facts: the unitary
+breath is at parity (U1 EQUIVALENT / U2 CEILING, 17:20); every trained breath anneals (STEP-A), the additive one harmonically through
+its norm, the unitary one through its write sizes; every form so far acted uniformly on all tokens.
+**THE DIAL (RD_UNIT=1 RD_DIAL=1; tag letter R).** Under the LayerNorm no read sees a token's radius, so a radius can only matter
+through the step size. The dial makes that the ONLY step-size channel (the mandatory-road law: U already brakes through its write
+sizes, a bypass a gated dial would be voted down by):
+- every write keeps only its DIRECTION: u = dp / |dp| (dp = d projected tangent to x), and the token turns by the angle
+  theta = exp(l_k) * r0 / |x| along u (the exp map, norm preserved), l_k one learned scalar per write site (bproj / notebook / MHA /
+  snap), init log 0.2; r0 = the token's radius before breath 1. A token can stand still ONLY by growing its radius.
+- after each breath every token's radius is multiplied by exp(sigma), sigma = tanh(w . LN(x) + b) per token (w, b zero-init: at birth
+  the dial is flat and every token turns 0.2 rad per write forever; any cooling must be learned through sigma).
+- s = sigma + i omega made literal: omega = the direction (the exp map), sigma = the radius (the dial). Norm changes ONLY through sigma.
+**The hard rung:** NOTEBOOK at cov 0.03125 (47 structures; banked torch NOTEBOOK s0 DEEP 0.936 at this rung, 10-29) -- fixed now,
+no calibration run. NOMLP stays at cov 0.25 (DEEP 0.86, not saturated).
+**Runs** (tinygrad PCI+AMD, depth2, NB 10, 8000 steps; scorer = the tinygrad forward for every U / R arm): NOTEBOOK, NOTEBOOK+U,
+NOTEBOOK+R at cov 0.03125 and NOMLP+R at cov 0.25, s0/s1 each (8 runs). The NOMLP and NOMLP+U comparators are the 17:20 corrected reads.
+**Bars** (the fixture frame, unchanged: C0 SHALLOW seed mean < 0.95 -> VOID; >= +0.03 with both seeds positive -> HELPS; <= -0.02 ->
+HURTS; else EQUIVALENT, CEILING if both arms >= 0.97):
+- **U-H** (NOTEBOOK+U - NOTEBOOK at the hard rung): the parity question with headroom.
+- **R-U** (per arm): DIAL - U. **R-A** (per arm): DIAL - additive control.
+- **R-C (the dial reads confidence):** on the 256-item DEEP census batch, the AUROC of the final log-radius log(|x| / r0) of each
+  derived var token for "the last breath's pick is a gold target" vs not: >= 0.60 on all four DIAL runs -> RADIUS = CONFIDENCE;
+  any run <= 0.55 -> NOT; else WEAK. (A diagnostic, never in the loss: the Goodhart fence.)
+- Census beside: sigma per breath (median, spread), the angle census, the radius spread at breath 10.
+**Predictions:** U-H EQUIVALENT ~50% (HURTS ~25%); R-U NOMLP EQUIVALENT ~45% / HURTS ~35% / HELPS ~20%; R-U NOTEBOOK the same; R-C
+RADIUS = CONFIDENCE ~40% (temperature ⊥ truth warns against it). A FAIL closes the road form; named next form: the dial as a
+radius the reads CAN see (attention keys scaled by radius: confident tokens heard more).
