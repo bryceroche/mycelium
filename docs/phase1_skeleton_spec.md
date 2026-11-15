@@ -59356,3 +59356,31 @@ its banked control already reads DEEP 0.953 / 0.986 (cov 0.03125; G8 there 0.969
 no commitments. Named for the GSM8K bench, where the notebook is not at ceiling.
 
 Chain: `.cache/run_soft.sh` (unit `soft`; waits for `cert`, applies the patch, 10 runs ~75 min).
+
+### 2026-11-15 10:40 -- QUEUE 11-15 VERDICTS: LAT-U SEPARATE (seven cells); CERT EQUIVALENT (+0.049, retention 0.33): PARTIAL CARRIES NO; FREE-NEEDED YES (+0.242)
+
+Artifacts: `.cache/tier_lattice_u.txt`, `.cache/rel_dsl_cert_verdict.txt` (`scripts/rel_dsl_cert_verdict.py`). Chain `cert` 09:33 -> 10:39.
+**CORRECTION before reading (mine):** the first cert verdict used the plain `TGNOMLPU` json as the unitary control: the torch-scored read,
+struck 11-13 (it reads C0 VOID, shallow 0.969 / 0.878) -> every frame VOID. The control is the tinygrad-scored pair the GU verdict used
+(`TGNOMLPU..._s0_step_tg`, `..._s1_rs`: DEEP 0.864 / 0.823). Both verdict scripts (cert, and soft before its chain reached it) now load it.
+
+- **LAT-U: SEPARATE.** n 1,166. O(U, N+W) 0.1592 (SE 0.0058) vs ceiling O(U_A,U_B) 0.9570 (SE 0.0119); gap 0.798, 2 SE 0.027. Pairwise
+  O(U,N) 0.069, O(U,W) 0.192 (units lean to names, as predicted for the MERGE risk, but nowhere near merging). s_U 0.0517 (larger than
+  s_N 0.012 and s_W 0.025: the reader moves MORE on a unit swap than on a name swap); BL share 1 - s_NWU 0.907; additivity 0.210 (less
+  separable than N+W at 0.138: some interaction). On this subset LAT-x reproduces (O(N,W) 0.121 vs 0.964). Prediction SEPARATE ~55% right;
+  O(U,N+W) 0.16 below the predicted 0.3-0.6 (again more separable than guessed); s_U NOT between s_N and s_W (wrong).
+  READING: three surface transforms leave three nearly orthogonal sensitivity faces -> all 2^3 - 1 = 7 cells of the lattice exist in the
+  reader's state. Scope as pinned: a count of directions, not a build order; all three faces are surface/reading-side; logic is the
+  invariant core (0.907 survives all three edits).
+- **UG4 (base): HELPS +0.151** (seeds +0.127 / +0.175), DEEP 0.991 / 0.998; UG4 - UG8 -0.003 CEILING: half the heads routed buys the full
+  lift on the unitary breath too (as G4 on the additive).
+- **CERT (UG4C50 - U): EQUIVALENT +0.049** (seeds -0.001 / +0.099); retention 0.33 -> **PARTIAL CARRIES: NO.** By depth the certified half
+  helps shallow chains (d5 0.908 vs 0.869) and fades with depth (d8 0.679, d9 0.500): at c = 50 almost no deep chain is wholly certified.
+  Predictions: CERT HELPS ~55% wrong (EQUIVALENT); retention ~0.4 close (0.33); PARTIAL CARRIES ~35% right side.
+- **FREE-NEEDED: YES +0.242** (seeds +0.226 / +0.258). UG8C50 (all eight heads locked, half the edges missing) does not even fit SHALLOW
+  (0.849 / 0.859: C0 VOID vs U, -0.193): a locked head with missing edges cuts the chain outright; free heads relay across the gaps.
+  Prediction YES ~55% right.
+- **READING for the mask builder:** locked heads must never be the only road (missing edges are as fatal as wrong ones when every head
+  is locked); with free heads, per-edge random certification at 50% buys a third of the lift. Coverage of the CHAIN matters, not
+  coverage of edges -- consistent with "certification that grows across breaths" (named, unpinned) and with WITNESS-LOCK (in flight:
+  recall 0.80).

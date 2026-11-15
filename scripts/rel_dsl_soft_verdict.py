@@ -9,7 +9,8 @@ import numpy as np
 
 J = lambda t: json.load(open(f".cache/rel_dsl_{t}.json"))
 C = "_depth2c0.25_s"
-R = {k: [J(f"TGNOMLP{k}{C}{s}") for s in (0, 1)] for k in ("U", "UG8", "UG4", "UG8B4", "UG8N10", "UG8N10B4", "UG4N10", "UG4W10")}
+R = {"U": [J(f"TGNOMLPU{C}0_step_tg"), J(f"TGNOMLPU{C}1_rs")],   # the tinygrad-scored unitary control (the 17:20 rescore; the plain TGNOMLPU json is torch-scored, struck 11-13)
+     **{k: [J(f"TGNOMLP{k}{C}{s}") for s in (0, 1)] for k in ("UG8", "UG4", "UG8B4", "UG8N10", "UG8N10B4", "UG4N10", "UG4W10")}}
 out = []
 for k, X in R.items():
     bd = {d: np.mean([r["deep_by_depth"][d] for r in X]) for d in X[0]["deep_by_depth"]}
