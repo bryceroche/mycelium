@@ -59214,3 +59214,31 @@ Base breath: the ADDITIVE one (the banked comparators G4 / G8N / G8K3 live there
   Bar: G8K3S - additive, the frame; DISCOVERS iff the last-breath true-neighbour share >= 3x chance on both seeds. Autopsy beside
   (derived-var routed mass on self / factors, `scripts/knn_self_read.py`). Predictions: GKS HELPS ~25%; DISCOVERS ~35%. A FAIL closes
   the straight-through KNN form; named next: given-edge distillation (supervise the picks with the edges in training, test without).
+
+### 2026-11-14 16:47 -- ROUTING QUEUE 2 VERDICTS: G4N10 EQUIVALENT +0.000, G4N30 EQUIVALENT +0.015; BYPASS YES (+0.038 over G8N10); GK-ST VOID (my bug: a phantom gradient), rerun fired
+
+Artifact: `.cache/rel_dsl_gq2_verdict.txt` (`scripts/rel_dsl_gq2_verdict.py`; chain gq2 15:48-16:41).
+| arm (NOMLP cov 0.25) | SHALLOW s0/s1 | DEEP s0/s1 | by depth d5/d6/d7/d8/d9 (seed means) |
+|---|---|---|---|
+| additive / G4 (11:51) | 0.997/1.000 ; 1.000/1.000 | 0.860/0.856 ; 0.992/0.991 | 0.877/0.848/0.764/0.679/0.500 ; 0.999/0.993/0.971/0.821/0.625 |
+| G8N10 / G8N30 (14:28) | 0.987/0.982 ; 0.919/0.924 | 0.824/0.816 ; 0.706/0.725 | |
+| G4N10 | 0.995/0.995 | 0.848/0.868 | 0.890/0.823/0.750/0.607/0.250 |
+| G4N30 | 1.000/0.997 | 0.864/0.883 | 0.896/0.857/0.779/0.607/0.500 |
+| G8K3S (VOID, see below) | 0.247/0.247 | 0.009/0.003 | |
+- **G4N10 - additive: EQUIVALENT +0.000** (seeds -0.012 / +0.012; retention of G4's +0.133: 0.00). **G4N30: EQUIVALENT +0.015**
+  (+0.004 / +0.026; retention 0.11). Predictions G4N10 KEEPS ~50% / G4N30 ~25% -- both missed.
+- **BYPASS: YES** -- G4N10 - G8N10 +0.038 (seeds +0.024 / +0.053); G4N30 - G8N30 +0.158 (VOID by frame: G8N30's C0). The free heads
+  absorb the wrong edges: with half the heads free a noisy graph costs NOTHING against the free control (the floor holds, 0.85-0.88
+  vs 0.82 / 0.71 on G8) -- but it also gains nothing. Prediction BYPASS ~65% -- HIT.
+- **Reading (the routing ruling's scope, sharpened):** the lift exists only along the TRUE graph. 10% wrong edges erase it on both
+  forms; the free heads turn the loss into a draw, not a partial gain. A discovered graph must be near-exact to pay -- the routing
+  is a CERTIFIED-STRUCTURE organ: it should route along what the solver / key has certified (the bridge rule: only a proof crosses
+  hard), and leave the uncertain edges to free heads.
+- **GK-ST: VOID -- MY BUG.** Training diverged (loss 0.21 at step 2000 -> 2.35 at 6000; SHALLOW 0.247). Root cause (CPU, 16:5x): the
+  straight-through term sim - sim.detach() was built from y = LN(x), so its gradient flowed back into the residual stream -- a
+  phantom gradient the forward never acts on (loss and forward identical; ln1.weight grad off by 6.0e-4 at a scale of 5.9e-4). The
+  pinned form said the similarity rides "only straight-through ... the gradient as a bias" for knn_w; the leak into the main
+  network was not the form. FIX (patch `scripts/patches/rel_dsl_gkst_fix.py`): e built from y.detach() in the ST form; CPU test:
+  every main-network gradient now equals the pure-mask forward's exactly (max |diff| 0.000), knn_w still gets 2.2e-3. The KNN census
+  and autopsy on the void runs (share 0.63x / 0.85x chance) are read off a broken training and are struck.
+- **Rerun fired** (same pinned item, same bars, tag G8K3S; the void artifacts moved to *_void): G8K3S s0 / s1 under the fixed form.

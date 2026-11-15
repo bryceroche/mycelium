@@ -184,7 +184,7 @@ def forward(P, bt, ids, unit=False, ex=False):
             kd = emb(P, known.cast(dtypes.int), "known", 2) + (kt.one_hot(NB + 1).cast(dtypes.float) @ Tk) * known.unsqueeze(-1)
             x = Tensor.cat(write(x[:, :nv], kd, unit, 1), x[:, nv:], dim=1)
         if GKNN:                                                                  # KNN MESSAGE PASSING: neighbours by learned state similarity
-            y = lnorm(P, x, "blocks.0.ln1"); e = y @ P["knn_w"]; sim = (e @ e.transpose(1, 2)) * (1 / math.sqrt(KD))
+            y = lnorm(P, x, "blocks.0.ln1"); e = (y.detach() if GKNN_ST else y) @ P["knn_w"]; sim = (e @ e.transpose(1, 2)) * (1 / math.sqrt(KD))
             sd = (padk | (eyeL > 0)).where(-1e9, sim.detach())                   # self and pads never compete for the k slots
             rk = (sd.unsqueeze(2) > sd.unsqueeze(3)).cast(dtypes.float).sum(-1)  # B x L x L: how many keys beat key j for query i
             sel = ((rk < GKNN) & (sd > -1e8)) | (eyeL > 0)
