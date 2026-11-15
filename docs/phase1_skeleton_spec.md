@@ -59242,3 +59242,38 @@ Artifact: `.cache/rel_dsl_gq2_verdict.txt` (`scripts/rel_dsl_gq2_verdict.py`; ch
   every main-network gradient now equals the pure-mask forward's exactly (max |diff| 0.000), knn_w still gets 2.2e-3. The KNN census
   and autopsy on the void runs (share 0.63x / 0.85x chance) are read off a broken training and are struck.
 - **Rerun fired** (same pinned item, same bars, tag G8K3S; the void artifacts moved to *_void): G8K3S s0 / s1 under the fixed form.
+
+### 2026-11-14 17:05 -- GK-ST RERUN VERDICT: VOID (C0) -- the straight-through KNN trains but discovers nothing (picks BELOW chance); R-J PINNED (zero-GPU)
+
+Artifact: `.cache/rel_dsl_gq2_verdict.txt` (rerun chain gks 16:47-17:03, the fixed form). Training now stable (loss 0.058 -> 0.061 /
+0.065 -> 0.019; no divergence). G8K3S SHALLOW 0.935 / 0.945 (C0 mean 0.940 < 0.95 -> **VOID**), DEEP 0.646 / 0.696 (-0.187 vs additive,
+read beside only): below the relabelled-graph placebo (0.733 / 0.714). **DISCOVERS: NO** -- the picks' true-neighbour share 0.079 / 0.057
+at the last breath vs chance 0.091 (0.86x / 0.63x: BELOW chance); autopsy: derived vars' routed mass on vars 0.977 / 0.844, factors
+0.023 / 0.156. Reading: a straight-through bias gradient is not a teacher for WHICH tokens to route to -- the picks drift to same-kind
+tokens and the heads lose the free heads' reach. **Closes the straight-through KNN form** (with 14:28: the bias-road form). Named next:
+given-edge DISTILLATION (supervise the picks with the edges in training, test without) -- with GN's lesson that a near-exact graph is
+the price of admission, and BYPASS's that free heads must stay alongside.
+
+**R-J PINNED -- THE ROMEO-AND-JULIET READ** (Bryce 11-14: "the matrix exponentiation from 3 blue and 1 brown romeo and juliette"). Theory
+lines: the breath as matrix exponentiation (rotation vs heat flow, 11-14 stock-take) + "LLMs have a solver inside". Zero-GPU, weights only
+(`scripts/rj_coupling_read.py`): in the breath a token's write from another = attention weight (>= 0, symmetric along an undirected
+routed edge) x the head's OV map M_h = W_O,h W_V,h, so the var <-> factor pair coupling [[0, aM], [bM, 0]] is antisymmetric (Romeo and
+Juliet: a rotation) only as M is, and symmetric (heat flow) as M is. Per head: antisymmetric fraction ||M - M^T||^2 / ||M||^2-split (0.5
+= a random matrix), and sum |Im lambda| / sum |lambda|. Arms: G8, UG8, the placebo G8P (same sparsity, wrong edges -- the comparator, two
+seeds), U, G4 (routed vs free heads), additive s0 (the only banked additive checkpoint), torch init. **Bar:** ROTATION iff G8 head mean
+>= 0.6 both seeds AND G8 - G8P >= +0.05 both seeds; DIFFUSION iff G8 <= 0.4 both seeds; else MIXED. Predictions: MIXED ~55%, DIFFUSION
+~25%, ROTATION ~20%. Scope: a weights census of the OV map only (the LayerNorm and the softmax's own nonlinearity are outside it).
+
+### 2026-11-14 17:05 -- R-J VERDICT: MIXED -- the OV couplings sit at a random matrix's balance; no Romeo-and-Juliet rotation in the weights
+
+Artifact: `.cache/rj_coupling_read.txt`. Antisymmetric fraction, head mean: init 0.499; G8 0.483 / 0.485; UG8 0.489 / 0.485; U 0.485 /
+0.479; G4 0.480 / 0.481 (routed 0.482 / 0.485 vs free 0.478 / 0.477); additive s0 0.474; **placebo G8P 0.459 / 0.457**. G8 - G8P +0.024 /
++0.028 (< +0.05) -> **MIXED**. Prediction MIXED ~55% -- HIT.
+- Every trained arm drifts from 0.50 slightly toward the SYMMETRIC side (heat flow) -- the placebo most (0.46), the true-graph arms
+  least (0.48-0.49): a consistent ordering on both seeds but a small one (0.02-0.03), under the bar. Spectral-imag shares 0.44-0.55
+  (init 0.59) say the same: no head became a rotation.
+- Reading: the breath's coupling, at the OV map, is neither Romeo and Juliet nor pure heat flow -- the map stays near a generic
+  matrix. Where the breath DOES turn is the state's angle per breath (STEP-A / the spin census: the unitary arm turns by its exp map by
+  construction), not an antisymmetric OV. The Romeo-and-Juliet form of the alternation, if it lives anywhere, lives BETWEEN organs
+  (breath <-> solver write-back), not inside one attention head -- a weights census cannot see it. Scope: the OV map only (LayerNorm
+  and softmax outside). Closes this weights form of R-J; the line (the alternation as an antisymmetric coupling between organs) stays open.
