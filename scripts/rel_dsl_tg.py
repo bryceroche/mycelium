@@ -37,15 +37,17 @@ GKNN = int(os.environ.get("RD_GKNN", "0"))         # (ROUTING QUEUE) routed head
 KD = 32
 GKNN_ST = int(os.environ.get("RD_GKNN_ST", "0"))   # (GK-ST, ledger 11-14) the similarity in the scores as straight-through only, self excluded
 GPLACEBO = int(os.environ.get("RD_GPLACEBO", "0"))   # (GRAPH PLACEBO, ledger 11-14) route along a relabelled graph
+GCERT = int(os.environ.get("RD_GCERT", "0"))   # (CERTIFIED EDGES, ledger 11-15) the routed heads see only c% of each var's TRUE edges (the rest MISSING, never wrong)
 GRAPH = int(os.environ.get("RD_GRAPH", "0"))   # (GRAPH, ledger 11-14) heads 0..GRAPH-1 routed by the factor graph
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'K{GKNN}' if GKNN else ''}{'S' if GKNN_ST else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'C{GCERT}' if GCERT else ''}{f'K{GKNN}' if GKNN else ''}{'S' if GKNN_ST else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
 assert 0 <= GRAPH <= NH, "RD_GRAPH = the number of routed heads"
 assert not GPLACEBO or GRAPH, "GPLACEBO is a form of the routed heads"
-assert not (GNOISE or GKNN) or GRAPH, "GNOISE / GKNN are forms of the routed heads"
-assert (GPLACEBO > 0) + (GNOISE > 0) + (GKNN > 0) <= 1, "one routing form at a time"
+assert not (GNOISE or GKNN or GCERT) or GRAPH, "GNOISE / GKNN / GCERT are forms of the routed heads"
+assert 0 <= GCERT < 100, "RD_GCERT = percent certified (100 = RD_GRAPH alone)"
+assert (GPLACEBO > 0) + (GNOISE > 0) + (GKNN > 0) + (GCERT > 0) <= 1, "one routing form at a time"
 assert not GKNN_ST or GKNN, "GKNN_ST is a form of the KNN heads"
 PRNG = np.random.default_rng(1000 + RB.SEED)       # the placebo's own stream (the item / symbol rng is untouched)
 TORCH_OK = not (UNIT or DAMP or GRAPH)          # the torch net has none of these: every other form is scored on the tinygrad forward
@@ -165,7 +167,7 @@ def forward(P, bt, ids, unit=False, ex=False):
     if GRAPH:                                                                     # THE ROUTED HEADS: attend only along factor-graph edges
         ig = ((A + Rz + Mz) > 0).cast(dtypes.float).transpose(1, 2)              # B x V x F
         if GPLACEBO: ig = ig @ bt[10]                                            # the placebo: var -> the wrong factors (same degrees)
-        if GNOISE: ig = bt[10]                                                   # the noisy graph (r% of each var's edges rewired)
+        if GNOISE or GCERT: ig = bt[10]                                          # the noisy graph (r% rewired) / the certified subgraph (c% kept)
         nbr = Tensor.cat(Tensor.cat(Tensor.eye(nv).reshape(1, nv, nv).expand(B, nv, nv), ig, dim=2),
                          Tensor.cat(ig.transpose(1, 2), Tensor.eye(nf).reshape(1, nf, nf).expand(B, nf, nf), dim=2), dim=1)   # B x L x L
         gm = (nbr > 0).where(0.0, -1e4).reshape(B, 1, L, L)
@@ -250,6 +252,9 @@ def pad_np(arrs, ids, bk=BUCKET):
                     if len(free) and PRNG.random() < GNOISE / 100:
                         g = PRNG.choice(free); ig[i, v, f] = 0.0; ig[i, v, g] = 1.0; free = np.setdiff1d(free, [g])
         out.append(ig)
+    if GCERT:                                                                    # per edge: certified (kept) with probability c%, else missing
+        ig = ((out[4] + out[5] + out[6]) > 0).transpose(0, 2, 1).astype(np.float32)
+        out.append(ig * (PRNG.random(ig.shape) < GCERT / 100))
     return out, np.pad(ids, [(0, 0), (0, NV - nv)])
 
 

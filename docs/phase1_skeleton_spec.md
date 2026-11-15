@@ -59277,3 +59277,48 @@ Artifact: `.cache/rj_coupling_read.txt`. Antisymmetric fraction, head mean: init
   construction), not an antisymmetric OV. The Romeo-and-Juliet form of the alternation, if it lives anywhere, lives BETWEEN organs
   (breath <-> solver write-back), not inside one attention head -- a weights census cannot see it. Scope: the OV map only (LayerNorm
   and softmax outside). Closes this weights form of R-J; the line (the alternation as an antisymmetric coupling between organs) stays open.
+
+### 2026-11-15 09:33 -- Bryce: "word given for the queue -- Salute!" -- THE QUEUE PINNED: LAT-U + CERTIFIED-EDGE ROUTING (R-J between organs NAMED, not pinned)
+
+(The box crashed overnight 11-14/15; nothing was running -- gks ended 17:05, tree clean and pushed. Nothing lost.)
+
+**1. LAT-U (the third transform: 3 vs 7)** -- theory lines: tiers = invariance contracts (11-07); "how many Tiers" (Bryce 11-14/15:
+2^n - 1). Form (a measurement, zero training; `scripts/tier_lattice_read.py --units`; the banked LAT-x path untouched, its point estimates
+reproduced exactly): view **U** = every occurrence of a unit word swapped for a distinct other unit word, consistent (injective) per problem;
+**NWU** = N + W + U (same draws). The unit lexicon is the DATA's: lowercase words of >= 3 letters seen >= 5 times right after a numeral with
+>= 0.6 of their uses there, minus three named non-units ('fewer' a comparative; 'million', 'percent' scale operators that change the
+arithmetic) -> 56 words. Rows: problems where U is not a no-op: **n = 1,166** (of 3,142; 1,961 carry no lexicon unit). Same reader as
+LAT-x (RB8x4, `--local`). Never sentence reordering; never the CF fixture.
+- Sigma_U = cov(h - h_U); **N+W** = Sigma_N/tr + Sigma_W/tr (the span of the two banked faces). **O(U, N+W)** (the bar) beside O(U,N), O(U,W);
+  ceiling C_U = O(U_A, U_B) on disjoint halves; SE by bootstrap over problems (1000).
+- **LAT-U:** C_U < 0.5 -> VOID (no reproducible units face); O(U,N+W) < C_U - 2 SE -> **SEPARATE** (a third face: the 3-transform lattice
+  has 2^3 - 1 = 7 cells); else **MERGE-N / MERGE-W** (whichever pairwise overlap is larger; the lattice stays at 3).
+- Reported: s_U, BL share 1 - s_NWU, additivity |S_NWU - S_N - S_W - S_U|_F / |S_NWU|_F, O(N,W) on this subset.
+- SCOPE (stated before the read): a SEPARATE counts directions in the reader's state; it does not by itself mean seven tiers should be BUILT.
+  N, W, U are all SURFACE transforms: Bryce's three categories (reading, logic, numbers) are not the transforms -- logic is the invariant
+  core every cell keeps (0.956 of the state at LAT-x), so a "tier that ignores logic" is not a cell this lattice can draw. The unit swap is
+  meaning-breaking for conversions (minutes -> hours) and for rates ('25 mph' -> '25 bushels'), as W breaks pronoun gender: surface edits.
+- PREDICTION: SEPARATE ~55% (units are words, so the risk is MERGE-W ~35%; MERGE-N ~10%); O(U,N+W) ~0.3-0.6; s_U between s_N and s_W.
+
+**2. CERTIFIED-EDGE ROUTING** -- theory lines: the GRAPH-ROUTING RULING (11-14) + the bridge rule ("only a proof crosses hard"); Bryce
+11-15: "free heads act as shock absorbers on uncertain facts; locked heads take the certain connections". Form (`RD_GCERT=c` in
+`scripts/rel_dsl_tg.py`; CPU-checked: the certified set is a strict subset of the true edges, kept share 0.486 at c=50, a 20-step smoke trains
+and scores): each true var-factor edge is CERTIFIED with probability c% (fresh per batch and per read, train and test alike); the routed heads
+attend along certified edges only; uncertified edges are MISSING, never wrong (GN10 already read wrong edges). Base = the unitary breath (GU's
++0.154). Runs (DEV=PCI+AMD, NOMLP cov 0.25, depth2, NB 10, 8000 steps, s0/s1): **UG4** (the full-graph base, four routed + four free; not
+banked on U), **UG4C50**, **UG8C50** (half missing, no free heads). Controls banked: TGNOMLPU, TGNOMLPUG8.
+- Bars (`scripts/rel_dsl_cert_verdict.py`; the fixture frame: C0 SHALLOW seed mean < 0.95 -> VOID; >= +0.03 both seeds positive HELPS;
+  <= -0.02 HURTS; else EQUIVALENT / CEILING): **CERT** = UG4C50 - U; retention = CERT / (UG4 - U). **PARTIAL CARRIES** iff CERT HELPS and
+  retention >= 0.5. **FREE-NEEDED** iff UG4C50 - UG8C50 >= +0.03 with both seeds positive.
+- PREDICTIONS: UG4 HELPS ~85%; CERT HELPS ~55%, retention ~0.4 (a depth-7 chain crosses ~7 edges; at c=50 almost no chain is wholly
+  certified, so the lift needs the free heads to relay across the gaps); PARTIAL CARRIES ~35%; FREE-NEEDED YES ~55%.
+- Scope: c is random per edge; a real certifier certifies EASY structure first (correlated with depth and position). A PASS says partial
+  certification can carry; a FAIL closes per-edge random coverage, not certified routing (the next form: certification that GROWS across
+  breaths as the notebook derives = Juliet updating the map each cycle).
+
+**3. R-J BETWEEN ORGANS** -- NAMED, NOT PINNED: no form yet measures an antisymmetric coupling between the breath's proposals and the
+notebook's write-back that a monotone settle could not also produce. Candidate (needs a design pass before bars): per item per breath,
+R_b = the breath's proposal mass on uncommitted vars, J_b = the notebook's commits; rotation predicts a quarter-period lag in their
+cross-correlation, a settle predicts zero lag. Ten breaths per item may be too short to tell them apart.
+
+Chain: `.cache/run_cert.sh` (unit `cert`), fired 09:33.
