@@ -59234,7 +59234,7 @@ Artifact: `.cache/rel_dsl_gq2_verdict.txt` (`scripts/rel_dsl_gq2_verdict.py`; ch
   forms; the free heads turn the loss into a draw, not a partial gain. A discovered graph must be near-exact to pay -- the routing
   is a CERTIFIED-STRUCTURE organ: it should route along what the solver / key has certified (the bridge rule: only a proof crosses
   hard), and leave the uncertain edges to free heads.
-- **GK-ST: VOID -- MY BUG.** Training diverged (loss 0.21 at step 2000 -> 2.35 at 6000; SHALLOW 0.247). Root cause (CPU, 16:5x): the
+- **GK-ST: VOID -- MY BUG.** Training diverged (loss 0.21 at step 2000 -> 2.35 at 6000; SHALLOW 0.247). Root cause (CPU, 16:41-16:47): the
   straight-through term sim - sim.detach() was built from y = LN(x), so its gradient flowed back into the residual stream -- a
   phantom gradient the forward never acts on (loss and forward identical; ln1.weight grad off by 6.0e-4 at a scale of 5.9e-4). The
   pinned form said the similarity rides "only straight-through ... the gradient as a bias" for knn_w; the leak into the main
