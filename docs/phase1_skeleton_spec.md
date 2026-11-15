@@ -59322,3 +59322,37 @@ R_b = the breath's proposal mass on uncommitted vars, J_b = the notebook's commi
 cross-correlation, a settle predicts zero lag. Ten breaths per item may be too short to tell them apart.
 
 Chain: `.cache/run_cert.sh` (unit `cert`), fired 09:33.
+
+### 2026-11-15 10:16 -- Bryce: "word given for the queue -- Salute!" (the mask-builder brainstorm) -- QUEUE 11-15b PINNED: SOFT-BIAS + WITNESS-LOCK; GROW not pinned (no headroom)
+
+Source: the brainstorm "what builds the attention masks?" (11-15). Reading banked with it: the solver certifies CONSISTENCY of the graph it
+is handed, never the graph's TRUTH (a value can be derived perfectly through a wrong edge); without the key, the only certificate of an edge
+is independent witnesses agreeing (the fingerpost, 11-10). Three bands: LOCKED heads (hard mask, proven edges), SOFT heads (proposed edges
+as a bias: soft evidence only biases), FREE heads (no graph). Theory lines: the GRAPH-ROUTING RULING; the bridge rule; "discover the
+structure, then solve over it"; the fingerpost / happy families.
+
+**1. SOFT-BIAS** (`RD_GSOFT=b`, patch `scripts/patches/rel_dsl_soft_witness.py`, applied when `cert` ends): the routed heads get +b on
+proposed edges (self included) and NO hard mask; b = 4 fixed (e^4 ~ 55x per edge), never learned (a learned gain is a road the residual can
+vote down). Arms (unitary, NOMLP cov 0.25, s0/s1): **UG8B4** (soft, true graph), **UG8N10** (hard, 10% rewired: G8N10 on the unitary
+breath), **UG8N10B4** (soft, 10% rewired).
+- **SOFT-SAFE** iff UG8N10B4 - UG8N10 >= +0.03 both seeds positive (a soft wrong edge does less harm than a hard one).
+  **SOFT-KEEPS** iff UG8B4 - U HELPS (the fixture frame) with retention >= 0.5 of UG8 - U.
+- PREDICTIONS: SOFT-SAFE YES ~60%; SOFT-KEEPS YES ~45% (the bias is beatable by q.k: the engine ignored the graph before the mask, 11-14).
+- Scope: behavioural only; no attention-mass census of the bias in this queue (named follow-up if SOFT-KEEPS: the routed heads' mass on
+  proposed edges, the pre/post knob law).
+
+**2. WITNESS-LOCK** (`RD_GWIT=r`): two INDEPENDENT r%-rewired copies of the graph (the GNOISE rewire, drawn twice); the four routed heads'
+hard mask = their intersection; four heads free. CPU census at r = 10 (64 deep items): the locked set's recall 0.803, precision 0.9976
+(wrong edges almost never survive two independent witnesses). Arms: **UG4N10** (one noisy copy, hard, half free), **UG4W10**.
+- **LOCK-HELPS** iff UG4W10 - UG4N10 >= +0.03 both seeds positive. **WITNESS CARRIES** iff UG4W10 - U HELPS with retention >= 0.5 of
+  UG4 - U.
+- PREDICTIONS: LOCK-HELPS YES ~60%; WITNESS CARRIES ~40% (read with UG4C50 from `cert`: missing edges cost; recall 0.80 is between C50 and 100).
+- Scope: the witnesses are independent BY CONSTRUCTION; a real parser's errors correlate across views (the cap2x lesson: same scores,
+  24.7% disagreement, yet shared blind spots). A PASS says agreement-locking works when witnesses are independent; the GSM8K question is
+  how independent the panel's members are.
+
+**3. GROW -- NOT PINNED (feasibility read, zero-GPU):** the NOTEBOOK arm is the only one with in-graph commitments to grow a mask by, and
+its banked control already reads DEEP 0.953 / 0.986 (cov 0.03125; G8 there 0.969 / 0.978) -- no headroom to read a lift; NOMLP carries
+no commitments. Named for the GSM8K bench, where the notebook is not at ceiling.
+
+Chain: `.cache/run_soft.sh` (unit `soft`; waits for `cert`, applies the patch, 10 runs ~75 min).
