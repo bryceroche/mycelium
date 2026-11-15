@@ -59384,3 +59384,28 @@ struck 11-13 (it reads C0 VOID, shallow 0.969 / 0.878) -> every frame VOID. The 
   is locked); with free heads, per-edge random certification at 50% buys a third of the lift. Coverage of the CHAIN matters, not
   coverage of edges -- consistent with "certification that grows across breaths" (named, unpinned) and with WITNESS-LOCK (in flight:
   recall 0.80).
+
+### 2026-11-15 12:36 -- QUEUE 11-15b VERDICTS: SOFT-KEEPS YES (0.92 of the lift); SOFT-SAFE NO (+0.022); LOCK-HELPS NO (-0.015); WITNESS CARRIES NO (retention 0.30)
+
+Artifacts: `.cache/rel_dsl_soft_verdict.txt` (`scripts/rel_dsl_soft_verdict.py`, the tinygrad-scored unitary control). Chain `soft` 10:20
+(waited for cert to 10:39; patch applied) -> 12:35. The patch is now in `scripts/rel_dsl_tg.py` (RD_GSOFT, RD_GWIT; GNOISE draws regression-
+checked identical on CPU before the fire).
+
+- **SOFT-KEEPS: YES.** UG8B4 - U **+0.142** (seeds +0.135 / +0.150), retention **0.92** of UG8's +0.154; DEEP 0.999 / 0.973. A fixed +4 bias
+  on the true edges (no hard mask anywhere) carries almost the whole routing lift. Prediction YES ~45% -- wrong side (the bias was NOT
+  beaten by q.k; the 11-14 'engine ignored the graph' was with no graph signal at all).
+- **SOFT-SAFE: NO.** UG8N10B4 - UG8N10 +0.022 (seeds +0.044 / +0.001). Soft and hard both lose nearly the whole lift to 10% wrong edges
+  (vs U: soft +0.027, hard +0.005, both EQUIVALENT). A wrong edge as a bias is about as costly as a wrong edge as a mask. Prediction YES
+  ~60% wrong.
+- **LOCK-HELPS: NO.** UG4W10 - UG4N10 -0.015 (seeds +0.005 / -0.035). **WITNESS CARRIES: NO**: UG4W10 - U +0.045 HELPS (both seeds +), but
+  retention 0.30. Beside: **UG4N10 - U +0.060 HELPS** (seeds +0.041 / +0.078) -- on the unitary breath half-free routing on a 10%-wrong
+  graph still gains (the additive G4N10 was EQUIVALENT +0.000). Predictions LOCK-HELPS YES ~60% wrong; CARRIES ~40% right side.
+- **READING (three reads agree: C50, W10, N10):** the routed lift tracks how many CHAINS are wholly carried by the routed heads, not edge
+  precision. Witness lock (recall 0.80, precision 0.998) ~ one noisy copy (recall 0.90, precision 0.90) ~ random half certified (recall
+  0.50): retention 0.30 / 0.40 / 0.33. A depth-7 chain is wholly present with p ~ 0.8^7 = 0.21 under the witness lock: precision bought by
+  dropping edges is paid back in broken chains. The soft band is not a safety net for wrong edges, but it is a full-strength carrier for
+  RIGHT ones -- so the band choice (bias vs mask) is free; the edge SET is everything.
+- **Named next forms (unpinned):** (1) CHAIN-CERT: certify whole chains (all edges on a derivation path or none) at matched edge coverage
+  vs C50 -- tests "chains, not edges" directly; (2) THREE-BAND: hard lock on the witness intersection + soft bias on the union (recall 0.99)
+  + free heads -- precision where it is proven, completeness where it is proposed; (3) GROW on the GSM8K bench (the notebook has headroom
+  there).

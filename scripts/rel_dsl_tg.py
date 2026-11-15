@@ -37,17 +37,20 @@ GKNN = int(os.environ.get("RD_GKNN", "0"))         # (ROUTING QUEUE) routed head
 KD = 32
 GKNN_ST = int(os.environ.get("RD_GKNN_ST", "0"))   # (GK-ST, ledger 11-14) the similarity in the scores as straight-through only, self excluded
 GPLACEBO = int(os.environ.get("RD_GPLACEBO", "0"))   # (GRAPH PLACEBO, ledger 11-14) route along a relabelled graph
+GSOFT = float(os.environ.get("RD_GSOFT", "0"))   # (SOFT-BIAS, ledger 11-15) routed heads: +b on proposed edges, no hard mask
+GWIT = int(os.environ.get("RD_GWIT", "0"))       # (WITNESS-LOCK, ledger 11-15) hard mask = the intersection of two independent r%-rewired copies
 GCERT = int(os.environ.get("RD_GCERT", "0"))   # (CERTIFIED EDGES, ledger 11-15) the routed heads see only c% of each var's TRUE edges (the rest MISSING, never wrong)
 GRAPH = int(os.environ.get("RD_GRAPH", "0"))   # (GRAPH, ledger 11-14) heads 0..GRAPH-1 routed by the factor graph
 SCHED = int(os.environ.get("RD_SCHED", "0"))   # (SU, ledger 11-13 15:12) the unitary breath with breath b's writes scaled by g_b = n_1 / n_{b-1}
-TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'C{GCERT}' if GCERT else ''}{f'K{GKNN}' if GKNN else ''}{'S' if GKNN_ST else ''}_depth2c{COV:g}_s{RB.SEED}")
+TAG = os.environ.get("RD_TAG", f"TG{ARM}{' RQB'[DIAL] if DIAL else 'S' if SCHED else 'U' if UNIT else ''}{'D' if DAMP else ''}{f'G{GRAPH}' if GRAPH else ''}{'P' if GPLACEBO else ''}{f'N{GNOISE}' if GNOISE else ''}{f'C{GCERT}' if GCERT else ''}{f'W{GWIT}' if GWIT else ''}{f'B{GSOFT:g}' if GSOFT else ''}{f'K{GKNN}' if GKNN else ''}{'S' if GKNN_ST else ''}_depth2c{COV:g}_s{RB.SEED}")
 assert not (DAMP and UNIT), "DAMP and UNIT are separate forms"
 assert not SCHED or UNIT, "SCHED is a form of the unitary breath"
 assert 0 <= GRAPH <= NH, "RD_GRAPH = the number of routed heads"
 assert not GPLACEBO or GRAPH, "GPLACEBO is a form of the routed heads"
 assert not (GNOISE or GKNN or GCERT) or GRAPH, "GNOISE / GKNN / GCERT are forms of the routed heads"
+assert not (GSOFT or GWIT) or (GRAPH and not GKNN), "GSOFT / GWIT are forms of the routed heads"
 assert 0 <= GCERT < 100, "RD_GCERT = percent certified (100 = RD_GRAPH alone)"
-assert (GPLACEBO > 0) + (GNOISE > 0) + (GKNN > 0) + (GCERT > 0) <= 1, "one routing form at a time"
+assert (GPLACEBO > 0) + (GNOISE > 0) + (GKNN > 0) + (GCERT > 0) + (GWIT > 0) <= 1, "one routing form at a time"
 assert not GKNN_ST or GKNN, "GKNN_ST is a form of the KNN heads"
 PRNG = np.random.default_rng(1000 + RB.SEED)       # the placebo's own stream (the item / symbol rng is untouched)
 TORCH_OK = not (UNIT or DAMP or GRAPH)          # the torch net has none of these: every other form is scored on the tinygrad forward
@@ -167,10 +170,10 @@ def forward(P, bt, ids, unit=False, ex=False):
     if GRAPH:                                                                     # THE ROUTED HEADS: attend only along factor-graph edges
         ig = ((A + Rz + Mz) > 0).cast(dtypes.float).transpose(1, 2)              # B x V x F
         if GPLACEBO: ig = ig @ bt[10]                                            # the placebo: var -> the wrong factors (same degrees)
-        if GNOISE or GCERT: ig = bt[10]                                          # the noisy graph (r% rewired) / the certified subgraph (c% kept)
+        if GNOISE or GCERT or GWIT: ig = bt[10]                                          # the noisy graph (r% rewired) / the certified subgraph (c% kept)
         nbr = Tensor.cat(Tensor.cat(Tensor.eye(nv).reshape(1, nv, nv).expand(B, nv, nv), ig, dim=2),
                          Tensor.cat(ig.transpose(1, 2), Tensor.eye(nf).reshape(1, nf, nf).expand(B, nf, nf), dim=2), dim=1)   # B x L x L
-        gm = (nbr > 0).where(0.0, -1e4).reshape(B, 1, L, L)
+        gm = (nbr > 0).where(GSOFT if GSOFT else 0.0, 0.0 if GSOFT else -1e4).reshape(B, 1, L, L)
         if not GKNN: mask = mask + Tensor.cat(*([gm] * GRAPH + [gm * 0] * (NH - GRAPH)), dim=1)
     if GKNN:                                                                      # the routed heads' rows are rebuilt each breath from state
         eyeL = Tensor.eye(L).reshape(1, L, L); padk = pad.reshape(B, 1, L); knl = []
@@ -242,16 +245,18 @@ def pad_np(arrs, ids, bk=BUCKET):
         for i, f in enumerate(out[3]):
             r = np.nonzero(f)[0]; q = np.arange(NF); q[r] = PRNG.permutation(r); Pm[i, np.arange(NF), q] = 1.0
         out.append(Pm)
-    if GNOISE:                                                                   # per var: r% of its edges rewired to a factor it does not touch
+    def rewire(r):                                                               # per var: r% of its edges rewired to a factor it does not touch
         ig = ((out[4] + out[5] + out[6]) > 0).transpose(0, 2, 1).astype(np.float32)
         for i in range(ig.shape[0]):
             rf = np.nonzero(out[3][i])[0]
             for v in np.nonzero(out[1][i])[0]:
                 nb = np.nonzero(ig[i, v])[0]; free = np.setdiff1d(rf, nb)
                 for f in nb:
-                    if len(free) and PRNG.random() < GNOISE / 100:
+                    if len(free) and PRNG.random() < r / 100:
                         g = PRNG.choice(free); ig[i, v, f] = 0.0; ig[i, v, g] = 1.0; free = np.setdiff1d(free, [g])
-        out.append(ig)
+        return ig
+    if GNOISE: out.append(rewire(GNOISE))
+    if GWIT: out.append(rewire(GWIT) * rewire(GWIT))                              # lock only what both independent witnesses propose
     if GCERT:                                                                    # per edge: certified (kept) with probability c%, else missing
         ig = ((out[4] + out[5] + out[6]) > 0).transpose(0, 2, 1).astype(np.float32)
         out.append(ig * (PRNG.random(ig.shape) < GCERT / 100))
